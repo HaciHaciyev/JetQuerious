@@ -11,17 +11,39 @@
 <name>jdbc-light</name>
 <url>http://maven.apache.org</url>
 
-<properties>
-  <maven.compiler.source>21</maven.compiler.source>
-  <maven.compiler.target>21</maven.compiler.target>
-</properties>
+  <licenses>
+    <license>
+      <name>MIT License</name>
+      <url>https://opensource.org/licenses/MIT</url>
+      <distribution>repo</distribution>
+    </license>
+  </licenses>
 
-<dependencies>
-  <dependency>
-    <groupId>org.junit.jupiter</groupId>
-    <artifactId>junit-jupiter-api</artifactId>
-    <version>5.13.0-M2</version>
-    <scope>test</scope>
-  </dependency>
-</dependencies>
+  <properties>
+    <maven.compiler.source>21</maven.compiler.source>
+    <maven.compiler.target>21</maven.compiler.target>
+  </properties>
+
+  <developers>
+    <developer>
+      <id>hadzhy</id>
+      <name>Hadzhyiev Hadzhy</name>
+      <url>https://github.com/HaciHaciyev</url>
+    </developer>
+  </developers>
+
+  <scm>
+    <url>https://github.com/hadzhy/jdbclight</url>
+    <connection>scm:git:git://github.com/HaciHaciyev/jdbclight.git</connection>
+    <developerConnection>scm:git:ssh://github.com:hadzhy/jdbclight.git</developerConnection>
+  </scm>
+
+  <dependencies>
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter-api</artifactId>
+      <version>5.13.0-M2</version>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
 </project>

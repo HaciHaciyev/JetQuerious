@@ -43,27 +43,53 @@ import static com.hadzhy.jdbclight.jdbc.SQLErrorHandler.handleSQLException;
  * <pre>
  * // Initialize the JDBC instance with a DataSource
  * DataSource dataSource = ...; // Obtain a DataSource instance
- * JDBC jdbc = new JDBC(dataSource);
+ * JDBC.init(dataSource);
+ * JDBC jdbc = JDBC.instance();
  *
- * // Insert a new product
- * String insertSQL = "INSERT INTO products (name, price) VALUES (?, ?)";
+ * // Insert a new product. User static import for SQLBuilder.insert();.
+ * String insertSQL = insert()
+ *      .into("products")
+ *      .column("name")
+ *      .column("price")
+ *      .values()
+ *      .build()
+ *      .sql();
+ *
  * Result<Boolean, Throwable> insertResult = jdbc.write(insertSQL, "New Product", 29.99);
  *
  * // Fetch a product by ID
- * String selectSQL = "SELECT * FROM products WHERE id = ?";
+ * String selectSQL = select()
+ *      .all()
+ *      .from("products")
+ *      .where("id = ?")
+ *      .build()
+ *      .sql();
+ *
  * Result<Product, Throwable> productResult = jdbc.read(selectSQL, Product.class, 1);
  *
  * // Update product tags
- * String updateTagsSQL = "UPDATE products SET tags = ? WHERE id = ?";
+ * String updateTagsSQL = update("products")
+ *      .set("tags = ?")
+ *      .where("id = ?")
+ *      .build()
+ *      .sql();
+ *
  * String[] tags = {"electronics", "sale"};
  * Result<Boolean, Throwable> updateResult = jdbc.writeArrayOf(updateTagsSQL, "text", 1, tags, 1);
  *
  * // Batch insert customers
- * String batchInsertSQL = "INSERT INTO customers (name, email) VALUES (?, ?)";
+ * String batchInsertSQL = insert()
+ *             .into("customers")
+ *             .columns("name", "email")
+ *             .values()
+ *             .build()
+ *             .sql();
+ *
  * List<Object[]>batchArgs = Arrays.asList(
  *     new Object[]{"Alice", "alice@example.com"},
  *     new Object[]{"Bob", "bob@example.com"}
  * );
+ *
  * Result<Boolean, Throwable> batchResult = jdbc.writeBatch(batchInsertSQL, batchArgs);
  * </pre>
  *
