@@ -381,10 +381,45 @@ public class JDBC {
         }
     }
 
+    public <T> Result<List<T>, Throwable> readListOf(final String sql, final ResultSetExtractor<T> extractor,
+                                                     final ResultSetType resultSetType, final @Nullable Object... params) {
+
+        if (sql == null) return Result.failure(new IllegalArgumentException("SQL query cannot be null"));
+        if (extractor == null) return Result.failure(new IllegalArgumentException("Extractor cannot be null"));
+
+        try (final Connection connection = dataSource.getConnection();
+             final PreparedStatement statement = connection.prepareStatement(sql, resultSetType.type(), resultSetType.concurrency())) {
+            if (params != null && params.length > 0) {
+                setParameters(statement, params);
+            }
+
+            final List<T> results = new ArrayList<>();
+            try (final ResultSet resultSet = statement.executeQuery()) {
+                while (resultSet.next()) {
+                    T item = extractor.extractData(resultSet);
+                    results.add(item);
+                }
+            }
+
+            return Result.success(results);
+        } catch (SQLException e) {
+            Log.log(Level.SEVERE, "Error: %s".formatted(e.getMessage()));
+            return handleSQLException(e);
+        }
+    }
+
     public <T> CompletableFuture<Result<List<T>, Throwable>> asynchReadListOf(final String sql, final ResultSetExtractor<T> extractor,
                                                                               final @Nullable Object... params) {
 
         return CompletableFuture.supplyAsync(() -> readListOf(sql, extractor, params));
+    }
+
+    public <T> CompletableFuture<Result<List<T>, Throwable>> asynchReadListOf(final String sql,
+                                                                              final ResultSetExtractor<T> extractor,
+                                                                              final ResultSetType resultSetType,
+                                                                              final @Nullable Object... params) {
+
+        return CompletableFuture.supplyAsync(() -> readListOf(sql, extractor, resultSetType, params));
     }
 
     /**
