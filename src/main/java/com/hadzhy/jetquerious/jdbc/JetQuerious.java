@@ -2,6 +2,7 @@ package com.hadzhy.jetquerious.jdbc;
 
 import com.hadzhy.jetquerious.exceptions.NotFoundException;
 import com.hadzhy.jetquerious.exceptions.InvalidArgumentTypeException;
+import com.hadzhy.jetquerious.exceptions.TransactionException;
 import com.hadzhy.jetquerious.util.Nullable;
 import com.hadzhy.jetquerious.util.Result;
 
@@ -115,6 +116,113 @@ public class JetQuerious {
         if (instance == null)
             throw new IllegalStateException("JetQuerious is not initialized. Call JDBC.init(dataSource) first.");
         return instance;
+    }
+
+    /**
+     * Executes an action within a transaction, ensuring atomicity.
+     * Automatically manages the database connection: opens a connection,
+     * disables auto-commit, executes the provided action, then either commits
+     * the changes or rolls them back if an error occurs.
+     *
+     * <p><strong>Usage example:</strong></p>
+     * <pre>{@code
+     * Result<Void, Throwable> result = jetQuerious.transactional(conn -> {
+     *     jetQuerious.stepInTransaction(conn, "INSERT INTO users (name) VALUES (?)", "Bob");
+     *     jetQuerious.stepInTransaction(conn, "INSERT INTO logs (event) VALUES (?)", "User created");
+     * });
+     * }</pre>
+     *
+     * @param action the action to execute within the transaction
+     * @return {@code Result.success(null)} on successful execution or {@code Result.failure(throwable)}
+     *         on error with the corresponding exception
+     *
+     * @implNote
+     * <ul>
+     *   <li>The method automatically closes the connection after the transaction completes</li>
+     *   <li>Any exceptions thrown during action execution will cause a transaction rollback</li>
+     *   <li>All SQL operations within the transaction must use the same connection passed to the lambda</li>
+     *   <li>Use the {@link #stepInTransaction} method for executing operations within the transaction</li>
+     * </ul>
+     *
+     * <h3>⚠️ Critical Warning</h3>
+     * <p>
+     * <strong>Only operations performed through the {@code stepInTransaction} method will be part of the transaction!</strong>
+     * </p>
+     * <p>
+     * Any other database operations that you might execute inside the {@code transactional} lambda:
+     * </p>
+     * <ul>
+     *   <li>Direct JDBC calls using the connection object</li>
+     *   <li>Other database methods that don't use the {@code transaction} method</li>
+     *   <li>Custom SQL execution methods</li>
+     * </ul>
+     * <p>
+     * ...will <strong>NOT</strong> be part of the transaction control and will <strong>NOT</strong> be rolled back
+     * if an error occurs. They will execute in their default manner without transactional protection.
+     * </p>
+     */
+    public Result<Void, Throwable> transactional(SQLConsumer<Connection> action) {
+        if (action == null) return Result.failure(new IllegalArgumentException("Action must not be null"));
+
+        try (Connection connection = dataSource.getConnection()) {
+            connection.setAutoCommit(false);
+            try {
+                action.accept(connection);
+                connection.commit();
+                return Result.success(null);
+            } catch (Throwable t) {
+                connection.rollback();
+                return Result.failure(t);
+            }
+        } catch (Throwable t) {
+            return Result.failure(t);
+        }
+    }
+
+    /**
+     * Executes a single SQL update operation using a provided connection and parameters.
+     * <p>
+     * This method is intended for internal use within transactional blocks managed by
+     * {@link #transactional(SQLConsumer)}. It prepares and executes the given SQL statement
+     * with the provided parameters using the given JDBC connection.
+     * <p>
+     * The method does not handle connection management or transactional boundaries itself.
+     * It relies on the caller to ensure the connection is part of a valid transaction and
+     * properly managed.
+     * <p>
+     * Usage is expected only via the lambda passed to {@code transactional()}, for example:
+     *
+     * <pre>{@code
+     * jetQuerious.transactional(conn -> {
+     *     jetQuerious.stepInTransaction(conn, "UPDATE accounts SET balance = balance - ? WHERE id = ?", 100, 1);
+     *     jetQuerious.stepInTransaction(conn, "UPDATE accounts SET balance = balance + ? WHERE id = ?", 100, 2);
+     * });
+     * }</pre>
+     *
+     * @param connection the JDBC connection to use, must be managed externally (e.g., from {@code transactional()})
+     * @param sql        the SQL update statement to execute (must not be null)
+     * @param params     optional parameters to bind to the prepared statement
+     *
+     * @throws IllegalArgumentException if the connection or sql is null
+     * @throws TransactionException if a database access error occurs during execution
+     *
+     * @implNote
+     * - This method does not perform any transaction commit or rollback.
+     * - It should never be called outside the context of {@code transactional()}.
+     * - Exceptions are thrown directly to propagate transactional failure.
+     */
+    public void stepInTransaction(final Connection connection, final String sql,
+                                  final @Nullable Object... params) {
+
+        if (connection == null) throw new IllegalArgumentException("Connection cannot be null");
+        if (sql == null) throw new IllegalArgumentException("SQL cannot be null");
+
+        try (PreparedStatement statement = connection.prepareStatement(sql)) {
+            setParameters(statement, params);
+            statement.executeUpdate();
+        } catch (SQLException e) {
+            throw new TransactionException(e.getSQLState(), e.getMessage());
+        }
     }
 
     /**
