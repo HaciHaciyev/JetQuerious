@@ -169,7 +169,9 @@ public class JDBC {
      * }
      * </pre>
      */
-    public <T> Result<T, Throwable> execute(final String sql, final SQLFunction<PreparedStatement, T> callback, @Nullable final Object... params) {
+    public <T> Result<T, Throwable> execute(final String sql, final SQLFunction<PreparedStatement, T> callback,
+                                            final @Nullable Object... params) {
+
         if (sql == null) return Result.failure(new IllegalArgumentException("SQL query cannot be null"));
         if (callback == null) return Result.failure(new IllegalArgumentException("Callback function cannot be null"));
 
@@ -185,7 +187,9 @@ public class JDBC {
         }
     }
 
-    public <T> CompletableFuture<Result<T, Throwable>> asynchExecute(final String sql, final SQLFunction<PreparedStatement, T> callback, @Nullable final Object... params) {
+    public <T> CompletableFuture<Result<T, Throwable>> asynchExecute(final String sql, final SQLFunction<PreparedStatement, T> callback,
+                                                                     final @Nullable Object... params) {
+
         return CompletableFuture.supplyAsync(() -> execute(sql, callback, params));
     }
 
@@ -259,7 +263,9 @@ public class JDBC {
         }
     }
 
-    public <T> CompletableFuture<Result<T, Throwable>> asynchRead(final String sql, final ResultSetExtractor<T> extractor, final @Nullable Object... params) {
+    public <T> CompletableFuture<Result<T, Throwable>> asynchRead(final String sql, final ResultSetExtractor<T> extractor,
+                                                                  final @Nullable Object... params) {
+
         return CompletableFuture.supplyAsync(() -> read(sql, extractor, params));
     }
 
@@ -324,7 +330,9 @@ public class JDBC {
         }
     }
 
-    public <T> CompletableFuture<Result<T, Throwable>> asynchReadObjectOf(final String sql, final Class<T> type, @Nullable final Object... params) {
+    public <T> CompletableFuture<Result<T, Throwable>> asynchReadObjectOf(final String sql, final Class<T> type,
+                                                                          final @Nullable Object... params) {
+
        return CompletableFuture.supplyAsync(() -> readObjectOf(sql, type, params));
     }
 
@@ -345,12 +353,15 @@ public class JDBC {
      * );
      * </pre>
      */
-    public <T> Result<List<T>, Throwable> readListOf(final String sql, final ResultSetExtractor<T> extractor, @Nullable final Object... params) {
+    public <T> Result<List<T>, Throwable> readListOf(final String sql, final ResultSetExtractor<T> extractor,
+                                                     final @Nullable Object... params) {
+
         if (sql == null) return Result.failure(new IllegalArgumentException("SQL query cannot be null"));
         if (extractor == null) return Result.failure(new IllegalArgumentException("Extractor cannot be null"));
 
         try (final Connection connection = dataSource.getConnection();
-             final PreparedStatement statement = connection.prepareStatement(sql, ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY)) {
+             final PreparedStatement statement = connection.prepareStatement(sql,
+                     ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY)) {
             if (params != null && params.length > 0) {
                 setParameters(statement, params);
             }
@@ -370,7 +381,9 @@ public class JDBC {
         }
     }
 
-    public <T> CompletableFuture<Result<List<T>, Throwable>> asynchReadListOf(final String sql, final ResultSetExtractor<T> extractor, @Nullable final Object... params) {
+    public <T> CompletableFuture<Result<List<T>, Throwable>> asynchReadListOf(final String sql, final ResultSetExtractor<T> extractor,
+                                                                              final @Nullable Object... params) {
+
         return CompletableFuture.supplyAsync(() -> readListOf(sql, extractor, params));
     }
 
@@ -452,6 +465,7 @@ public class JDBC {
      */
     public Result<Boolean, Throwable> writeArrayOf(final String sql, final String arrayDefinition, final byte arrayIndex,
                                                    final Object[] array, final Object... args) {
+
         if (sql == null) return Result.failure(new IllegalArgumentException("SQL query cannot be null"));
         if (arrayDefinition == null) return Result.failure(new IllegalArgumentException("Array definition cannot be null"));
         if (array == null) return Result.failure(new IllegalArgumentException("Array cannot be null"));
@@ -471,8 +485,10 @@ public class JDBC {
         }
     }
 
-    public CompletableFuture<Result<Boolean, Throwable>> asynchWriteArrayOf(final String sql, final String arrayDefinition, final byte arrayIndex,
-                                                                            final Object[] array, final Object... args) {
+    public CompletableFuture<Result<Boolean, Throwable>> asynchWriteArrayOf(final String sql, final String arrayDefinition,
+                                                                            final byte arrayIndex, final Object[] array,
+                                                                            final Object... args) {
+
         return CompletableFuture.supplyAsync(() -> writeArrayOf(sql, arrayDefinition, arrayIndex, array, args));
     }
 
