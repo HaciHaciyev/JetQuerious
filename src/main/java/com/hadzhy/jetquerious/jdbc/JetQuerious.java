@@ -15,12 +15,12 @@ import java.util.logging.Logger;
 import static com.hadzhy.jetquerious.jdbc.SQLErrorHandler.handleSQLException;
 
 /**
- * The {@code JDBC} class provides a set of utility methods for interacting with a relational database using JDBC (Java Database Connectivity).
+ * The {@code JetQuerious} class provides a set of utility methods for interacting with a relational database using JetQuerious (Java Database Connectivity).
  * It simplifies the execution of SQL queries and the handling of results, while also providing error handling and transaction management.
  * This class is designed to be used as a singleton within a DI container.
  *
  * <h2>Class API Overview</h2>
- * The {@code JDBC} class offers the following key functionalities:
+ * The {@code JetQuerious} class offers the following key functionalities:
  * <ul>
  *     <li><strong>Read Operations:</strong> Methods to execute SQL queries that return single values, objects, or lists of objects.</li>
  *     <li><strong>Write Operations:</strong> Methods to execute SQL updates, including single updates, updates with array parameters, and batch updates.</li>
@@ -29,9 +29,9 @@ import static com.hadzhy.jetquerious.jdbc.SQLErrorHandler.handleSQLException;
  * </ul>
  *
  * <h2>Usage Guidelines</h2>
- * To use the {@code JDBC} class effectively, follow these guidelines:
+ * To use the {@code JetQuerious} class effectively, follow these guidelines:
  * <ol>
- *     <li><strong>Initialization:</strong> Ensure that the {@code JDBC} instance is properly initialized with a valid {@code DataSource} before use.</li>
+ *     <li><strong>Initialization:</strong> Ensure that the {@code JetQuerious} instance is properly initialized with a valid {@code DataSource} before use.</li>
  *     <li><strong>Read Operations:</strong> Use the {@code read()} method to fetch single values or objects. For complex mappings, consider using the {@code read()} method with a {@code ResultSetExtractor} or {@code RowMapper}.</li>
  *     <li><strong>Write Operations:</strong> Use the {@code write()} method for standard updates. For updates involving arrays, use {@code writeArrayOf()}. For bulk status, utilize {@code writeBatch()}.</li>
  *     <li><strong>Parameter Handling:</strong> Always ensure that parameters passed to SQL statements are properly sanitized and validated to prevent SQL injection attacks.</li>
@@ -41,10 +41,10 @@ import static com.hadzhy.jetquerious.jdbc.SQLErrorHandler.handleSQLException;
  *
  * <h2>Example Usage</h2>
  * <pre>
- * // Initialize the JDBC instance with a DataSource
+ * // Initialize the JetQuerious instance with a DataSource
  * DataSource dataSource = ...; // Obtain a DataSource instance
- * JDBC.init(dataSource);
- * JDBC jdbc = JDBC.instance();
+ * JetQuerious.init(dataSource);
+ * JetQuerious jetQuerious = JetQuerious.instance();
  *
  * // Insert a new product. User static import for SQLBuilder.insert();.
  * String insertSQL = insert()
@@ -55,7 +55,7 @@ import static com.hadzhy.jetquerious.jdbc.SQLErrorHandler.handleSQLException;
  *      .build()
  *      .sql();
  *
- * Result<Boolean, Throwable> insertResult = jdbc.write(insertSQL, "New Product", 29.99);
+ * Result<Boolean, Throwable> insertResult = jetQuerious.write(insertSQL, "New Product", 29.99);
  *
  * // Fetch a product by ID
  * String selectSQL = select()
@@ -65,7 +65,7 @@ import static com.hadzhy.jetquerious.jdbc.SQLErrorHandler.handleSQLException;
  *      .build()
  *      .sql();
  *
- * Result<Product, Throwable> productResult = jdbc.read(selectSQL, Product.class, 1);
+ * Result<Product, Throwable> productResult = jetQuerious.read(selectSQL, Product.class, 1);
  *
  * // Update product tags
  * String updateTagsSQL = update("products")
@@ -75,7 +75,7 @@ import static com.hadzhy.jetquerious.jdbc.SQLErrorHandler.handleSQLException;
  *      .sql();
  *
  * String[] tags = {"electronics", "sale"};
- * Result<Boolean, Throwable> updateResult = jdbc.writeArrayOf(updateTagsSQL, "text", 1, tags, 1);
+ * Result<Boolean, Throwable> updateResult = jetQuerious.writeArrayOf(updateTagsSQL, "text", 1, tags, 1);
  *
  * // Batch insert customers
  * String batchInsertSQL = insert()
@@ -90,30 +90,30 @@ import static com.hadzhy.jetquerious.jdbc.SQLErrorHandler.handleSQLException;
  *     new Object[]{"Bob", "bob@example.com"}
  * );
  *
- * Result<Boolean, Throwable> batchResult = jdbc.writeBatch(batchInsertSQL, batchArgs);
+ * Result<Boolean, Throwable> batchResult = jetQuerious.writeBatch(batchInsertSQL, batchArgs);
  * </pre>
  *
  * @author Hadzhyiev Hadzhy
  * @version 2.0
  */
-public class JDBC {
+public class JetQuerious {
     private final DataSource dataSource;
-    private static volatile JDBC instance;
-    private static final Logger Log = Logger.getLogger(JDBC.class.getName());
+    private static volatile JetQuerious instance;
+    private static final Logger Log = Logger.getLogger(JetQuerious.class.getName());
 
-    private JDBC(DataSource dataSource) {
+    private JetQuerious(DataSource dataSource) {
         this.dataSource = dataSource;
     }
 
     public static void init(DataSource dataSource) {
-        if (instance == null) synchronized (JDBC.class) {
-            if (instance == null) instance = new JDBC(dataSource);
+        if (instance == null) synchronized (JetQuerious.class) {
+            if (instance == null) instance = new JetQuerious(dataSource);
         }
     }
 
-    public static JDBC instance() {
+    public static JetQuerious instance() {
         if (instance == null)
-            throw new IllegalStateException("JDBC is not initialized. Call JDBC.init(dataSource) first.");
+            throw new IllegalStateException("JetQuerious is not initialized. Call JDBC.init(dataSource) first.");
         return instance;
     }
 
@@ -147,7 +147,7 @@ public class JDBC {
      *
      * int userId = 1
      *
-     * Result<List<String>, Throwable> result = jdbc.execute(
+     * Result<List<String>, Throwable> result = jetQuerious.execute(
      *     sql,
      *     statement {
      *         ResultSet resultSet = statement.executeQuery();
@@ -205,7 +205,7 @@ public class JDBC {
      *
      * @example
      * <pre>
-     * Result<UserAccount, Throwable> userResult = jdbc.read(
+     * Result<UserAccount, Throwable> userResult = jetQuerious.read(
      *          FIND_BY_ID,
      *          this::userAccountMapper,
      *          userId.toString()
@@ -287,7 +287,7 @@ public class JDBC {
      *
      * @example
      * <pre>
-     * Integer count = jdbc.readObjectOf(
+     * Integer count = jetQuerious.readObjectOf(
      *          "SELECT COUNT(email) FROM YOU_TABLE WHERE email = ?",
      *          Integer.class,
      *          verifiableEmail.email()
@@ -302,7 +302,7 @@ public class JDBC {
         final boolean isWrapper = WrappersMapper.isSupportedWrapperType(type);
         if (!isWrapper) {
             return Result.failure(
-                    new InvalidArgumentTypeException("Invalid class type. Function jdbc.queryForObjets() can only provide primitive wrappers and String.")
+                    new InvalidArgumentTypeException("Invalid class type. Function jetQuerious.queryForObjets() can only provide primitive wrappers and String.")
             );
         }
 
@@ -347,7 +347,7 @@ public class JDBC {
      *
      * @example
      * <pre>
-     * Result<List<UserAccount>, Throwable> users = jdbc.readListOf(
+     * Result<List<UserAccount>, Throwable> users = jetQuerious.readListOf(
      *          "SELECT * FROM UserAccount",
      *          this::userAccountMapper
      * );
@@ -436,7 +436,7 @@ public class JDBC {
      * String productName = "Sample Product";
      * double productPrice = 19.99;
      *
-     * Result<Boolean, Throwable> result = jdbc.write(insertProductSQL, productName, productPrice);
+     * Result<Boolean, Throwable> result = jetQuerious.write(insertProductSQL, productName, productPrice);
      * if (result.isSuccess()) {
      *     System.out.println("Product inserted successfully.");
      * } else {
@@ -483,7 +483,7 @@ public class JDBC {
      * String[] tags = {"electronics", "gadget"};
      * int productId = 1; // The ID of the product to update
      *
-     * Result<Boolean, Throwable> result = jdbc.writeArrayOf(
+     * Result<Boolean, Throwable> result = jetQuerious.writeArrayOf(
      *          updateProductTagsSQL,
      *          arrayDefinition,
      *          arrayIndex,
@@ -543,7 +543,7 @@ public class JDBC {
      *     new Object[]{"Charlie", "charlie@example.com"}
      * );
      *
-     * Result<Boolean, Throwable> result = jdbc.writeBatch(insertCustomerSQL, batchArgs);
+     * Result<Boolean, Throwable> result = jetQuerious.writeBatch(insertCustomerSQL, batchArgs);
      * if (result.isSuccess()) {
      *     System.out.println("Customers inserted successfully.");
      * } else {
