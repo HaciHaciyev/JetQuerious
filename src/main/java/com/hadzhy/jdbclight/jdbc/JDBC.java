@@ -208,7 +208,7 @@ public class JDBC {
      * );
      * </pre>
      */
-    public <T> Result<T, Throwable> read(final String sql, final ResultSetExtractor<T> extractor, @Nullable final Object... params) {
+    public <T> Result<T, Throwable> read(final String sql, final ResultSetExtractor<T> extractor, final @Nullable Object... params) {
         if (sql == null) return Result.failure(new IllegalArgumentException("SQL query cannot be null"));
         if (extractor == null) return Result.failure(new IllegalArgumentException("Extractor cannot be null"));
 
@@ -232,8 +232,40 @@ public class JDBC {
         }
     }
 
-    public <T> CompletableFuture<Result<T, Throwable>> asynchRead(final String sql, final ResultSetExtractor<T> extractor, @Nullable final Object... params) {
+    public <T> Result<T, Throwable> read(final String sql, final ResultSetExtractor<T> extractor,
+                                         final ResultSetType resultSetType, final @Nullable Object... params) {
+
+        if (sql == null) return Result.failure(new IllegalArgumentException("SQL query cannot be null"));
+        if (extractor == null) return Result.failure(new IllegalArgumentException("Extractor cannot be null"));
+        if (resultSetType == null) return Result.failure(new IllegalArgumentException("Result set type can`t be null"));
+
+        try (final Connection connection = dataSource.getConnection();
+             final PreparedStatement statement = connection.prepareStatement(sql, resultSetType.type(), resultSetType.concurrency())) {
+            if (params != null && params.length > 0) {
+                setParameters(statement, params);
+            }
+
+            try (final ResultSet resultSet = statement.executeQuery()) {
+                if (!resultSet.next()) {
+                    return Result.failure(new NotFoundException("Data in for this query was not found."));
+                }
+
+                T value = extractor.extractData(resultSet);
+                return Result.success(value);
+            }
+        } catch (SQLException e) {
+            Log.log(Level.SEVERE, "Error: %s".formatted(e.getMessage()));
+            return handleSQLException(e);
+        }
+    }
+
+    public <T> CompletableFuture<Result<T, Throwable>> asynchRead(final String sql, final ResultSetExtractor<T> extractor, final @Nullable Object... params) {
         return CompletableFuture.supplyAsync(() -> read(sql, extractor, params));
+    }
+
+    public <T> CompletableFuture<Result<T, Throwable>> asynchRead(final String sql, final ResultSetExtractor<T> extractor,
+                                                                  final ResultSetType resultSetType, final @Nullable Object... params) {
+        return CompletableFuture.supplyAsync(() -> read(sql, extractor, resultSetType, params));
     }
 
     /**
