@@ -7,7 +7,12 @@ import com.hadzhy.jetquerious.util.Nullable;
 import com.hadzhy.jetquerious.util.Result;
 
 import javax.sql.DataSource;
+import java.math.BigDecimal;
+import java.math.BigInteger;
+import java.net.URI;
+import java.net.URL;
 import java.sql.*;
+import java.time.*;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.logging.Level;
@@ -692,6 +697,55 @@ public class JetQuerious {
      * @throws SQLException if an SQL error occurs while setting parameters
      */
     private void setParameters(final PreparedStatement statement, final Object... params) throws SQLException {
-        for (int i = 0; i < params.length; i++) statement.setObject(i + 1, params[i]);
+        for (int i = 0; i < params.length; i++) {
+            Object param = params[i];
+
+            switch (param) {
+                case UUID uuid -> statement.setObject(i + 1, uuid.toString());
+                case LocalDateTime localDateTime -> statement.setObject(i + 1, Timestamp.valueOf(localDateTime));
+                case LocalDate localDate -> statement.setObject(i + 1, java.sql.Date.valueOf(localDate));
+                case LocalTime localTime -> statement.setObject(i + 1, java.sql.Time.valueOf(localTime));
+                case Instant instant -> statement.setObject(i + 1, Timestamp.from(instant));
+                case ZonedDateTime zonedDateTime -> statement.setObject(i + 1, Timestamp.from(zonedDateTime.toInstant()));
+                case OffsetDateTime offsetDateTime -> statement.setObject(i + 1, Timestamp.from(offsetDateTime.toInstant()));
+                case Duration duration -> statement.setObject(i + 1, duration);
+                case Period period -> statement.setObject(i + 1, period);
+                case Year year -> statement.setInt(i + 1, year.getValue());
+                case YearMonth yearMonth -> statement.setString(i + 1, yearMonth.toString());
+                case MonthDay monthDay -> statement.setString(i + 1, monthDay.toString());
+                case BigDecimal bigDecimal -> statement.setBigDecimal(i + 1, bigDecimal);
+                case BigInteger bigInteger -> statement.setBigDecimal(i + 1, new BigDecimal(bigInteger));
+                case Enum<?> enumValue -> statement.setString(i + 1, enumValue.name());
+                case URL url -> statement.setURL(i + 1, url);
+                case URI uri -> statement.setString(i + 1, uri.toString());
+                case Blob blob -> statement.setBlob(i + 1, blob);
+                case Clob clob -> statement.setClob(i + 1, clob);
+                case Optional<?> optional -> {
+                    if (optional.isPresent()) setParameter(statement, i + 1, optional.get());
+                    else statement.setNull(i + 1, Types.NULL);
+                }
+                case byte[] bytes -> statement.setBytes(i + 1, bytes);
+                case null -> statement.setNull(i + 1, Types.NULL);
+                default -> statement.setObject(i + 1, param);
+            }
+        }
+    }
+
+    /**
+     * Sets a single parameter in the PreparedStatement.
+     * Helper method to handle nested parameter setting, like for Optional values.
+     */
+    private void setParameter(final PreparedStatement statement, final int index, final Object param) throws SQLException {
+        switch (param) {
+            case UUID uuid -> statement.setObject(index, uuid.toString());
+            case LocalDateTime localDateTime -> statement.setObject(index, Timestamp.valueOf(localDateTime));
+            case LocalDate localDate -> statement.setObject(index, java.sql.Date.valueOf(localDate));
+            case LocalTime localTime -> statement.setObject(index, java.sql.Time.valueOf(localTime));
+            case Instant instant -> statement.setObject(index, Timestamp.from(instant));
+            case ZonedDateTime zonedDateTime -> statement.setObject(index, Timestamp.from(zonedDateTime.toInstant()));
+            case byte[] bytes -> statement.setBytes(index, bytes);
+            case null -> statement.setNull(index, Types.NULL);
+            default -> statement.setObject(index, param);
+        }
     }
 }
