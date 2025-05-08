@@ -180,6 +180,7 @@ public class JetQuerious {
                 return Result.failure(t);
             }
         } catch (Throwable t) {
+            Log.log(Level.SEVERE, "Exception during transaction", t);
             return Result.failure(t);
         }
     }
@@ -226,6 +227,7 @@ public class JetQuerious {
             setParameters(statement, params);
             statement.executeUpdate();
         } catch (SQLException e) {
+            Log.log(Level.SEVERE, "Exception during step in transaction", e);
             throw new TransactionException(e.getSQLState(), e.getMessage());
         }
     }
