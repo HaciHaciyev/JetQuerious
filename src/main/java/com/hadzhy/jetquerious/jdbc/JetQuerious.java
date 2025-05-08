@@ -222,6 +222,7 @@ public class JetQuerious {
 
         if (connection == null) throw new IllegalArgumentException("Connection cannot be null");
         if (sql == null) throw new IllegalArgumentException("SQL cannot be null");
+        validateArgumentsTypes(params);
 
         try (PreparedStatement statement = connection.prepareStatement(sql)) {
             setParameters(statement, params);
@@ -289,6 +290,7 @@ public class JetQuerious {
 
         if (sql == null) return Result.failure(new IllegalArgumentException("SQL query cannot be null"));
         if (callback == null) return Result.failure(new IllegalArgumentException("Callback function cannot be null"));
+        validateArgumentsTypes(params);
 
         try (Connection connection = dataSource.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql)) {
@@ -330,10 +332,11 @@ public class JetQuerious {
     public <T> Result<T, Throwable> read(final String sql, final ResultSetExtractor<T> extractor, final @Nullable Object... params) {
         if (sql == null) return Result.failure(new IllegalArgumentException("SQL query cannot be null"));
         if (extractor == null) return Result.failure(new IllegalArgumentException("Extractor cannot be null"));
+        validateArgumentsTypes(params);
 
         try (final Connection connection = dataSource.getConnection();
              final PreparedStatement statement = connection.prepareStatement(sql)) {
-            if (params != null && params.length > 0) {
+            if (params.length > 0) {
                 setParameters(statement, params);
             }
 
@@ -357,10 +360,11 @@ public class JetQuerious {
         if (sql == null) return Result.failure(new IllegalArgumentException("SQL query cannot be null"));
         if (extractor == null) return Result.failure(new IllegalArgumentException("Extractor cannot be null"));
         if (resultSetType == null) return Result.failure(new IllegalArgumentException("Result set type can`t be null"));
+        validateArgumentsTypes(params);
 
         try (final Connection connection = dataSource.getConnection();
              final PreparedStatement statement = connection.prepareStatement(sql, resultSetType.type(), resultSetType.concurrency())) {
-            if (params != null && params.length > 0) {
+            if (params.length > 0) {
                 setParameters(statement, params);
             }
 
@@ -473,11 +477,12 @@ public class JetQuerious {
 
         if (sql == null) return Result.failure(new IllegalArgumentException("SQL query cannot be null"));
         if (extractor == null) return Result.failure(new IllegalArgumentException("Extractor cannot be null"));
+        validateArgumentsTypes(params);
 
         try (final Connection connection = dataSource.getConnection();
              final PreparedStatement statement = connection.prepareStatement(sql,
                      ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY)) {
-            if (params != null && params.length > 0) {
+            if (params.length > 0) {
                 setParameters(statement, params);
             }
 
@@ -501,10 +506,11 @@ public class JetQuerious {
 
         if (sql == null) return Result.failure(new IllegalArgumentException("SQL query cannot be null"));
         if (extractor == null) return Result.failure(new IllegalArgumentException("Extractor cannot be null"));
+        validateArgumentsTypes(params);
 
         try (final Connection connection = dataSource.getConnection();
              final PreparedStatement statement = connection.prepareStatement(sql, resultSetType.type(), resultSetType.concurrency())) {
-            if (params != null && params.length > 0) {
+            if (params.length > 0) {
                 setParameters(statement, params);
             }
 
@@ -562,6 +568,7 @@ public class JetQuerious {
     public Result<Boolean, Throwable> write(final String sql, final Object... args) {
         if (sql == null) return Result.failure(new IllegalArgumentException("SQL query cannot be null"));
         if (args == null) return Result.failure(new IllegalArgumentException("Arguments cannot be null"));
+        validateArgumentsTypes(args);
 
         try (final Connection connection = dataSource.getConnection();
              final PreparedStatement statement = connection.prepareStatement(sql)) {
@@ -620,6 +627,7 @@ public class JetQuerious {
         if (arrayDefinition == null) return Result.failure(new IllegalArgumentException("Array definition cannot be null"));
         if (array == null) return Result.failure(new IllegalArgumentException("Array cannot be null"));
         if (args == null) return Result.failure(new IllegalArgumentException("Arguments cannot be null"));
+        validateArgumentsTypes(args);
 
         try (final Connection connection = dataSource.getConnection();
              final PreparedStatement statement = connection.prepareStatement(sql)) {
@@ -669,6 +677,7 @@ public class JetQuerious {
     public Result<Boolean, Throwable> writeBatch(final String sql, final List<Object[]> batchArgs) {
         if (sql == null) return Result.failure(new IllegalArgumentException("SQL query cannot be null"));
         if (batchArgs == null) return Result.failure(new IllegalArgumentException("Batch arguments cannot be null"));
+        for (Object[] params : batchArgs) validateArgumentsTypes(params);
 
         try (final Connection connection = dataSource.getConnection();
              final PreparedStatement statement = connection.prepareStatement(sql)) {
@@ -749,5 +758,97 @@ public class JetQuerious {
             case null -> statement.setNull(index, Types.NULL);
             default -> statement.setObject(index, param);
         }
+    }
+
+    /**
+     * Validates that all parameters are of supported types.
+     * Throws an IllegalArgumentException with a detailed message if an unsupported type is found.
+     *
+     * @param params the parameters to validate
+     * @throws IllegalArgumentException if any parameter is of an unsupported type
+     */
+    private void validateArgumentsTypes(final @Nullable Object... params) {
+        for (int i = 0; i < params.length; i++) {
+            Object param = params[i];
+            if (!isSupportedType(param)) {
+                String className = param.getClass().getName();
+                String simpleName = param.getClass().getSimpleName();
+                String packageName = param.getClass().getPackage() != null ?
+                        param.getClass().getPackage().getName() : "unknown package";
+
+                throw new IllegalArgumentException(
+                        String.format("""
+                                        Unsupported parameter type at position %d: %s
+                                        - Simple class name: %s
+                                        - Package: %s
+                                        
+                                        This library supports the following types:
+                                        - Primitives and their wrappers (Integer, Long, Double, etc.)
+                                        - String and Character
+                                        - Temporal types (LocalDate, LocalDateTime, Instant, ZonedDateTime, etc.)
+                                        - Numeric types (BigDecimal, BigInteger)
+                                        - UUID, URL, URI
+                                        - Enums
+                                        - Byte arrays
+                                        - Optional (containing supported types)
+                                        - Primitive arrays
+                                        
+                                        To resolve this issue:
+                                        1. Convert your object to a supported type before passing it as a parameter
+                                        2. Implement a custom type handler in your application
+                                        3. Use the specialized methods in this library designed for your data type
+                                        4. For collections, flatten them into individual parameters or use batch processing
+                                        
+                                        For more information, please refer to the documentation at:
+                                        https://github.com/HaciHaciyev/JetQuerious/
+                                        """,
+                                i, className, simpleName, packageName
+                        )
+                );
+            }
+        }
+    }
+
+    /**
+     * Determines if a parameter is of a type that is directly supported by the setParameters method.
+     *
+     * @param param the parameter to check
+     * @return true if the parameter type is supported, false otherwise
+     */
+    private boolean isSupportedType(final Object param) {
+        return switch (param) {
+            case String ignored -> true;
+            case Byte ignored -> true;
+            case Integer ignored -> true;
+            case Short ignored -> true;
+            case Long ignored -> true;
+            case Float ignored -> true;
+            case Double ignored -> true;
+            case Boolean ignored -> true;
+            case Character ignored -> true;
+            case UUID ignored -> true;
+            case LocalDateTime ignored -> true;
+            case LocalDate ignored -> true;
+            case LocalTime ignored -> true;
+            case Instant ignored -> true;
+            case ZonedDateTime ignored -> true;
+            case OffsetDateTime ignored -> true;
+            case Duration ignored -> true;
+            case Period ignored -> true;
+            case Year ignored -> true;
+            case YearMonth ignored -> true;
+            case MonthDay ignored -> true;
+            case BigDecimal ignored -> true;
+            case BigInteger ignored -> true;
+            case Enum<?> ignored -> true;
+            case URL ignored -> true;
+            case URI ignored -> true;
+            case Blob ignored -> true;
+            case Clob ignored -> true;
+            case Optional<?> optional -> optional.isEmpty() || isSupportedType(optional.get());
+            case byte[] ignored -> true;
+            case null -> true;
+            default -> param.getClass().isArray() && param.getClass().getComponentType().isPrimitive();
+        };
     }
 }
