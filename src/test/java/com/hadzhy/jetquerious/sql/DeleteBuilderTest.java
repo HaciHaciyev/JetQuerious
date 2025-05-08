@@ -2,7 +2,7 @@ package com.hadzhy.jetquerious.sql;
 
 import org.junit.jupiter.api.Test;
 
-import static com.hadzhy.jetquerious.sql.SQLBuilder.delete;
+import static com.hadzhy.jetquerious.sql.QueryForge.delete;
 import static com.hadzhy.jetquerious.sql.SelectBuilderTest.log;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 

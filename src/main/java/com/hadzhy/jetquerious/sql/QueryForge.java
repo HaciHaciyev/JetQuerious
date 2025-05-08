@@ -3,9 +3,9 @@ package com.hadzhy.jetquerious.sql;
 import java.util.Arrays;
 import java.util.stream.Collectors;
 
-public class SQLBuilder {
+public class QueryForge {
 
-    private SQLBuilder() {}
+    private QueryForge() {}
 
     public static SelectBuilder select() {
         return SelectBuilder.select();
