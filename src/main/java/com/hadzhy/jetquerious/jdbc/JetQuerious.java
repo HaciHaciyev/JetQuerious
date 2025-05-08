@@ -414,20 +414,19 @@ public class JetQuerious {
      *          .orElseThrow();
      * </pre>
      */
-    public <T> Result<T, Throwable> readObjectOf(final String sql, final Class<T> type, @Nullable final Object... params) {
+    public <T> Result<T, Throwable> readObjectOf(final String sql, final Class<T> type, final @Nullable Object... params) {
         if (sql == null) return Result.failure(new IllegalArgumentException("SQL query cannot be null"));
         if (type == null) return Result.failure(new IllegalArgumentException("Type cannot be null"));
-
-        final boolean isWrapper = WrappersMapper.isSupportedWrapperType(type);
-        if (!isWrapper) {
-            return Result.failure(
-                    new InvalidArgumentTypeException("Invalid class type. Function jetQuerious.queryForObjets() can only provide primitive wrappers and String.")
-            );
+        for (Object param : params) {
+            if (param instanceof Enum<?>) {
+                throw new InvalidArgumentTypeException("\"Enum conversion is not supported directly. Use specific enum type or handle separately.");
+            }
         }
+        validateArgumentsTypes(params);
 
         try (final Connection connection = dataSource.getConnection();
              final PreparedStatement statement = connection.prepareStatement(sql)) {
-            if (params != null && params.length > 0) {
+            if (params.length > 0) {
                 setParameters(statement, params);
             }
 
@@ -436,7 +435,7 @@ public class JetQuerious {
                     return Result.failure(new NotFoundException("Data in query for object was not found."));
                 }
 
-                T value = WrappersMapper.map(resultSet, type);
+                T value = Mapper.map(resultSet, type);
                 return Result.success(value);
             }
         } catch (SQLException | IllegalArgumentException e) {
@@ -762,10 +761,10 @@ public class JetQuerious {
 
     /**
      * Validates that all parameters are of supported types.
-     * Throws an IllegalArgumentException with a detailed message if an unsupported type is found.
+     * Throws an InvalidArgumentTypeException with a detailed message if an unsupported type is found.
      *
      * @param params the parameters to validate
-     * @throws IllegalArgumentException if any parameter is of an unsupported type
+     * @throws InvalidArgumentTypeException if any parameter is of an unsupported type
      */
     private void validateArgumentsTypes(final @Nullable Object... params) {
         for (int i = 0; i < params.length; i++) {
@@ -776,7 +775,7 @@ public class JetQuerious {
                 String packageName = param.getClass().getPackage() != null ?
                         param.getClass().getPackage().getName() : "unknown package";
 
-                throw new IllegalArgumentException(
+                throw new InvalidArgumentTypeException(
                         String.format("""
                                         Unsupported parameter type at position %d: %s
                                         - Simple class name: %s
@@ -798,9 +797,6 @@ public class JetQuerious {
                                         2. Implement a custom type handler in your application
                                         3. Use the specialized methods in this library designed for your data type
                                         4. For collections, flatten them into individual parameters or use batch processing
-                                        
-                                        For more information, please refer to the documentation at:
-                                        https://github.com/HaciHaciyev/JetQuerious/
                                         """,
                                 i, className, simpleName, packageName
                         )
