@@ -7,6 +7,7 @@ import com.hadzhy.jetquerious.util.Nullable;
 import com.hadzhy.jetquerious.util.Result;
 
 import javax.sql.DataSource;
+import java.lang.reflect.Field;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.net.URI;
@@ -736,7 +737,29 @@ public class JetQuerious {
                 }
                 case byte[] bytes -> statement.setBytes(i + 1, bytes);
                 case null -> statement.setNull(i + 1, Types.NULL);
-                default -> statement.setObject(i + 1, param);
+                case String string -> statement.setString(i + 1, string);
+                case Byte byteParam -> statement.setByte(i + 1, byteParam);
+                case Integer integer -> statement.setInt(i + 1, integer);
+                case Short shortParam -> statement.setShort(i + 1, shortParam);
+                case Long longParam -> statement.setLong(i + 1, longParam);
+                case Float floatParam -> statement.setFloat(i + 1, floatParam);
+                case Double doubleParam -> statement.setDouble(i + 1, doubleParam);
+                case Boolean booleanParam -> statement.setBoolean(i + 1, booleanParam);
+                case Character character -> statement.setObject(i + 1, character);
+                default -> {
+                    Class<?> aClass = param.getClass();
+                    Field[] fields = aClass.getFields();
+                    fields[0].setAccessible(true);
+
+                    try {
+                        Object value = fields[0].get(param);
+                        statement.setObject(i + 1, param);
+                    } catch (IllegalAccessException e) {
+                        throw new IllegalArgumentException(
+                                "Could not record the object of class: %s, you must manually specify its mapping"
+                                        .formatted(aClass.getName()));
+                    }
+                }
             }
         }
     }
@@ -844,7 +867,19 @@ public class JetQuerious {
             case Optional<?> optional -> optional.isEmpty() || isSupportedType(optional.get());
             case byte[] ignored -> true;
             case null -> true;
-            default -> param.getClass().isArray() && param.getClass().getComponentType().isPrimitive();
+            default -> {
+                Class<?> aClass = param.getClass();
+
+                Field[] fields = aClass.getFields();
+                if (fields.length != 1) yield false;
+                fields[0].setAccessible(true);
+                try {
+                    Object value = fields[0].get(param);
+                    yield isSupportedType(value);
+                } catch (IllegalAccessException e) {
+                    yield false;
+                }
+            }
         };
     }
 }
