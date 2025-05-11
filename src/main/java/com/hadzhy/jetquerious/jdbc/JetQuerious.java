@@ -879,7 +879,7 @@ public class JetQuerious {
                 field.setAccessible(true);
                 try {
                     Object value = field.get(param);
-                    boolean supportedType = isSupportedType(value);
+                    boolean supportedType = isSupportedChildType(value);
                     if (!supportedType) yield false;
 
                     FIELDS.put(aClass, field);
@@ -888,6 +888,43 @@ public class JetQuerious {
                     yield false;
                 }
             }
+        };
+    }
+
+    private boolean isSupportedChildType(Object param) {
+        return switch (param) {
+            case String ignored -> true;
+            case Byte ignored -> true;
+            case Integer ignored -> true;
+            case Short ignored -> true;
+            case Long ignored -> true;
+            case Float ignored -> true;
+            case Double ignored -> true;
+            case Boolean ignored -> true;
+            case Character ignored -> true;
+            case UUID ignored -> true;
+            case LocalDateTime ignored -> true;
+            case LocalDate ignored -> true;
+            case LocalTime ignored -> true;
+            case Instant ignored -> true;
+            case ZonedDateTime ignored -> true;
+            case OffsetDateTime ignored -> true;
+            case Duration ignored -> true;
+            case Period ignored -> true;
+            case Year ignored -> true;
+            case YearMonth ignored -> true;
+            case MonthDay ignored -> true;
+            case BigDecimal ignored -> true;
+            case BigInteger ignored -> true;
+            case Enum<?> ignored -> true;
+            case URL ignored -> true;
+            case URI ignored -> true;
+            case Blob ignored -> true;
+            case Clob ignored -> true;
+            case Optional<?> optional -> optional.isEmpty() || isSupportedType(optional.get());
+            case byte[] ignored -> true;
+            case null -> true;
+            default -> false;
         };
     }
 }
