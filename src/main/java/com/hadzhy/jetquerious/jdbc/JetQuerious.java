@@ -16,6 +16,7 @@ import java.sql.*;
 import java.time.*;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -106,7 +107,8 @@ import static com.hadzhy.jetquerious.jdbc.SQLErrorHandler.handleSQLException;
 public class JetQuerious {
     private final DataSource dataSource;
     private static volatile JetQuerious instance;
-    private static final Logger Log = Logger.getLogger(JetQuerious.class.getName());
+    private static final Map<Class<?>, Field> FIELDS = new ConcurrentHashMap<>();
+    private static final Logger LOG = Logger.getLogger(JetQuerious.class.getName());
 
     private JetQuerious(DataSource dataSource) {
         this.dataSource = dataSource;
@@ -181,7 +183,7 @@ public class JetQuerious {
                 return Result.failure(t);
             }
         } catch (Throwable t) {
-            Log.log(Level.SEVERE, "Exception during transaction", t);
+            LOG.log(Level.SEVERE, "Exception during transaction", t);
             return Result.failure(t);
         }
     }
@@ -229,7 +231,7 @@ public class JetQuerious {
             setParameters(statement, params);
             statement.executeUpdate();
         } catch (SQLException e) {
-            Log.log(Level.SEVERE, "Exception during step in transaction", e);
+            LOG.log(Level.SEVERE, "Exception during step in transaction", e);
             throw new TransactionException(e.getSQLState(), e.getMessage());
         }
     }
@@ -300,7 +302,7 @@ public class JetQuerious {
             T result = callback.apply(statement);
             return Result.success(result);
         } catch (SQLException e) {
-            Log.log(Level.SEVERE, "Exception during custom execute", e);
+            LOG.log(Level.SEVERE, "Exception during custom execute", e);
             return handleSQLException(e);
         }
     }
@@ -350,7 +352,7 @@ public class JetQuerious {
                 return Result.success(value);
             }
         } catch (SQLException e) {
-            Log.log(Level.SEVERE, "Error: %s".formatted(e.getMessage()));
+            LOG.log(Level.SEVERE, "Error: %s".formatted(e.getMessage()));
             return handleSQLException(e);
         }
     }
@@ -378,7 +380,7 @@ public class JetQuerious {
                 return Result.success(value);
             }
         } catch (SQLException e) {
-            Log.log(Level.SEVERE, "Error: %s".formatted(e.getMessage()));
+            LOG.log(Level.SEVERE, "Error: %s".formatted(e.getMessage()));
             return handleSQLException(e);
         }
     }
@@ -440,7 +442,7 @@ public class JetQuerious {
                 return Result.success(value);
             }
         } catch (SQLException | IllegalArgumentException e) {
-            Log.log(Level.SEVERE, "Error: %s".formatted(e.getMessage()));
+            LOG.log(Level.SEVERE, "Error: %s".formatted(e.getMessage()));
             if (e instanceof IllegalArgumentException) {
                 return Result.failure(e);
             }
@@ -496,7 +498,7 @@ public class JetQuerious {
 
             return Result.success(results);
         } catch (SQLException e) {
-            Log.log(Level.SEVERE, "Error: %s".formatted(e.getMessage()));
+            LOG.log(Level.SEVERE, "Error: %s".formatted(e.getMessage()));
             return handleSQLException(e);
         }
     }
@@ -524,7 +526,7 @@ public class JetQuerious {
 
             return Result.success(results);
         } catch (SQLException e) {
-            Log.log(Level.SEVERE, "Error: %s".formatted(e.getMessage()));
+            LOG.log(Level.SEVERE, "Error: %s".formatted(e.getMessage()));
             return handleSQLException(e);
         }
     }
@@ -577,7 +579,7 @@ public class JetQuerious {
 
             return Result.success(Boolean.TRUE);
         } catch (SQLException e) {
-            Log.log(Level.SEVERE, "Error: %s".formatted(e.getMessage()));
+            LOG.log(Level.SEVERE, "Error: %s".formatted(e.getMessage()));
             return handleSQLException(e);
         }
     }
@@ -638,7 +640,7 @@ public class JetQuerious {
 
             return Result.success(true);
         } catch (SQLException e) {
-            Log.log(Level.SEVERE, "Error: %s".formatted(e.getMessage()));
+            LOG.log(Level.SEVERE, "Error: %s".formatted(e.getMessage()));
             return handleSQLException(e);
         }
     }
@@ -691,7 +693,7 @@ public class JetQuerious {
 
             return Result.success(true);
         } catch (SQLException e) {
-            Log.log(Level.SEVERE, "Error: %s".formatted(e.getMessage()));
+            LOG.log(Level.SEVERE, "Error: %s".formatted(e.getMessage()));
             return handleSQLException(e);
         }
     }
@@ -748,11 +750,10 @@ public class JetQuerious {
                 case Character character -> statement.setObject(i + 1, character);
                 default -> {
                     Class<?> aClass = param.getClass();
-                    Field[] fields = aClass.getFields();
-                    fields[0].setAccessible(true);
+                    Field field = FIELDS.get(aClass);
 
                     try {
-                        Object value = fields[0].get(param);
+                        Object value = field.get(param);
                         statement.setObject(i + 1, param);
                     } catch (IllegalAccessException e) {
                         throw new IllegalArgumentException(
@@ -870,12 +871,19 @@ public class JetQuerious {
             default -> {
                 Class<?> aClass = param.getClass();
 
+                if (FIELDS.containsKey(aClass)) yield true;
+
                 Field[] fields = aClass.getFields();
                 if (fields.length != 1) yield false;
-                fields[0].setAccessible(true);
+                Field field = fields[0];
+                field.setAccessible(true);
                 try {
-                    Object value = fields[0].get(param);
-                    yield isSupportedType(value);
+                    Object value = field.get(param);
+                    boolean supportedType = isSupportedType(value);
+                    if (!supportedType) yield false;
+
+                    FIELDS.put(aClass, field);
+                    yield true;
                 } catch (IllegalAccessException e) {
                     yield false;
                 }
