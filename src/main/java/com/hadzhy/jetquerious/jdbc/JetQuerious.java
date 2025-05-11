@@ -737,10 +737,6 @@ public class JetQuerious {
             case URI uri -> statement.setString(i + 1, uri.toString());
             case Blob blob -> statement.setBlob(i + 1, blob);
             case Clob clob -> statement.setClob(i + 1, clob);
-            case Optional<?> optional -> {
-                if (optional.isPresent()) setParameter(statement, optional.get(), i);
-                else statement.setNull(i + 1, Types.NULL);
-            }
             case byte[] bytes -> statement.setBytes(i + 1, bytes);
             case null -> statement.setNull(i + 1, Types.NULL);
             case String string -> statement.setString(i + 1, string);
@@ -850,7 +846,6 @@ public class JetQuerious {
             case URI ignored -> true;
             case Blob ignored -> true;
             case Clob ignored -> true;
-            case Optional<?> optional -> optional.isEmpty() || isSupportedType(optional.get());
             case byte[] ignored -> true;
             case null -> true;
             default -> {
