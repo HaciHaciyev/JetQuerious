@@ -712,74 +712,59 @@ public class JetQuerious {
     private void setParameters(final PreparedStatement statement, final Object... params) throws SQLException {
         for (int i = 0; i < params.length; i++) {
             Object param = params[i];
-
-            switch (param) {
-                case UUID uuid -> statement.setObject(i + 1, uuid.toString());
-                case LocalDateTime localDateTime -> statement.setObject(i + 1, Timestamp.valueOf(localDateTime));
-                case LocalDate localDate -> statement.setObject(i + 1, java.sql.Date.valueOf(localDate));
-                case LocalTime localTime -> statement.setObject(i + 1, java.sql.Time.valueOf(localTime));
-                case Instant instant -> statement.setObject(i + 1, Timestamp.from(instant));
-                case ZonedDateTime zonedDateTime -> statement.setObject(i + 1, Timestamp.from(zonedDateTime.toInstant()));
-                case OffsetDateTime offsetDateTime -> statement.setObject(i + 1, Timestamp.from(offsetDateTime.toInstant()));
-                case Duration duration -> statement.setObject(i + 1, duration);
-                case Period period -> statement.setObject(i + 1, period);
-                case Year year -> statement.setInt(i + 1, year.getValue());
-                case YearMonth yearMonth -> statement.setString(i + 1, yearMonth.toString());
-                case MonthDay monthDay -> statement.setString(i + 1, monthDay.toString());
-                case BigDecimal bigDecimal -> statement.setBigDecimal(i + 1, bigDecimal);
-                case BigInteger bigInteger -> statement.setBigDecimal(i + 1, new BigDecimal(bigInteger));
-                case Enum<?> enumValue -> statement.setString(i + 1, enumValue.name());
-                case URL url -> statement.setURL(i + 1, url);
-                case URI uri -> statement.setString(i + 1, uri.toString());
-                case Blob blob -> statement.setBlob(i + 1, blob);
-                case Clob clob -> statement.setClob(i + 1, clob);
-                case Optional<?> optional -> {
-                    if (optional.isPresent()) setParameter(statement, i + 1, optional.get());
-                    else statement.setNull(i + 1, Types.NULL);
-                }
-                case byte[] bytes -> statement.setBytes(i + 1, bytes);
-                case null -> statement.setNull(i + 1, Types.NULL);
-                case String string -> statement.setString(i + 1, string);
-                case Byte byteParam -> statement.setByte(i + 1, byteParam);
-                case Integer integer -> statement.setInt(i + 1, integer);
-                case Short shortParam -> statement.setShort(i + 1, shortParam);
-                case Long longParam -> statement.setLong(i + 1, longParam);
-                case Float floatParam -> statement.setFloat(i + 1, floatParam);
-                case Double doubleParam -> statement.setDouble(i + 1, doubleParam);
-                case Boolean booleanParam -> statement.setBoolean(i + 1, booleanParam);
-                case Character character -> statement.setObject(i + 1, character);
-                default -> {
-                    Class<?> aClass = param.getClass();
-                    Field field = FIELDS.get(aClass);
-
-                    try {
-                        Object value = field.get(param);
-                        statement.setObject(i + 1, param);
-                    } catch (IllegalAccessException e) {
-                        throw new IllegalArgumentException(
-                                "Could not record the object of class: %s, you must manually specify its mapping"
-                                        .formatted(aClass.getName()));
-                    }
-                }
-            }
+            setParameter(statement, param, i);
         }
     }
 
-    /**
-     * Sets a single parameter in the PreparedStatement.
-     * Helper method to handle nested parameter setting, like for Optional values.
-     */
-    private void setParameter(final PreparedStatement statement, final int index, final Object param) throws SQLException {
+    private static void setParameter(PreparedStatement statement, Object param, int i) throws SQLException {
         switch (param) {
-            case UUID uuid -> statement.setObject(index, uuid.toString());
-            case LocalDateTime localDateTime -> statement.setObject(index, Timestamp.valueOf(localDateTime));
-            case LocalDate localDate -> statement.setObject(index, java.sql.Date.valueOf(localDate));
-            case LocalTime localTime -> statement.setObject(index, java.sql.Time.valueOf(localTime));
-            case Instant instant -> statement.setObject(index, Timestamp.from(instant));
-            case ZonedDateTime zonedDateTime -> statement.setObject(index, Timestamp.from(zonedDateTime.toInstant()));
-            case byte[] bytes -> statement.setBytes(index, bytes);
-            case null -> statement.setNull(index, Types.NULL);
-            default -> statement.setObject(index, param);
+            case UUID uuid -> statement.setObject(i + 1, uuid.toString());
+            case LocalDateTime localDateTime -> statement.setObject(i + 1, Timestamp.valueOf(localDateTime));
+            case LocalDate localDate -> statement.setObject(i + 1, java.sql.Date.valueOf(localDate));
+            case LocalTime localTime -> statement.setObject(i + 1, Time.valueOf(localTime));
+            case Instant instant -> statement.setObject(i + 1, Timestamp.from(instant));
+            case ZonedDateTime zonedDateTime -> statement.setObject(i + 1, Timestamp.from(zonedDateTime.toInstant()));
+            case OffsetDateTime offsetDateTime -> statement.setObject(i + 1, Timestamp.from(offsetDateTime.toInstant()));
+            case Duration duration -> statement.setObject(i + 1, duration);
+            case Period period -> statement.setObject(i + 1, period);
+            case Year year -> statement.setInt(i + 1, year.getValue());
+            case YearMonth yearMonth -> statement.setString(i + 1, yearMonth.toString());
+            case MonthDay monthDay -> statement.setString(i + 1, monthDay.toString());
+            case BigDecimal bigDecimal -> statement.setBigDecimal(i + 1, bigDecimal);
+            case BigInteger bigInteger -> statement.setBigDecimal(i + 1, new BigDecimal(bigInteger));
+            case Enum<?> enumValue -> statement.setString(i + 1, enumValue.name());
+            case URL url -> statement.setURL(i + 1, url);
+            case URI uri -> statement.setString(i + 1, uri.toString());
+            case Blob blob -> statement.setBlob(i + 1, blob);
+            case Clob clob -> statement.setClob(i + 1, clob);
+            case Optional<?> optional -> {
+                if (optional.isPresent()) setParameter(statement, optional.get(), i);
+                else statement.setNull(i + 1, Types.NULL);
+            }
+            case byte[] bytes -> statement.setBytes(i + 1, bytes);
+            case null -> statement.setNull(i + 1, Types.NULL);
+            case String string -> statement.setString(i + 1, string);
+            case Byte byteParam -> statement.setByte(i + 1, byteParam);
+            case Integer integer -> statement.setInt(i + 1, integer);
+            case Short shortParam -> statement.setShort(i + 1, shortParam);
+            case Long longParam -> statement.setLong(i + 1, longParam);
+            case Float floatParam -> statement.setFloat(i + 1, floatParam);
+            case Double doubleParam -> statement.setDouble(i + 1, doubleParam);
+            case Boolean booleanParam -> statement.setBoolean(i + 1, booleanParam);
+            case Character character -> statement.setObject(i + 1, character);
+            default -> {
+                Class<?> aClass = param.getClass();
+                Field field = FIELDS.get(aClass);
+
+                try {
+                    Object value = field.get(param);
+                    statement.setObject(i + 1, param);
+                } catch (IllegalAccessException e) {
+                    throw new IllegalArgumentException(
+                            "Could not record the object of class: %s, you must manually specify its mapping"
+                                    .formatted(aClass.getName()));
+                }
+            }
         }
     }
 
