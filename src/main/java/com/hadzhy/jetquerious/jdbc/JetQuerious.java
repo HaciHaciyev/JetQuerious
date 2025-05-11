@@ -906,7 +906,6 @@ public class JetQuerious {
             case URI ignored -> true;
             case Blob ignored -> true;
             case Clob ignored -> true;
-            case Optional<?> optional -> optional.isEmpty() || isSupportedType(optional.get());
             case byte[] ignored -> true;
             case null -> true;
             default -> false;
