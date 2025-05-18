@@ -86,17 +86,19 @@ public class FunctionBuilder {
     }
 
     public InitialWhereBuilder from(String table) {
+        deleteSurplusComa(query);
         query.append("FROM ").append(table).append(" ");
         return new InitialWhereBuilder(query);
     }
 
     public JoinBuilder fromAs(String table, String alias) {
-        query.append(table).append(" AS ").append(alias).append(" ");
+        deleteSurplusComa(query);
+        query.append("FROM ").append(table).append(" AS ").append(alias).append(" ");
         return new JoinBuilder(query);
     }
 
     public ChainedFromBuilder as(String alias) {
-        query.append("AS ").append(alias).append(" ");
+        query.append("AS ").append(alias).append(", ");
         return new ChainedFromBuilder(query);
     }
 }
