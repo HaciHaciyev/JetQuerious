@@ -26,42 +26,49 @@ public class FromBuilder {
     }
 
     public FunctionBuilder count(String column) {
+        deleteSurplusComa(query);
         query.append(", COUNT");
         appendColumn(column);
         return new FunctionBuilder(query);
     }
 
     public FunctionBuilder sum(String column) {
+        deleteSurplusComa(query);
         query.append(", SUM");
         appendColumn(column);
         return new FunctionBuilder(query);
     }
 
     public FunctionBuilder avg(String column) {
+        deleteSurplusComa(query);
         query.append(", AVG");
         appendColumn(column);
         return new FunctionBuilder(query);
     }
 
     public FunctionBuilder min(String column) {
+        deleteSurplusComa(query);
         query.append(", MIN");
         appendColumn(column);
         return new FunctionBuilder(query);
     }
 
     public FunctionBuilder max(String column) {
+        deleteSurplusComa(query);
         query.append(", MAX");
         appendColumn(column);
         return new FunctionBuilder(query);
     }
 
     public FunctionBuilder upper(String column) {
+        deleteSurplusComa(query);
         query.append(", UPPER");
         appendColumn(column);
         return new FunctionBuilder(query);
     }
 
     public FunctionBuilder lower(String column) {
+        deleteSurplusComa(query);
         query.append(", LOWER");
         appendColumn(column);
         return new FunctionBuilder(query);
@@ -69,6 +76,7 @@ public class FromBuilder {
 
     public FunctionBuilder concat(String... columns) {
         if (columns.length == 0) throw new IllegalArgumentException("At least one column must be provided.");
+        deleteSurplusComa(query);
         query.append(", CONCAT(");
 
         if (columns.length == 1) query.append(columns[0]);
@@ -80,12 +88,14 @@ public class FromBuilder {
     }
 
     public FunctionBuilder length(String column) {
+        deleteSurplusComa(query);
         query.append(", LENGTH");
         appendColumn(column);
         return new FunctionBuilder(query);
     }
 
     public FunctionBuilder trim(String column) {
+        deleteSurplusComa(query);
         query.append(", TRIM");
         appendColumn(column);
         return new FunctionBuilder(query);

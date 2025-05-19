@@ -14,7 +14,7 @@ class SelectBuilderTest {
 
     @Test
     void test() {
-        assertEquals("SELECT a.id AS id, a.author_id AS author_id, a.header AS header, a.summary AS summary, a.body AS body, a.status AS status, a.creation_date AS creation_date, a.last_updated AS last_updated , COUNT(v.id) AS views, COUNT(l.article_id) AS likes FROM Articles a JOIN Views v ON v.article_id = a.id JOIN Likes l ON l.article_id = a.id WHERE a.id = ? ",
+        assertEquals("SELECT a.id AS id, a.author_id AS author_id, a.header AS header, a.summary AS summary, a.body AS body, a.status AS status, a.creation_date AS creation_date, a.last_updated AS last_updated , COUNT(v.id) AS views , COUNT(l.article_id) AS likes FROM Articles a JOIN Views v ON v.article_id = a.id JOIN Likes l ON l.article_id = a.id WHERE a.id = ? ",
                 select()
                 .column("a.id").as("id")
                 .column("a.author_id").as("author_id")
@@ -24,6 +24,16 @@ class SelectBuilderTest {
                 .column("a.status").as("status")
                 .column("a.creation_date").as("creation_date")
                 .column("a.last_updated").as("last_updated")
+                .count("v.id").as("views")
+                .count("l.article_id").as("likes")
+                .from("Articles a")
+                .join("Views v", "v.article_id = a.id")
+                .join("Likes l", "l.article_id = a.id")
+                .where("a.id = ?")
+                .build()
+                .sql());
+
+        assertEquals("SELECT COUNT(v.id) AS views , COUNT(l.article_id) AS likes FROM Articles a JOIN Views v ON v.article_id = a.id JOIN Likes l ON l.article_id = a.id WHERE a.id = ? ", select()
                 .count("v.id").as("views")
                 .count("l.article_id").as("likes")
                 .from("Articles a")
