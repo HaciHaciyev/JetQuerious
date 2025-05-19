@@ -500,6 +500,287 @@ class SelectBuilderTest {
         log();
     }
 
+    @Test
+    void test4() {
+        assertEquals(
+                "SELECT a.id AS id, a.author_id AS author_id, a.header AS header, a.summary AS summary, " +
+                        "a.body AS body, a.status AS status, a.creation_date AS creation_date, a.last_updated AS last_updated , " +
+                        "COUNT(v.id) AS views , COUNT(l.article_id) AS likes " +
+                        "FROM Articles a JOIN Views v ON v.article_id = a.id " +
+                        "JOIN Likes l ON l.article_id = a.id WHERE a.id = ? ",
+                select()
+                        .column("a.id").as("id")
+                        .column("a.author_id").as("author_id")
+                        .column("a.header").as("header")
+                        .column("a.summary").as("summary")
+                        .column("a.body").as("body")
+                        .column("a.status").as("status")
+                        .column("a.creation_date").as("creation_date")
+                        .column("a.last_updated").as("last_updated")
+                        .count("v.id").as("views")
+                        .count("l.article_id").as("likes")
+                        .from("Articles a")
+                        .join("Views v", "v.article_id = a.id")
+                        .join("Likes l", "l.article_id = a.id")
+                        .where("a.id = ?")
+                        .build()
+                        .sql()
+        );
+
+        log();
+
+        assertEquals(
+                "SELECT tag FROM ArticleTags WHERE article_id = ? ",
+                select()
+                        .column("tag")
+                        .from("ArticleTags")
+                        .where("article_id = ?")
+                        .build()
+                        .sql()
+        );
+
+        log();
+
+        assertEquals(
+                "SELECT COUNT(user_id) FROM Views WHERE article_id = ? AND user_id = ? ",
+                select()
+                        .count("user_id")
+                        .from("Views")
+                        .where("article_id = ?")
+                        .and("user_id = ?")
+                        .build()
+                        .sql()
+        );
+
+        log();
+
+        assertEquals(
+                "SELECT COUNT(id) FROM Articles WHERE id = ? ",
+                select()
+                        .count("id")
+                        .from("Articles")
+                        .where("id = ?")
+                        .build()
+                        .sql()
+        );
+
+        log();
+
+        assertEquals(
+                "SELECT COUNT(v.id) FROM Views v JOIN UserAccount u ON u.username = ? WHERE v.reader_id = u.id ",
+                select()
+                        .count("v.id")
+                        .from("Views v")
+                        .join("UserAccount u", "u.username = ?")
+                        .where("v.reader_id = u.id")
+                        .build()
+                        .sql()
+        );
+
+        log();
+
+        assertEquals(
+                "SELECT a.id AS id, a.author_id AS author_id, a.header AS header, a.summary AS summary, a.status AS status, " +
+                        "a.last_updated AS last_updated, ath.firstname AS firstname, ath.lastname AS lastname, ath.username AS username , " +
+                        "COUNT(v.id) AS views , COUNT(l.article_id) AS likes " +
+                        "FROM Article a JOIN Views v ON v.article_id = a.id " +
+                        "JOIN Likes l ON l.article_id = a.id JOIN UserAccount ath ON ath.id = a.author_id " +
+                        "WHERE a.status = 'PUBLISHED' ORDER BY COUNT(v.id) DESC ",
+                select()
+                        .column("a.id").as("id")
+                        .column("a.author_id").as("author_id")
+                        .column("a.header").as("header")
+                        .column("a.summary").as("summary")
+                        .column("a.status").as("status")
+                        .column("a.last_updated").as("last_updated")
+                        .column("ath.firstname").as("firstname")
+                        .column("ath.lastname").as("lastname")
+                        .column("ath.username").as("username")
+                        .count("v.id").as("views")
+                        .count("l.article_id").as("likes")
+                        .from("Article a")
+                        .join("Views v", "v.article_id = a.id")
+                        .join("Likes l", "l.article_id = a.id")
+                        .join("UserAccount ath", "ath.id = a.author_id")
+                        .where("a.status = 'PUBLISHED'")
+                        .orderBy("COUNT(v.id)", Order.DESC)
+                        .build()
+                        .sql()
+        );
+
+        log();
+
+        assertEquals(
+                "WITH recent_articles AS (" +
+                        "SELECT a.header AS header, a.summary AS summary, a.body AS body " +
+                        "FROM Article a JOIN Views v ON v.article_id = a.id JOIN UserAccount u ON u.username = ? " +
+                        "WHERE v.reader_id = u.id ORDER BY v.creation_date DESC LIMIT 12 OFFSET 0 ) " +
+                        "SELECT a.id AS id, a.author_id AS author_id, a.header AS header, a.summary AS summary, " +
+                        "a.status AS status, a.last_updated AS last_updated, ath.firstname AS firstname, " +
+                        "ath.lastname AS lastname, ath.username AS username , COUNT(v.id) AS views , " +
+                        "COUNT(l.article_id) AS likes FROM Article a JOIN Views v ON v.article_id = a.id " +
+                        "JOIN Likes l ON l.article_id = a.id JOIN UserAccount ath ON ath.id = a.author_id " +
+                        "WHERE " +
+                        """
+                        a.search_document @@ to_tsquery('english',
+                              (SELECT string_agg(header, ' & ') FROM recent_articles) ||
+                              ' & ' ||
+                              (SELECT string_agg(summary, ' & ') FROM recent_articles) ||
+                              ' & ' ||
+                              (SELECT string_agg(body, ' & ') FROM recent_articles))
+                        """ +
+                        " AND a.status = 'PUBLISHED' LIMIT 10 OFFSET 0 ",
+                withAndSelect(
+                        "recent_articles", select()
+                                .column("a.header").as("header")
+                                .column("a.summary").as("summary")
+                                .column("a.body").as("body")
+                                .from("Article a")
+                                .join("Views v", "v.article_id = a.id")
+                                .join("UserAccount u", "u.username = ?")
+                                .where("v.reader_id = u.id")
+                                .orderBy("v.creation_date", Order.DESC)
+                                .limitAndOffset(12, 0)
+                                .toSQlQuery()
+                )
+                        .column("a.id").as("id")
+                        .column("a.author_id").as("author_id")
+                        .column("a.header").as("header")
+                        .column("a.summary").as("summary")
+                        .column("a.status").as("status")
+                        .column("a.last_updated").as("last_updated")
+                        .column("ath.firstname").as("firstname")
+                        .column("ath.lastname").as("lastname")
+                        .column("ath.username").as("username")
+                        .count("v.id").as("views")
+                        .count("l.article_id").as("likes")
+                        .from("Article a")
+                        .join("Views v", "v.article_id = a.id")
+                        .join("Likes l", "l.article_id = a.id")
+                        .join("UserAccount ath", "ath.id = a.author_id")
+                        .where("""
+                        a.search_document @@ to_tsquery('english',
+                              (SELECT string_agg(header, ' & ') FROM recent_articles) ||
+                              ' & ' ||
+                              (SELECT string_agg(summary, ' & ') FROM recent_articles) ||
+                              ' & ' ||
+                              (SELECT string_agg(body, ' & ') FROM recent_articles))
+                        """)
+                        .and("a.status = 'PUBLISHED'")
+                        .limitAndOffset(10, 0)
+                        .sql()
+        );
+    }
+
+    @Test
+    void test5() {
+        assertEquals(
+                "SELECT id FROM Comments WHERE id = ? ",
+                select()
+                        .column("id")
+                        .from("Comments")
+                        .where("id = ?")
+                        .build()
+                        .sql()
+        );
+
+        log();
+
+        assertEquals(
+                "SELECT id , article_id , user_id , comment_type FROM Comments WHERE id = ? ",
+                select()
+                        .column("id")
+                        .column("article_id")
+                        .column("user_id")
+                        .column("comment_type")
+                        .from("Comments")
+                        .where("id = ?")
+                        .build()
+                        .sql()
+        );
+
+        log();
+
+        assertEquals(
+                "SELECT c.id AS id, c.article_id AS article_id, c.user_id AS user_id, c.comment_type AS comment_type, " +
+                        "c.parent_comment_id AS parent_comment_id, c.respond_to_comment AS respond_to_comment, " +
+                        "c.creation_date AS creation_date, c.last_updated AS last_updated , " +
+                        "COUNT(cl.comment_id) AS likes_count " +
+                        "FROM Comments c JOIN CommentLikes cl ON cl.comment_id = c.id WHERE c.id = ? ",
+                select()
+                        .column("c.id").as("id")
+                        .column("c.article_id").as("article_id")
+                        .column("c.user_id").as("user_id")
+                        .column("c.comment_type").as("comment_type")
+                        .column("c.parent_comment_id").as("parent_comment_id")
+                        .column("c.respond_to_comment").as("respond_to_comment")
+                        .column("c.creation_date").as("creation_date")
+                        .column("c.last_updated").as("last_updated")
+                        .count("cl.comment_id").as("likes_count")
+                        .from("Comments c")
+                        .join("CommentLikes cl", "cl.comment_id = c.id")
+                        .where("c.id = ?")
+                        .build()
+                        .sql()
+        );
+
+        log();
+
+        assertEquals(
+                "SELECT c.id AS id, c.article_id AS article_id, c.user_id AS user_id, c.comment_type AS comment_type, " +
+                        "c.parent_comment_id AS parent_comment_id, c.respond_to_comment AS respond_to_comment, " +
+                        "c.creation_date AS creation_date, c.last_updated AS last_updated , " +
+                        "COUNT(cl.comment_id) AS likes_count " +
+                        "FROM Comments c JOIN CommentLikes cl ON cl.comment_id = c.id " +
+                        "WHERE c.article_id = ? ORDER BY likes_count DESC LIMIT ? OFFSET ? ",
+                select()
+                        .column("c.id").as("id")
+                        .column("c.article_id").as("article_id")
+                        .column("c.user_id").as("user_id")
+                        .column("c.comment_type").as("comment_type")
+                        .column("c.parent_comment_id").as("parent_comment_id")
+                        .column("c.respond_to_comment").as("respond_to_comment")
+                        .column("c.creation_date").as("creation_date")
+                        .column("c.last_updated").as("last_updated")
+                        .count("cl.comment_id").as("likes_count")
+                        .from("Comments c")
+                        .join("CommentLikes cl", "cl.comment_id = c.id")
+                        .where("c.article_id = ?")
+                        .orderBy("likes_count", Order.DESC)
+                        .limitAndOffset()
+                        .sql()
+        );
+
+        log();
+
+        assertEquals(
+                "SELECT c.id AS id, c.article_id AS article_id, c.user_id AS user_id, c.comment_type AS comment_type, " +
+                        "c.parent_comment_id AS parent_comment_id, c.respond_to_comment AS respond_to_comment, " +
+                        "c.creation_date AS creation_date, c.last_updated AS last_updated , " +
+                        "COUNT(cl.comment_id) AS likes_count " +
+                        "FROM Comments c JOIN CommentLikes cl ON cl.comment_id = c.id " +
+                        "WHERE c.article_id = ? AND c.parent_comment_id = ? " +
+                        "ORDER BY likes_count DESC LIMIT ? OFFSET ? ",
+                select()
+                        .column("c.id").as("id")
+                        .column("c.article_id").as("article_id")
+                        .column("c.user_id").as("user_id")
+                        .column("c.comment_type").as("comment_type")
+                        .column("c.parent_comment_id").as("parent_comment_id")
+                        .column("c.respond_to_comment").as("respond_to_comment")
+                        .column("c.creation_date").as("creation_date")
+                        .column("c.last_updated").as("last_updated")
+                        .count("cl.comment_id").as("likes_count")
+                        .from("Comments c")
+                        .join("CommentLikes cl", "cl.comment_id = c.id")
+                        .where("c.article_id = ?")
+                        .and("c.parent_comment_id = ?")
+                        .orderBy("likes_count", Order.DESC)
+                        .limitAndOffset()
+                        .sql()
+        );
+    }
+
     static void log() {
         Log.info("Test %d passed.".formatted(++passesTests));
     }
