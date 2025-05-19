@@ -92,7 +92,7 @@ Result<List<UserAccount>, Throwable> result = jet.readListOf(users, this::userAc
 
 // or you can use asynch version
 
-CompletableFuture<Result<List<UserAccount>, Throwable>> users = asynchReadListOf(users, this::userAccountMapper);
+CompletableFuture<Result<List<UserAccount>, Throwable>> users = jet.asynchReadListOf(users, this::userAccountMapper);
 ```
 
 No need to pass a parameter setter if the query doesn’t have placeholders. JetQuerious makes both cases smooth.
@@ -116,7 +116,7 @@ Result<Boolean, Throwable> result = jet.write(saveUser, username, email);
 
 // or asynch version
 
-CompletableFuture<Result<Boolean, Throwable>> asynchResult = asynchWrite(saveUser, username, email);
+CompletableFuture<Result<Boolean, Throwable>> asynchResult = jet.asynchWrite(saveUser, username, email);
 ```
 
 ---
