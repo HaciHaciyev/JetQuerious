@@ -43,6 +43,32 @@ class SelectBuilderTest {
                 .build()
                 .sql());
 
+        assertEquals("SELECT name , CASE WHEN status = 'active' THEN 'Yes' ELSE 'No' END AS is_active , COUNT(*) AS total FROM users ",
+                select()
+                .columns("name")
+                .caseStatement()
+                .when("status = 'active'")
+                .then("'Yes'")
+                .elseCase("'No'")
+                .endAs("is_active")
+                .count("*").as("total")
+                .from("users")
+                .build()
+                .sql());
+
+        assertEquals("SELECT name , CASE WHEN status = 'active' THEN 'Yes' ELSE 'No' END AS is_active , COUNT(*) FROM users ",
+                select()
+                .columns("name")
+                .caseStatement()
+                .when("status = 'active'")
+                .then("'Yes'")
+                .elseCase("'No'")
+                .endAs("is_active")
+                .count("*")
+                .from("users")
+                .build()
+                .sql());
+
         assertEquals("SELECT * FROM UserPartnership WHERE (user_id = ? AND partner_id = ?) OR (user_id = ? AND partner_id = ?) ", select()
                 .all()
                 .from("UserPartnership")
