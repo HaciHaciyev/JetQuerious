@@ -754,7 +754,7 @@ public class JetQuerious {
 
                 try {
                     Object value = field.get(param);
-                    statement.setObject(i + 1, param);
+                    statement.setObject(i + 1, value);
                 } catch (IllegalAccessException e) {
                     throw new IllegalArgumentException(
                             "Could not record the object of class: %s, you must manually specify its mapping"
