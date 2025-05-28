@@ -794,7 +794,6 @@ public class JetQuerious {
                                         - UUID, URL, URI
                                         - Enums
                                         - Byte arrays
-                                        - Optional (containing supported types)
                                         - Primitive arrays
                                         
                                         To resolve this issue:
