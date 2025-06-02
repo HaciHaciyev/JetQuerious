@@ -8,6 +8,7 @@ import com.hadzhy.jetquerious.util.Result;
 
 import javax.sql.DataSource;
 import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.net.URI;
@@ -852,7 +853,7 @@ public class JetQuerious {
 
                 if (FIELDS.containsKey(aClass)) yield true;
 
-                Field[] fields = aClass.getDeclaredFields();
+                Field[] fields = getDeclaredInstanceFields(aClass);
                 if (fields.length != 1) yield false;
                 Field field = fields[0];
                 field.setAccessible(true);
@@ -868,6 +869,13 @@ public class JetQuerious {
                 }
             }
         };
+    }
+
+    private static Field[] getDeclaredInstanceFields(Class<?> clazz) {
+        Field[] allFields = clazz.getDeclaredFields();
+        return Arrays.stream(allFields)
+                .filter(f -> !Modifier.isStatic(f.getModifiers()))
+                .toArray(Field[]::new);
     }
 
     private boolean isSupportedChildType(Object param) {
