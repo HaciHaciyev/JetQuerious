@@ -852,7 +852,7 @@ public class JetQuerious {
 
                 if (FIELDS.containsKey(aClass)) yield true;
 
-                Field[] fields = aClass.getFields();
+                Field[] fields = aClass.getDeclaredFields();
                 if (fields.length != 1) yield false;
                 Field field = fields[0];
                 field.setAccessible(true);
