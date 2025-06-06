@@ -551,24 +551,21 @@ public class JetQuerious {
      *
      * @param sql   the SQL update statement to execute
      * @param args  parameters for the SQL statement
-     * @return a {@code Result<Boolean, Throwable>} indicating success or failure
+     * @return a {@code Result<Integer, Throwable>} with the number of affected rows or an error
      * @throws NullPointerException if {@code sql} or {@code args} is {@code null}
      *
      * @example
      * <pre>
-     * String insertProductSQL = "INSERT INTO products (name, price) VALUES (?, ?)";
-     * String productName = "Sample Product";
-     * double productPrice = 19.99;
-     *
-     * Result<Boolean, Throwable> result = jetQuerious.write(insertProductSQL, productName, productPrice);
-     * if (result.isSuccess()) {
-     *     System.out.println("Product inserted successfully.");
+     * String updateSQL = "UPDATE products SET price = ? WHERE name = ?";
+     * Result<Integer, Throwable> result = jetQuerious.write(updateSQL, 24.99, "Sample Product");
+     * if (result.success()) {
+     *     System.out.println("Rows affected: " + result.value());
      * } else {
-     *     System.err.println("Failed to insert product: " + result.getError().getMessage());
+     *     System.err.println("Update failed: " + result.throwable().getMessage());
      * }
      * </pre>
      */
-    public Result<Boolean, Throwable> write(final String sql, final Object... args) {
+    public Result<Integer, Throwable> write(final String sql, final Object... args) {
         if (sql == null) return Result.failure(new IllegalArgumentException("SQL query cannot be null"));
         if (args == null) return Result.failure(new IllegalArgumentException("Arguments cannot be null"));
         validateArgumentsTypes(args);
@@ -576,16 +573,16 @@ public class JetQuerious {
         try (final Connection connection = dataSource.getConnection();
              final PreparedStatement statement = connection.prepareStatement(sql)) {
             setParameters(statement, args);
-            statement.executeUpdate();
 
-            return Result.success(Boolean.TRUE);
+            int affectedRows = statement.executeUpdate();
+            return Result.success(affectedRows);
         } catch (SQLException e) {
             LOG.log(Level.SEVERE, "Error: %s".formatted(e.getMessage()));
             return handleSQLException(e);
         }
     }
 
-    public CompletableFuture<Result<Boolean, Throwable>> asynchWrite(final String sql, final Object... args) {
+    public CompletableFuture<Result<Integer, Throwable>> asynchWrite(final String sql, final Object... args) {
         return CompletableFuture.supplyAsync(() -> write(sql, args));
     }
 
@@ -594,10 +591,10 @@ public class JetQuerious {
      *
      * @param sql             the SQL update statement to execute
      * @param arrayDefinition the SQL type of the array
-     * @param arrayIndex      the index of the array parameter in the SQL statement
+     * @param arrayIndex      the index of the array parameter in the SQL statement (1-based)
      * @param array           the array to be passed to the SQL statement
      * @param args            additional parameters for the SQL statement
-     * @return a {@code Result<Boolean, Throwable>} indicating success or failure
+     * @return a {@code Result<Integer, Throwable>} indicating number of affected rows or error
      *
      * @example
      * <pre>
@@ -608,7 +605,7 @@ public class JetQuerious {
      * String[] tags = {"electronics", "gadget"};
      * int productId = 1; // The ID of the product to update
      *
-     * Result<Boolean, Throwable> result = jetQuerious.writeArrayOf(
+     * Result<Integer, Throwable> result = jetQuerious.writeArrayOf(
      *          updateProductTagsSQL,
      *          arrayDefinition,
      *          arrayIndex,
@@ -616,16 +613,15 @@ public class JetQuerious {
      *          productId
      * );
      *
-     * if (result.isSuccess()) {
-     *     System.out.println("Product tags updated successfully.");
+     * if (result.success()) {
+     *     System.out.println("Rows affected: " + result.value());
      * } else {
-     *     System.err.println("Failed to update product tags: " + result.getError().getMessage());
+     *     System.err.println("Failed to update product tags: " + result.throwable().getMessage());
      * }
      * </pre>
      */
-    public Result<Boolean, Throwable> writeArrayOf(final String sql, final String arrayDefinition, final byte arrayIndex,
+    public Result<Integer, Throwable> writeArrayOf(final String sql, final String arrayDefinition, final byte arrayIndex,
                                                    final Object[] array, final Object... args) {
-
         if (sql == null) return Result.failure(new IllegalArgumentException("SQL query cannot be null"));
         if (arrayDefinition == null) return Result.failure(new IllegalArgumentException("Array definition cannot be null"));
         if (array == null) return Result.failure(new IllegalArgumentException("Array cannot be null"));
@@ -637,19 +633,18 @@ public class JetQuerious {
             setParameters(statement, args);
             final Array createdArray = connection.createArrayOf(arrayDefinition, array);
             statement.setArray(arrayIndex, createdArray);
-            statement.executeUpdate();
 
-            return Result.success(true);
+            int affectedRows = statement.executeUpdate();
+            return Result.success(affectedRows);
         } catch (SQLException e) {
             LOG.log(Level.SEVERE, "Error: %s".formatted(e.getMessage()));
             return handleSQLException(e);
         }
     }
 
-    public CompletableFuture<Result<Boolean, Throwable>> asynchWriteArrayOf(final String sql, final String arrayDefinition,
+    public CompletableFuture<Result<Integer, Throwable>> asynchWriteArrayOf(final String sql, final String arrayDefinition,
                                                                             final byte arrayIndex, final Object[] array,
                                                                             final Object... args) {
-
         return CompletableFuture.supplyAsync(() -> writeArrayOf(sql, arrayDefinition, arrayIndex, array, args));
     }
 
@@ -658,7 +653,7 @@ public class JetQuerious {
      *
      * @param sql       the SQL update statement to execute
      * @param batchArgs a list of parameter arrays for the batch execution
-     * @return a {@code Result<Boolean, Throwable>} indicating success or failure
+     * @return a {@code Result<int[], Throwable>} indicating number of affected rows per statement or error
      *
      * @example
      * <pre>
@@ -669,15 +664,16 @@ public class JetQuerious {
      *     new Object[]{"Charlie", "charlie@example.com"}
      * );
      *
-     * Result<Boolean, Throwable> result = jetQuerious.writeBatch(insertCustomerSQL, batchArgs);
-     * if (result.isSuccess()) {
-     *     System.out.println("Customers inserted successfully.");
+     * Result<int[], Throwable> result = jetQuerious.writeBatch(insertCustomerSQL, batchArgs);
+     * if (result.success()) {
+     *     int[] counts = result.value();
+     *     System.out.println("Inserted rows per statement: " + Arrays.toString(counts));
      * } else {
-     *     System.err.println("Failed to insert customers: " + result.getError().getMessage());
+     *     System.err.println("Failed to insert customers: " + result.throwable().getMessage());
      * }
      * </pre>
      */
-    public Result<Boolean, Throwable> writeBatch(final String sql, final List<Object[]> batchArgs) {
+    public Result<int[], Throwable> writeBatch(final String sql, final List<Object[]> batchArgs) {
         if (sql == null) return Result.failure(new IllegalArgumentException("SQL query cannot be null"));
         if (batchArgs == null) return Result.failure(new IllegalArgumentException("Batch arguments cannot be null"));
         for (Object[] params : batchArgs) validateArgumentsTypes(params);
@@ -690,16 +686,15 @@ public class JetQuerious {
                 statement.addBatch();
             }
 
-            statement.executeBatch();
-
-            return Result.success(true);
+            int[] affectedCounts = statement.executeBatch();
+            return Result.success(affectedCounts);
         } catch (SQLException e) {
             LOG.log(Level.SEVERE, "Error: %s".formatted(e.getMessage()));
             return handleSQLException(e);
         }
     }
 
-    public CompletableFuture<Result<Boolean, Throwable>> asynchWriteBatch(final String sql, final List<Object[]> batchArgs) {
+    public CompletableFuture<Result<int[], Throwable>> asynchWriteBatch(final String sql, final List<Object[]> batchArgs) {
         return CompletableFuture.supplyAsync(() -> writeBatch(sql, batchArgs));
     }
 
