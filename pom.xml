@@ -4,7 +4,7 @@
                              http://maven.apache.org/maven-v4_0_0.xsd">
 <modelVersion>4.0.0</modelVersion>
 
-<groupId>com.hadzhy.jetquerious</groupId>
+<groupId>io.github.hacihaciyev</groupId>
 <artifactId>jet-querious</artifactId>
 <version>1.0-SNAPSHOT</version>
 <packaging>jar</packaging>
@@ -33,9 +33,9 @@
   </developers>
 
   <scm>
-    <url>https://github.com/hadzhy/jdbclight</url>
-    <connection>scm:git:git://github.com/HaciHaciyev/jdbclight.git</connection>
-    <developerConnection>scm:git:ssh://github.com:hadzhy/jdbclight.git</developerConnection>
+    <url>https://github.com/HaciHaciyev/JetQuerious.git</url>
+    <connection>scm:git:git://github.com/HaciHaciyev/JetQuerious.git</connection>
+    <developerConnection>scm:git:ssh://github.com:hadzhy/JetQuerious.git</developerConnection>
   </scm>
 
   <dependencies>
