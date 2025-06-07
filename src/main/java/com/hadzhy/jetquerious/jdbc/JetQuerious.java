@@ -110,6 +110,18 @@ public class JetQuerious {
     private static volatile JetQuerious instance;
     private static final Map<Class<?>, Field> FIELDS = new ConcurrentHashMap<>();
     private static final Logger LOG = Logger.getLogger(JetQuerious.class.getName());
+    private static final Map<String, Class<?>> SUPPORTED_ARRAY_TYPES = Map.ofEntries(
+            Map.entry("text", String.class),
+            Map.entry("varchar", String.class),
+            Map.entry("int", Integer.class),
+            Map.entry("integer", Integer.class),
+            Map.entry("bigint", Long.class),
+            Map.entry("boolean", Boolean.class),
+            Map.entry("uuid", java.util.UUID.class),
+            Map.entry("date", java.sql.Date.class),
+            Map.entry("timestamp", java.sql.Timestamp.class)
+    );
+
 
     private JetQuerious(DataSource dataSource) {
         this.dataSource = dataSource;
@@ -628,9 +640,13 @@ public class JetQuerious {
                                                    final Object[] array, final Object... args) {
         if (sql == null) return Result.failure(new IllegalArgumentException("SQL query cannot be null"));
         if (arrayDefinition == null) return Result.failure(new IllegalArgumentException("Array definition cannot be null"));
+        if (arrayIndex < 1) return Result.failure(new IllegalArgumentException("Array index can`t be below 1"));
         if (array == null) return Result.failure(new IllegalArgumentException("Array cannot be null"));
         if (args == null) return Result.failure(new IllegalArgumentException("Arguments cannot be null"));
+
         validateArgumentsTypes(args);
+        validateArrayDefinition(arrayDefinition);
+        validateArrayElementsMatchDefinition(array, arrayDefinition);
 
         Connection connection = null;
         try {
@@ -644,6 +660,7 @@ public class JetQuerious {
                 int affectedRows = statement.executeUpdate();
 
                 connection.commit();
+                createdArray.free();
                 return Result.success(affectedRows);
             }
         } catch (SQLException e) {
@@ -842,6 +859,23 @@ public class JetQuerious {
                         )
                 );
             }
+        }
+    }
+
+    private void validateArrayDefinition(String definition) {
+        if (!SUPPORTED_ARRAY_TYPES.containsKey(definition.toLowerCase(Locale.ROOT)))
+            throw new IllegalArgumentException("Unsupported array definition: " + definition);
+    }
+
+    private void validateArrayElementsMatchDefinition(Object[] array, String definition) {
+        Class<?> expectedType = SUPPORTED_ARRAY_TYPES.get(definition.toLowerCase(Locale.ROOT));
+        if (expectedType == null)
+            throw new IllegalArgumentException("Cannot determine expected type for: " + definition);
+
+        for (Object element : array) {
+            if (element != null && !expectedType.isAssignableFrom(element.getClass()))
+                throw new IllegalArgumentException("Element '%s' does not match expected type %s"
+                        .formatted(element, expectedType.getSimpleName()));
         }
     }
 
