@@ -566,15 +566,36 @@ public class JetQuerious {
         if (args == null) return Result.failure(new IllegalArgumentException("Arguments cannot be null"));
         validateArgumentsTypes(args);
 
-        try (final Connection connection = dataSource.getConnection();
-             final PreparedStatement statement = connection.prepareStatement(sql)) {
-            setParameters(statement, args);
+        Connection connection = null;
+        try {
+            connection = dataSource.getConnection();
+            connection.setAutoCommit(false);
 
-            int affectedRows = statement.executeUpdate();
-            return Result.success(affectedRows);
+            try (PreparedStatement statement = connection.prepareStatement(sql)) {
+                setParameters(statement, args);
+                int affectedRows = statement.executeUpdate();
+
+                connection.commit();
+                return Result.success(affectedRows);
+            }
         } catch (SQLException e) {
             LOG.log(Level.SEVERE, "Error: %s".formatted(e.getMessage()));
+            if (connection != null) {
+                try {
+                    connection.rollback();
+                } catch (SQLException rollbackEx) {
+                    LOG.log(Level.SEVERE, "Rollback failed: %s".formatted(rollbackEx.getMessage()));
+                }
+            }
             return handleSQLException(e);
+        } finally {
+            if (connection != null) {
+                try {
+                    connection.close();
+                } catch (SQLException closeEx) {
+                    LOG.log(Level.WARNING, "Connection close failed: %s".formatted(closeEx.getMessage()));
+                }
+            }
         }
     }
 
