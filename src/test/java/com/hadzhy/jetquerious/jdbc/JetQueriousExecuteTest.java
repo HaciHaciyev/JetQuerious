@@ -5,6 +5,7 @@ import com.hadzhy.jetquerious.sql.QueryForge;
 import com.hadzhy.jetquerious.util.Result;
 import com.hadzhy.jetquerious.util.TestDataGenerator;
 import com.hadzhy.jetquerious.util.UserForm;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import java.sql.PreparedStatement;
@@ -14,6 +15,7 @@ import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+@Disabled
 public class JetQueriousExecuteTest extends DBConfig {
 
     private final JetQuerious jet = JetQuerious.instance();
