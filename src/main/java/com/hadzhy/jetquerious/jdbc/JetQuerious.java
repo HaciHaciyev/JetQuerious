@@ -24,7 +24,7 @@ import java.util.logging.Logger;
 import static com.hadzhy.jetquerious.jdbc.SQLErrorHandler.handleSQLException;
 
 /**
- * The {@code JetQuerious} class provides a set of utility methods for interacting with a relational database using JetQuerious (Java Database Connectivity).
+ * The {@code JetQuerious} class provides a set of utility methods for interacting with a relational database using JDBC (Java Database Connectivity).
  * It simplifies the execution of SQL queries and the handling of results, while also providing error handling and transaction management.
  * This class is designed to be used as a singleton within a DI container.
  *
@@ -34,7 +34,7 @@ import static com.hadzhy.jetquerious.jdbc.SQLErrorHandler.handleSQLException;
  *     <li><strong>Read Operations:</strong> Methods to execute SQL queries that return single values, objects, or lists of objects.</li>
  *     <li><strong>Write Operations:</strong> Methods to execute SQL updates, including single updates, updates with array parameters, and batch updates.</li>
  *     <li><strong>Error Handling:</strong> Built-in mechanisms to handle SQL exceptions and translate them into application-specific exceptions.</li>
- *     <li><strong>Transaction Management:</strong> Automatic management of transactions for write status, ensuring data integrity.</li>
+ *     <li><strong>Transaction Management:</strong> Automatic management of transactions for write operations, ensuring data integrity.</li>
  * </ul>
  *
  * <h2>Usage Guidelines</h2>
@@ -42,20 +42,20 @@ import static com.hadzhy.jetquerious.jdbc.SQLErrorHandler.handleSQLException;
  * <ol>
  *     <li><strong>Initialization:</strong> Ensure that the {@code JetQuerious} instance is properly initialized with a valid {@code DataSource} before use.</li>
  *     <li><strong>Read Operations:</strong> Use the {@code read()} method to fetch single values or objects. For complex mappings, consider using the {@code read()} method with a {@code ResultSetExtractor} or {@code RowMapper}.</li>
- *     <li><strong>Write Operations:</strong> Use the {@code write()} method for standard updates. For updates involving arrays, use {@code writeArrayOf()}. For bulk status, utilize {@code writeBatch()}.</li>
+ *     <li><strong>Write Operations:</strong> Use the {@code write()} method for standard updates. For updates involving arrays, use {@code writeArrayOf()}. For bulk operations, utilize {@code writeBatch()}.</li>
  *     <li><strong>Parameter Handling:</strong> Always ensure that parameters passed to SQL statements are properly sanitized and validated to prevent SQL injection attacks.</li>
- *     <li><strong>Error Handling:</strong> Check the result of each status. Use the {@code Result} object to determine success or failure and handle errors appropriately.</li>
+ *     <li><strong>Error Handling:</strong> Check the result of each operation. Use the {@code Result} object to determine success or failure and handle errors appropriately.</li>
  *     <li><strong>Connection Management:</strong> The class manages connections internally, so there is no need to manually open or close connections. However, ensure that the {@code DataSource} is properly configured.</li>
  * </ol>
  *
  * <h2>Example Usage</h2>
- * <pre>
+ * <pre>{@code
  * // Initialize the JetQuerious instance with a DataSource
  * DataSource dataSource = ...; // Obtain a DataSource instance
  * JetQuerious.init(dataSource);
  * JetQuerious jetQuerious = JetQuerious.instance();
  *
- * // Insert a new product. User static import for SQLBuilder.insert();.
+ * // Insert a new product. Use static import for SQLBuilder.insert()
  * String insertSQL = insert()
  *      .into("products")
  *      .column("name")
@@ -94,16 +94,16 @@ import static com.hadzhy.jetquerious.jdbc.SQLErrorHandler.handleSQLException;
  *             .build()
  *             .sql();
  *
- * List<Object[]>batchArgs = Arrays.asList(
+ * List<Object[]> batchArgs = Arrays.asList(
  *     new Object[]{"Alice", "alice@example.com"},
  *     new Object[]{"Bob", "bob@example.com"}
  * );
  *
  * Result<Boolean, Throwable> batchResult = jetQuerious.writeBatch(batchInsertSQL, batchArgs);
- * </pre>
+ * }</pre>
  *
  * @author Hadzhyiev Hadzhy
- * @version 2.0
+ * @version 3.0
  */
 public class JetQuerious {
     private final DataSource dataSource;
@@ -128,12 +128,11 @@ public class JetQuerious {
     }
 
     /**
-     * Executes an action within a transaction, ensuring atomicity.
-     * Automatically manages the database connection: opens a connection,
-     * disables auto-commit, executes the provided action, then either commits
-     * the changes or rolls them back if an error occurs.
+     * Executes the given action within a single database transaction, ensuring atomicity.
+     * Automatically manages the connection lifecycle: it opens a connection, disables auto-commit,
+     * executes the action, and then either commits the changes or rolls them back in case of an error.
      *
-     * <p><strong>Usage example:</strong></p>
+     * <p><b>Example usage:</b></p>
      * <pre>{@code
      * Result<Void, Throwable> result = jetQuerious.transactional(conn -> {
      *     jetQuerious.stepInTransaction(conn, "INSERT INTO users (name) VALUES (?)", "Bob");
@@ -141,33 +140,36 @@ public class JetQuerious {
      * });
      * }</pre>
      *
-     * @param action the action to execute within the transaction
-     * @return {@code Result.success(null)} on successful execution or {@code Result.failure(throwable)}
-     *         on error with the corresponding exception
+     * @param action the database operations to perform within the transaction,
+     *               receiving a {@link Connection} object
+     * @return {@code Result.success(null)} if the transaction was committed successfully;
+     *         otherwise, {@code Result.failure(throwable)} with the exception that caused rollback
      *
-     * @implNote
+     * <p><b>Note:</b></p>
      * <ul>
-     *   <li>The method automatically closes the connection after the transaction completes</li>
-     *   <li>Any exceptions thrown during action execution will cause a transaction rollback</li>
-     *   <li>All SQL operations within the transaction must use the same connection passed to the lambda</li>
-     *   <li>Use the {@link #stepInTransaction} method for executing operations within the transaction</li>
+     *   <li>This method automatically closes the connection when the transaction completes.</li>
+     *   <li>If the action throws an exception, the transaction is rolled back.</li>
+     *   <li>All operations within the transaction must use the provided {@code Connection} object.</li>
+     *   <li>Use {@link #stepInTransaction} for executing SQL within the transaction context.</li>
      * </ul>
      *
-     * <h3>⚠️ Critical Warning</h3>
+     * <p><b>⚠ Important:</b></p>
      * <p>
-     * <strong>Only operations performed through the {@code stepInTransaction} method will be part of the transaction!</strong>
+     * Only operations performed via {@code stepInTransaction} will be part of the transaction.
+     * Avoid executing raw JDBC calls or using other data access methods within the transactional lambda,
+     * unless you are certain they respect the same connection and transaction context.
      * </p>
      * <p>
-     * Any other database operations that you might execute inside the {@code transactional} lambda:
+     * Operations that are <b>not</b> part of the transaction include:
      * </p>
      * <ul>
      *   <li>Direct JDBC calls using the connection object</li>
-     *   <li>Other database methods that don't use the {@code transaction} method</li>
-     *   <li>Custom SQL execution methods</li>
+     *   <li>Calls to methods that do not use {@code stepInTransaction}</li>
+     *   <li>Custom SQL execution utilities not designed for transactional use</li>
      * </ul>
      * <p>
-     * ...will <strong>NOT</strong> be part of the transaction control and will <strong>NOT</strong> be rolled back
-     * if an error occurs. They will execute in their default manner without transactional protection.
+     * These operations will execute independently and <b>will not</b> be rolled back
+     * if the transaction fails.
      * </p>
      */
     public Result<Void, Throwable> transactional(SQLConsumer<Connection> action) {
@@ -216,7 +218,7 @@ public class JetQuerious {
      * @throws IllegalArgumentException if the connection or sql is null
      * @throws TransactionException if a database access error occurs during execution
      *
-     * @implNote
+     * <p><b>Note:</b></p>
      * - This method does not perform any transaction commit or rollback.
      * - It should never be called outside the context of {@code transactional()}.
      * - Exceptions are thrown directly to propagate transactional failure.
@@ -253,25 +255,23 @@ public class JetQuerious {
      *               They are set in the order they appear in the SQL query.
      *
      * @return A {@link Result} object containing the result of the callback execution or an error if the operation fails.
-     *         If the operation succeeds, the result is encapsulated in {@link Result#success(T)}.
-     *         If an error occurs, it is encapsulated in {@link Result#failure(Throwable)}.
+     *         If the operation succeeds, the result is encapsulated in {@code Result.success(T)}.
+     *         If an error occurs, it is encapsulated in {@code Result.failure(Throwable)}.
      *
      * @see PreparedStatement
      * @see SQLFunction
      *
+     * <p><b>Example usage:</b></p>
      *
-     * <p>Example usage:</p>
-     *
-     * <pre>
+     * <pre>{@code
      * String sql = "SELECT name, age FROM users WHERE id = ?";
+     * int userId = 1;
      *
-     * int userId = 1
-     *
-     * Result<List<String>, Throwable> result = jetQuerious.execute(
+     * Result&lt;List&lt;String&gt;, Throwable&gt; result = jetQuerious.execute(
      *     sql,
-     *     statement {
+     *     statement -> {
      *         ResultSet resultSet = statement.executeQuery();
-     *         List<String> userInfo = new ArrayList<></>();
+     *         List&lt;String&gt; userInfo = new ArrayList&lt;&gt;();
      *         while (resultSet.next()) {
      *             userInfo.add(resultSet.getString("name"));
      *             userInfo.add(String.valueOf(resultSet.getInt("age")));
@@ -279,15 +279,15 @@ public class JetQuerious {
      *         return userInfo;
      *     },
      *     userId
-     * )
+     * );
      *
      * if (result.isSuccess()) {
-     *     List<;String> user = result.get();
+     *     List&lt;String&gt; user = result.get();
      *     System.out.println("User info: " + user);
      * } else {
      *     System.err.println("Error: " + result.getError().getMessage());
      * }
-     * </pre>
+     * }</pre>
      */
     public <T> Result<T, Throwable> execute(final String sql, final SQLFunction<PreparedStatement, T> callback,
                                             final @Nullable Object... params) {
@@ -324,14 +324,13 @@ public class JetQuerious {
      * @return a {@code Result<T, Throwable>} containing the extracted object or an error
      * @throws NullPointerException if {@code sql} or {@code extractor} is {@code null}
      *
-     * @example
-     * <pre>
+     * <pre>{@code
      * Result<UserAccount, Throwable> userResult = jetQuerious.read(
      *          FIND_BY_ID,
      *          this::userAccountMapper,
      *          userId.toString()
      * );
-     * </pre>
+     * }</pre>
      */
     public <T> Result<T, Throwable> read(final String sql, final ResultSetExtractor<T> extractor, final @Nullable Object... params) {
         if (sql == null) return Result.failure(new IllegalArgumentException("SQL query cannot be null"));
@@ -408,15 +407,14 @@ public class JetQuerious {
      * @throws NullPointerException if {@code sql} or {@code type} is {@code null}
      * @throws InvalidArgumentTypeException if the specified type is not a valid wrapper type
      *
-     * @example
-     * <pre>
+     * <pre>{@code
      * Integer count = jetQuerious.readObjectOf(
      *          "SELECT COUNT(email) FROM YOU_TABLE WHERE email = ?",
      *          Integer.class,
      *          verifiableEmail.email()
      * )
      *          .orElseThrow();
-     * </pre>
+     * }</pre>
      */
     public <T> Result<T, Throwable> readObjectOf(final String sql, final Class<T> type, final @Nullable Object... params) {
         if (sql == null) return Result.failure(new IllegalArgumentException("SQL query cannot be null"));
@@ -467,13 +465,12 @@ public class JetQuerious {
      * @return a {@code Result<List<T>, Throwable>} containing the list of mapped objects or an error
      * @throws NullPointerException if {@code sql} or {@code rowMapper} is {@code null}
      *
-     * @example
-     * <pre>
+     * <pre>{@code
      * Result<List<UserAccount>, Throwable> users = jetQuerious.readListOf(
      *          "SELECT * FROM UserAccount",
      *          this::userAccountMapper
      * );
-     * </pre>
+     * }</pre>
      */
     public <T> Result<List<T>, Throwable> readListOf(final String sql, final ResultSetExtractor<T> extractor,
                                                      final @Nullable Object... params) {
@@ -554,8 +551,7 @@ public class JetQuerious {
      * @return a {@code Result<Integer, Throwable>} with the number of affected rows or an error
      * @throws NullPointerException if {@code sql} or {@code args} is {@code null}
      *
-     * @example
-     * <pre>
+     * <pre>{@code
      * String updateSQL = "UPDATE products SET price = ? WHERE name = ?";
      * Result<Integer, Throwable> result = jetQuerious.write(updateSQL, 24.99, "Sample Product");
      * if (result.success()) {
@@ -563,7 +559,7 @@ public class JetQuerious {
      * } else {
      *     System.err.println("Update failed: " + result.throwable().getMessage());
      * }
-     * </pre>
+     * }</pre>
      */
     public Result<Integer, Throwable> write(final String sql, final Object... args) {
         if (sql == null) return Result.failure(new IllegalArgumentException("SQL query cannot be null"));
@@ -596,8 +592,7 @@ public class JetQuerious {
      * @param args            additional parameters for the SQL statement
      * @return a {@code Result<Integer, Throwable>} indicating number of affected rows or error
      *
-     * @example
-     * <pre>
+     * <pre>{@code
      * String updateProductTagsSQL = "UPDATE products SET tags = ? WHERE id = ?";
      *
      * String arrayDefinition = "text"; // Assuming the database supports a text array
@@ -618,7 +613,7 @@ public class JetQuerious {
      * } else {
      *     System.err.println("Failed to update product tags: " + result.throwable().getMessage());
      * }
-     * </pre>
+     * }</pre>
      */
     public Result<Integer, Throwable> writeArrayOf(final String sql, final String arrayDefinition, final byte arrayIndex,
                                                    final Object[] array, final Object... args) {
@@ -655,8 +650,7 @@ public class JetQuerious {
      * @param batchArgs a list of parameter arrays for the batch execution
      * @return a {@code Result<int[], Throwable>} indicating number of affected rows per statement or error
      *
-     * @example
-     * <pre>
+     * <pre>{@code
      * String insertCustomerSQL = "INSERT INTO customers (name, email) VALUES (?, ?)";
      * List<Object[]> batchArgs = Arrays.asList(
      *     new Object[]{"Alice", "alice@example.com"},
@@ -671,7 +665,7 @@ public class JetQuerious {
      * } else {
      *     System.err.println("Failed to insert customers: " + result.throwable().getMessage());
      * }
-     * </pre>
+     * }</pre>
      */
     public Result<int[], Throwable> writeBatch(final String sql, final List<Object[]> batchArgs) {
         if (sql == null) return Result.failure(new IllegalArgumentException("SQL query cannot be null"));
