@@ -649,18 +649,18 @@ public class JetQuerious {
         validateArrayElementsMatchDefinition(array, arrayDefinition);
 
         Connection connection = null;
+        Array createdArray = null;
         try {
             connection = dataSource.getConnection();
             connection.setAutoCommit(false);
 
             try (final PreparedStatement statement = connection.prepareStatement(sql)) {
                 setParameters(statement, args);
-                final Array createdArray = connection.createArrayOf(arrayDefinition, array);
+                createdArray = connection.createArrayOf(arrayDefinition, array);
                 statement.setArray(arrayIndex, createdArray);
                 int affectedRows = statement.executeUpdate();
 
                 connection.commit();
-                createdArray.free();
                 return Result.success(affectedRows);
             }
         } catch (SQLException e) {
@@ -668,6 +668,16 @@ public class JetQuerious {
             rollback(connection);
             return handleSQLException(e);
         } finally {
+            if (createdArray != null) {
+                try {
+                    createdArray.free();
+                } catch (SQLException e) {
+                    LOG.log(Level.SEVERE, """
+                            CRITICAL RESOURCE LEAK: Failed to free SQL Array - this may cause memory leak and system instability.
+                            SQL State: %s, Error: %s
+                            """.formatted(e.getSQLState(), e.getMessage()), e);
+                }
+            }
             close(connection);
         }
     }
