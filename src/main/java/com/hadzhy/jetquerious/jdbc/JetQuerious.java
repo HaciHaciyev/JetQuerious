@@ -580,22 +580,10 @@ public class JetQuerious {
             }
         } catch (SQLException e) {
             LOG.log(Level.SEVERE, "Error: %s".formatted(e.getMessage()));
-            if (connection != null) {
-                try {
-                    connection.rollback();
-                } catch (SQLException rollbackEx) {
-                    LOG.log(Level.SEVERE, "Rollback failed: %s".formatted(rollbackEx.getMessage()));
-                }
-            }
+            rollback(connection);
             return handleSQLException(e);
         } finally {
-            if (connection != null) {
-                try {
-                    connection.close();
-                } catch (SQLException closeEx) {
-                    LOG.log(Level.WARNING, "Connection close failed: %s".formatted(closeEx.getMessage()));
-                }
-            }
+            close(connection);
         }
     }
 
@@ -644,17 +632,26 @@ public class JetQuerious {
         if (args == null) return Result.failure(new IllegalArgumentException("Arguments cannot be null"));
         validateArgumentsTypes(args);
 
-        try (final Connection connection = dataSource.getConnection();
-             final PreparedStatement statement = connection.prepareStatement(sql)) {
-            setParameters(statement, args);
-            final Array createdArray = connection.createArrayOf(arrayDefinition, array);
-            statement.setArray(arrayIndex, createdArray);
+        Connection connection = null;
+        try {
+            connection = dataSource.getConnection();
+            connection.setAutoCommit(false);
 
-            int affectedRows = statement.executeUpdate();
-            return Result.success(affectedRows);
+            try (final PreparedStatement statement = connection.prepareStatement(sql)) {
+                setParameters(statement, args);
+                final Array createdArray = connection.createArrayOf(arrayDefinition, array);
+                statement.setArray(arrayIndex, createdArray);
+                int affectedRows = statement.executeUpdate();
+
+                connection.commit();
+                return Result.success(affectedRows);
+            }
         } catch (SQLException e) {
             LOG.log(Level.SEVERE, "Error: %s".formatted(e.getMessage()));
+            rollback(connection);
             return handleSQLException(e);
+        } finally {
+            close(connection);
         }
     }
 
@@ -711,6 +708,26 @@ public class JetQuerious {
 
     public CompletableFuture<Result<int[], Throwable>> asynchWriteBatch(final String sql, final List<Object[]> batchArgs) {
         return CompletableFuture.supplyAsync(() -> writeBatch(sql, batchArgs));
+    }
+
+    private static void close(Connection connection) {
+        if (connection != null) {
+            try {
+                connection.close();
+            } catch (SQLException closeEx) {
+                LOG.log(Level.WARNING, "Connection close failed: %s".formatted(closeEx.getMessage()));
+            }
+        }
+    }
+
+    private static void rollback(Connection connection) {
+        if (connection != null) {
+            try {
+                connection.rollback();
+            } catch (SQLException rollbackEx) {
+                LOG.log(Level.SEVERE, "Rollback failed: %s".formatted(rollbackEx.getMessage()));
+            }
+        }
     }
 
     /**
