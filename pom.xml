@@ -11,6 +11,12 @@
 <packaging>jar</packaging>
 <name>JetQuerious</name>
 <url>https://github.com/HaciHaciyev/JetQuerious</url>
+<description>
+  JetQuerious is a lightweight, high-performance, and developer-friendly library for working with JDBC and SQL in Java.
+  Designed for simplicity and speed, it streamlines database access through clean,
+  intuitive APIs while retaining full control over SQL execution.
+  JetQuerious minimizes boilerplate, promotes safe and readable code
+</description>
 
 <licenses>
   <license>
