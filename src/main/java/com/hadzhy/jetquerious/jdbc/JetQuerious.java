@@ -690,19 +690,27 @@ public class JetQuerious {
         if (batchArgs == null) return Result.failure(new IllegalArgumentException("Batch arguments cannot be null"));
         for (Object[] params : batchArgs) validateArgumentsTypes(params);
 
-        try (final Connection connection = dataSource.getConnection();
-             final PreparedStatement statement = connection.prepareStatement(sql)) {
+        Connection connection = null;
+        try {
+            connection = dataSource.getConnection();
+            connection.setAutoCommit(false);
 
-            for (Object[] args : batchArgs) {
-                setParameters(statement, args);
-                statement.addBatch();
+            try (final PreparedStatement statement = connection.prepareStatement(sql)) {
+                for (Object[] args : batchArgs) {
+                    setParameters(statement, args);
+                    statement.addBatch();
+                }
+                int[] affectedCounts = statement.executeBatch();
+
+                connection.commit();
+                return Result.success(affectedCounts);
             }
-
-            int[] affectedCounts = statement.executeBatch();
-            return Result.success(affectedCounts);
         } catch (SQLException e) {
             LOG.log(Level.SEVERE, "Error: %s".formatted(e.getMessage()));
+            rollback(connection);
             return handleSQLException(e);
+        } finally {
+            close(connection);
         }
     }
 
