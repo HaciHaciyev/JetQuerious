@@ -187,16 +187,21 @@ public class JetQuerious {
 
         try (Connection connection = dataSource.getConnection()) {
             connection.setAutoCommit(false);
-            try {
-                action.accept(connection);
-                connection.commit();
-                return Result.success(null);
-            } catch (Throwable t) {
-                connection.rollback();
-                return Result.failure(t);
-            }
+            return commitTransaction(action, connection);
         } catch (Throwable t) {
             LOG.log(Level.SEVERE, "Exception during transaction", t);
+            return Result.failure(t);
+        }
+    }
+
+    private static Result<Void, Throwable> commitTransaction(SQLConsumer<Connection> action,
+                                                             Connection connection) throws SQLException {
+        try {
+            action.accept(connection);
+            connection.commit();
+            return Result.success(null);
+        } catch (Throwable t) {
+            connection.rollback();
             return Result.failure(t);
         }
     }
