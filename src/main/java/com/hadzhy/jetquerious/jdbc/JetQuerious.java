@@ -14,6 +14,7 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.net.URI;
 import java.net.URL;
+import java.nio.file.Path;
 import java.sql.*;
 import java.time.*;
 import java.util.*;
@@ -806,6 +807,7 @@ public class JetQuerious {
             case Enum<?> enumValue -> statement.setString(i + 1, enumValue.name());
             case URL url -> statement.setURL(i + 1, url);
             case URI uri -> statement.setString(i + 1, uri.toString());
+            case Path path -> statement.setString(i + 1, path.toString());
             case Blob blob -> statement.setBlob(i + 1, blob);
             case Clob clob -> statement.setClob(i + 1, clob);
             case byte[] bytes -> statement.setBytes(i + 1, bytes);
@@ -945,6 +947,7 @@ public class JetQuerious {
             case Enum<?> ignored -> true;
             case URL ignored -> true;
             case URI ignored -> true;
+            case Path ignored -> true;
             case Blob ignored -> true;
             case Clob ignored -> true;
             case byte[] ignored -> true;
@@ -1017,6 +1020,7 @@ public class JetQuerious {
             case Enum<?> ignored -> true;
             case URL ignored -> true;
             case URI ignored -> true;
+            case Path ignored -> true;
             case Blob ignored -> true;
             case Clob ignored -> true;
             case byte[] ignored -> true;
