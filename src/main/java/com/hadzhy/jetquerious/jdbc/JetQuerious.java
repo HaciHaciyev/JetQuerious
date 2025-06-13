@@ -811,6 +811,9 @@ public class JetQuerious {
             case byte[] bytes -> statement.setBytes(i + 1, bytes);
             case null -> statement.setNull(i + 1, Types.NULL);
             case String string -> statement.setString(i + 1, string);
+            case StringBuilder sb -> statement.setString(i + 1, sb.toString());
+            case StringBuffer sbf -> statement.setString(i + 1, sbf.toString());
+            case CharSequence cs -> statement.setString(i + 1, cs.toString());
             case Byte byteParam -> statement.setByte(i + 1, byteParam);
             case Integer integer -> statement.setInt(i + 1, integer);
             case Short shortParam -> statement.setShort(i + 1, shortParam);
@@ -909,6 +912,9 @@ public class JetQuerious {
     private boolean isSupportedType(final Object param) {
         return switch (param) {
             case String ignored -> true;
+            case StringBuilder ignored -> true;
+            case StringBuffer ignored -> true;
+            case CharSequence ignored -> true;
             case Byte ignored -> true;
             case Integer ignored -> true;
             case Short ignored -> true;
@@ -978,6 +984,9 @@ public class JetQuerious {
     private boolean isSupportedChildType(Object param) {
         return switch (param) {
             case String ignored -> true;
+            case StringBuilder ignored -> true;
+            case StringBuffer ignored -> true;
+            case CharSequence ignored -> true;
             case Byte ignored -> true;
             case Integer ignored -> true;
             case Short ignored -> true;
