@@ -19,6 +19,9 @@ import java.time.*;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -814,6 +817,9 @@ public class JetQuerious {
             case Long longParam -> statement.setLong(i + 1, longParam);
             case Float floatParam -> statement.setFloat(i + 1, floatParam);
             case Double doubleParam -> statement.setDouble(i + 1, doubleParam);
+            case AtomicInteger atomicInt -> statement.setInt(i + 1, atomicInt.get());
+            case AtomicLong atomicLong -> statement.setLong(i + 1, atomicLong.get());
+            case AtomicBoolean atomicBool -> statement.setBoolean(i + 1, atomicBool.get());
             case Boolean booleanParam -> statement.setBoolean(i + 1, booleanParam);
             case Character character -> statement.setObject(i + 1, character);
             default -> {
@@ -927,6 +933,9 @@ public class JetQuerious {
             case MonthDay ignored -> true;
             case BigDecimal ignored -> true;
             case BigInteger ignored -> true;
+            case AtomicInteger ignored -> true;
+            case AtomicLong ignored -> true;
+            case AtomicBoolean ignored -> true;
             case Enum<?> ignored -> true;
             case URL ignored -> true;
             case URI ignored -> true;
@@ -993,6 +1002,9 @@ public class JetQuerious {
             case MonthDay ignored -> true;
             case BigDecimal ignored -> true;
             case BigInteger ignored -> true;
+            case AtomicInteger ignored -> true;
+            case AtomicLong ignored -> true;
+            case AtomicBoolean ignored -> true;
             case Enum<?> ignored -> true;
             case URL ignored -> true;
             case URI ignored -> true;
