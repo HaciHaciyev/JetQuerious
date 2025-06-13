@@ -910,7 +910,7 @@ public class JetQuerious {
             case Boolean ignored -> true;
             case Character ignored -> true;
             case UUID ignored -> true;
-            case Time time -> true;
+            case Time ignored -> true;
             case Timestamp ignored -> true;
             case LocalDateTime ignored -> true;
             case LocalDate ignored -> true;
@@ -976,7 +976,7 @@ public class JetQuerious {
             case Boolean ignored -> true;
             case Character ignored -> true;
             case UUID ignored -> true;
-            case Time time -> true;
+            case Time ignored -> true;
             case Timestamp ignored -> true;
             case LocalDateTime ignored -> true;
             case LocalDate ignored -> true;
