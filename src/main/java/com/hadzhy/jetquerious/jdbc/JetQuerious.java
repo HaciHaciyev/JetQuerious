@@ -8,6 +8,7 @@ import com.hadzhy.jetquerious.util.Result;
 
 import javax.sql.DataSource;
 import java.lang.reflect.Field;
+import java.lang.reflect.InaccessibleObjectException;
 import java.lang.reflect.Modifier;
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -939,15 +940,17 @@ public class JetQuerious {
                 Field[] fields = getDeclaredInstanceFields(aClass);
                 if (fields.length != 1) yield false;
                 Field field = fields[0];
-                field.setAccessible(true);
+
                 try {
+                    field.setAccessible(true);
+
                     Object value = field.get(param);
                     boolean supportedType = isSupportedChildType(value);
                     if (!supportedType) yield false;
 
                     FIELDS.put(aClass, field);
                     yield true;
-                } catch (IllegalAccessException e) {
+                } catch (IllegalAccessException | InaccessibleObjectException | SecurityException e) {
                     yield false;
                 }
             }
