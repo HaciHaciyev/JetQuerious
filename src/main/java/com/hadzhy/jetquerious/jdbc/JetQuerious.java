@@ -782,6 +782,8 @@ public class JetQuerious {
     private static void setParameter(PreparedStatement statement, Object param, int i) throws SQLException {
         switch (param) {
             case UUID uuid -> statement.setObject(i + 1, uuid.toString());
+            case Time time -> statement.setTime(i + 1, time);
+            case Timestamp timestamp -> statement.setTimestamp(i + 1, timestamp);
             case LocalDateTime localDateTime -> statement.setObject(i + 1, Timestamp.valueOf(localDateTime));
             case LocalDate localDate -> statement.setObject(i + 1, java.sql.Date.valueOf(localDate));
             case LocalTime localTime -> statement.setObject(i + 1, Time.valueOf(localTime));
@@ -907,6 +909,8 @@ public class JetQuerious {
             case Boolean ignored -> true;
             case Character ignored -> true;
             case UUID ignored -> true;
+            case Time time -> true;
+            case Timestamp ignored -> true;
             case LocalDateTime ignored -> true;
             case LocalDate ignored -> true;
             case LocalTime ignored -> true;
