@@ -108,7 +108,7 @@ import static com.hadzhy.jetquerious.jdbc.SQLErrorHandler.handleSQLException;
  */
 public class JetQuerious {
     private final DataSource dataSource;
-    private static volatile JetQuerious instance;
+    private static JetQuerious instance;
     private static final Map<Class<?>, Field> FIELDS = new ConcurrentHashMap<>();
     private static final Logger LOG = Logger.getLogger(JetQuerious.class.getName());
     private static final Map<String, Class<?>> SUPPORTED_ARRAY_TYPES = Map.ofEntries(
@@ -123,15 +123,12 @@ public class JetQuerious {
             Map.entry("timestamp", java.sql.Timestamp.class)
     );
 
-
     private JetQuerious(DataSource dataSource) {
         this.dataSource = dataSource;
     }
 
-    public static void init(DataSource dataSource) {
-        if (instance == null) synchronized (JetQuerious.class) {
-            if (instance == null) instance = new JetQuerious(dataSource);
-        }
+    public static synchronized void init(DataSource dataSource) {
+        if (instance == null) instance = new JetQuerious(dataSource);
     }
 
     public static JetQuerious instance() {
