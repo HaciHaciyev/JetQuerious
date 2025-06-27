@@ -431,7 +431,7 @@ public class JetQuerious {
                     return Result.failure(new NotFoundException("Data in query for object was not found."));
                 }
 
-                T value = TypeRegistry.map(resultSet, type);
+                T value = Mapper.map(resultSet, type);
                 return Result.success(value);
             }
         } catch (SQLException | IllegalArgumentException e) {
@@ -757,7 +757,7 @@ public class JetQuerious {
     private void setParameters(final PreparedStatement statement, final Object... params) throws SQLException {
         for (int i = 0; i < params.length; i++) {
             Object param = params[i];
-            TypeRegistry.setParameter(statement, param, i);
+            ParameterSetter.setParameter(statement, param, i);
         }
     }
 
