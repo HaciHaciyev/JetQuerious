@@ -25,7 +25,7 @@ import java.util.function.Function;
 
 public class TypeRegistry {
 
-    static final Map<Class<?>, Function<ResultSet, ?>> TYPES_MAPPER = getTypesMapper();
+
 
     static final Map<Class<?>, Field> FIELDS = new ConcurrentHashMap<>();
 
@@ -41,6 +41,8 @@ public class TypeRegistry {
             Map.entry("timestamp", java.sql.Timestamp.class)
     );
 
+    static final Map<Class<?>, Function<ResultSet, ?>> TYPES_MAPPER = typesMapper();
+
     private TypeRegistry() {}
 
     static <T> T map(ResultSet rs, Class<T> type) {
@@ -48,7 +50,6 @@ public class TypeRegistry {
         if (resultSetFunction == null) throw new InvalidArgumentTypeException("Unsupported wrapper type.");
         return (T) resultSetFunction.apply(rs);
     }
-
 
     static void setParameter(PreparedStatement statement, Object param, int i) throws SQLException {
         switch (param) {
@@ -248,7 +249,7 @@ public class TypeRegistry {
         };
     }
 
-    private static Map<Class<?>, Function<ResultSet, ?>> getTypesMapper() {
+    private static Map<Class<?>, Function<ResultSet, ?>> typesMapper() {
         return Map.ofEntries(
                 Map.entry(String.class, rs -> {
                     try {
@@ -323,6 +324,64 @@ public class TypeRegistry {
                         return val != null ? UUID.fromString(val) : null;
                     } catch (SQLException | IllegalArgumentException e) {
                         throw new InvalidArgumentTypeException("Can't cast to UUID" + e.getMessage());
+                    }
+                }),
+                Map.entry(StringBuilder.class, rs -> {
+                    try {
+                        String val = rs.getString(1);
+                        return val != null ? new StringBuilder(val) : null;
+                    } catch (SQLException e) {
+                        throw new InvalidArgumentTypeException("Can't cast to StringBuilder: " + e.getMessage());
+                    }
+                }),
+                Map.entry(StringBuffer.class, rs -> {
+                    try {
+                        String val = rs.getString(1);
+                        return val != null ? new StringBuffer(val) : null;
+                    } catch (SQLException e) {
+                        throw new InvalidArgumentTypeException("Can't cast to StringBuffer: " + e.getMessage());
+                    }
+                }),
+                Map.entry(CharSequence.class, rs -> {
+                    try {
+                        return rs.getString(1);
+                    } catch (SQLException e) {
+                        throw new InvalidArgumentTypeException("Can't cast to CharSequence: " + e.getMessage());
+                    }
+                }),
+                Map.entry(Time.class, rs -> {
+                    try {
+                        return rs.getTime(1);
+                    } catch (SQLException e) {
+                        throw new InvalidArgumentTypeException("Can't cast to Time: " + e.getMessage());
+                    }
+                }),
+                Map.entry(AtomicInteger.class, rs -> {
+                    try {
+                        return new AtomicInteger(rs.getInt(1));
+                    } catch (SQLException e) {
+                        throw new InvalidArgumentTypeException("Can't cast to AtomicInteger: " + e.getMessage());
+                    }
+                }),
+                Map.entry(AtomicLong.class, rs -> {
+                    try {
+                        return new AtomicLong(rs.getLong(1));
+                    } catch (SQLException e) {
+                        throw new InvalidArgumentTypeException("Can't cast to AtomicLong: " + e.getMessage());
+                    }
+                }),
+                Map.entry(AtomicBoolean.class, rs -> {
+                    try {
+                        return new AtomicBoolean(rs.getBoolean(1));
+                    } catch (SQLException e) {
+                        throw new InvalidArgumentTypeException("Can't cast to AtomicBoolean: " + e.getMessage());
+                    }
+                }),
+                Map.entry(Timestamp.class, rs -> {
+                    try {
+                        return rs.getTimestamp(1);
+                    } catch (SQLException e) {
+                         throw new InvalidArgumentTypeException("Can`t cast to timestamp" + e.getMessage());
                     }
                 }),
                 Map.entry(LocalDate.class, rs -> {
