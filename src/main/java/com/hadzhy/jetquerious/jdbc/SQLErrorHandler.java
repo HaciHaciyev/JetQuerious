@@ -9,6 +9,8 @@ public class SQLErrorHandler {
 
     public static final String STATUS_CODE_FOR_COMMON_SITUATIONS = "HY000";
 
+    private SQLErrorHandler() {}
+
     /**
      * Handles SQL exceptions and translates them into application-specific exceptions
      * using standardized SQL state codes rather than vendor-specific error codes.

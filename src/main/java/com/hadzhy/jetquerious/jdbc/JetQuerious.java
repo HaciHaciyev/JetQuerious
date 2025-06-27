@@ -7,22 +7,9 @@ import com.hadzhy.jetquerious.util.Nullable;
 import com.hadzhy.jetquerious.util.Result;
 
 import javax.sql.DataSource;
-import java.lang.reflect.Field;
-import java.lang.reflect.InaccessibleObjectException;
-import java.lang.reflect.Modifier;
-import java.math.BigDecimal;
-import java.math.BigInteger;
-import java.net.URI;
-import java.net.URL;
-import java.nio.file.Path;
 import java.sql.*;
-import java.time.*;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -113,19 +100,7 @@ import static com.hadzhy.jetquerious.jdbc.SQLErrorHandler.handleSQLException;
 public class JetQuerious {
     private final DataSource dataSource;
     private static JetQuerious instance;
-    private static final Map<Class<?>, Field> FIELDS = new ConcurrentHashMap<>();
     private static final Logger LOG = Logger.getLogger(JetQuerious.class.getName());
-    private static final Map<String, Class<?>> SUPPORTED_ARRAY_TYPES = Map.ofEntries(
-            Map.entry("text", String.class),
-            Map.entry("varchar", String.class),
-            Map.entry("int", Integer.class),
-            Map.entry("integer", Integer.class),
-            Map.entry("bigint", Long.class),
-            Map.entry("boolean", Boolean.class),
-            Map.entry("uuid", java.util.UUID.class),
-            Map.entry("date", java.sql.Date.class),
-            Map.entry("timestamp", java.sql.Timestamp.class)
-    );
 
     private JetQuerious(DataSource dataSource) {
         this.dataSource = dataSource;
@@ -456,7 +431,7 @@ public class JetQuerious {
                     return Result.failure(new NotFoundException("Data in query for object was not found."));
                 }
 
-                T value = Mapper.map(resultSet, type);
+                T value = TypeRegistry.map(resultSet, type);
                 return Result.success(value);
             }
         } catch (SQLException | IllegalArgumentException e) {
@@ -652,8 +627,8 @@ public class JetQuerious {
         if (args == null) return Result.failure(new IllegalArgumentException("Arguments cannot be null"));
 
         validateArgumentsTypes(args);
-        validateArrayDefinition(arrayDefinition);
-        validateArrayElementsMatchDefinition(array, arrayDefinition);
+        TypeRegistry.validateArrayDefinition(arrayDefinition);
+        TypeRegistry.validateArrayElementsMatchDefinition(array, arrayDefinition);
 
         Connection connection = null;
         Array createdArray = null;
@@ -782,64 +757,7 @@ public class JetQuerious {
     private void setParameters(final PreparedStatement statement, final Object... params) throws SQLException {
         for (int i = 0; i < params.length; i++) {
             Object param = params[i];
-            setParameter(statement, param, i);
-        }
-    }
-
-    private static void setParameter(PreparedStatement statement, Object param, int i) throws SQLException {
-        switch (param) {
-            case UUID uuid -> statement.setObject(i + 1, uuid.toString());
-            case Time time -> statement.setTime(i + 1, time);
-            case Timestamp timestamp -> statement.setTimestamp(i + 1, timestamp);
-            case LocalDateTime localDateTime -> statement.setObject(i + 1, Timestamp.valueOf(localDateTime));
-            case LocalDate localDate -> statement.setObject(i + 1, java.sql.Date.valueOf(localDate));
-            case LocalTime localTime -> statement.setObject(i + 1, Time.valueOf(localTime));
-            case Instant instant -> statement.setObject(i + 1, Timestamp.from(instant));
-            case ZonedDateTime zonedDateTime -> statement.setObject(i + 1, Timestamp.from(zonedDateTime.toInstant()));
-            case OffsetDateTime offsetDateTime -> statement.setObject(i + 1, Timestamp.from(offsetDateTime.toInstant()));
-            case Duration duration -> statement.setObject(i + 1, duration);
-            case Period period -> statement.setObject(i + 1, period);
-            case Year year -> statement.setInt(i + 1, year.getValue());
-            case YearMonth yearMonth -> statement.setString(i + 1, yearMonth.toString());
-            case MonthDay monthDay -> statement.setString(i + 1, monthDay.toString());
-            case BigDecimal bigDecimal -> statement.setBigDecimal(i + 1, bigDecimal);
-            case BigInteger bigInteger -> statement.setBigDecimal(i + 1, new BigDecimal(bigInteger));
-            case Enum<?> enumValue -> statement.setString(i + 1, enumValue.name());
-            case URL url -> statement.setURL(i + 1, url);
-            case URI uri -> statement.setString(i + 1, uri.toString());
-            case Path path -> statement.setString(i + 1, path.toString());
-            case Blob blob -> statement.setBlob(i + 1, blob);
-            case Clob clob -> statement.setClob(i + 1, clob);
-            case byte[] bytes -> statement.setBytes(i + 1, bytes);
-            case null -> statement.setNull(i + 1, Types.NULL);
-            case String string -> statement.setString(i + 1, string);
-            case StringBuilder sb -> statement.setString(i + 1, sb.toString());
-            case StringBuffer sbf -> statement.setString(i + 1, sbf.toString());
-            case CharSequence cs -> statement.setString(i + 1, cs.toString());
-            case Byte byteParam -> statement.setByte(i + 1, byteParam);
-            case Integer integer -> statement.setInt(i + 1, integer);
-            case Short shortParam -> statement.setShort(i + 1, shortParam);
-            case Long longParam -> statement.setLong(i + 1, longParam);
-            case Float floatParam -> statement.setFloat(i + 1, floatParam);
-            case Double doubleParam -> statement.setDouble(i + 1, doubleParam);
-            case AtomicInteger atomicInt -> statement.setInt(i + 1, atomicInt.get());
-            case AtomicLong atomicLong -> statement.setLong(i + 1, atomicLong.get());
-            case AtomicBoolean atomicBool -> statement.setBoolean(i + 1, atomicBool.get());
-            case Boolean booleanParam -> statement.setBoolean(i + 1, booleanParam);
-            case Character character -> statement.setObject(i + 1, character);
-            default -> {
-                Class<?> aClass = param.getClass();
-                Field field = FIELDS.get(aClass);
-
-                try {
-                    Object value = field.get(param);
-                    statement.setObject(i + 1, value);
-                } catch (IllegalAccessException e) {
-                    throw new IllegalArgumentException(
-                            "Could not record the object of class: %s, you must manually specify its mapping"
-                                    .formatted(aClass.getName()));
-                }
-            }
+            TypeRegistry.setParameter(statement, param, i);
         }
     }
 
@@ -853,7 +771,7 @@ public class JetQuerious {
     private void validateArgumentsTypes(final @Nullable Object... params) {
         for (int i = 0; i < params.length; i++) {
             Object param = params[i];
-            if (!isSupportedType(param)) {
+            if (!TypeRegistry.isSupportedType(param)) {
                 String className = param.getClass().getName();
                 String simpleName = param.getClass().getSimpleName();
                 String packageName = param.getClass().getPackage() != null ?
@@ -886,146 +804,5 @@ public class JetQuerious {
                 );
             }
         }
-    }
-
-    private void validateArrayDefinition(String definition) {
-        if (!SUPPORTED_ARRAY_TYPES.containsKey(definition.toLowerCase(Locale.ROOT)))
-            throw new IllegalArgumentException("Unsupported array definition: " + definition);
-    }
-
-    private void validateArrayElementsMatchDefinition(Object[] array, String definition) {
-        Class<?> expectedType = SUPPORTED_ARRAY_TYPES.get(definition.toLowerCase(Locale.ROOT));
-        if (expectedType == null)
-            throw new IllegalArgumentException("Cannot determine expected type for: " + definition);
-
-        for (Object element : array) {
-            if (element != null && !expectedType.isAssignableFrom(element.getClass()))
-                throw new IllegalArgumentException("Element '%s' does not match expected type %s"
-                        .formatted(element, expectedType.getSimpleName()));
-        }
-    }
-
-    /**
-     * Determines if a parameter is of a type that is directly supported by the setParameters method.
-     *
-     * @param param the parameter to check
-     * @return true if the parameter type is supported, false otherwise
-     */
-    private boolean isSupportedType(final Object param) {
-        return switch (param) {
-            case String ignored -> true;
-            case StringBuilder ignored -> true;
-            case StringBuffer ignored -> true;
-            case CharSequence ignored -> true;
-            case Byte ignored -> true;
-            case Integer ignored -> true;
-            case Short ignored -> true;
-            case Long ignored -> true;
-            case Float ignored -> true;
-            case Double ignored -> true;
-            case Boolean ignored -> true;
-            case Character ignored -> true;
-            case UUID ignored -> true;
-            case Time ignored -> true;
-            case Timestamp ignored -> true;
-            case LocalDateTime ignored -> true;
-            case LocalDate ignored -> true;
-            case LocalTime ignored -> true;
-            case Instant ignored -> true;
-            case ZonedDateTime ignored -> true;
-            case OffsetDateTime ignored -> true;
-            case Duration ignored -> true;
-            case Period ignored -> true;
-            case Year ignored -> true;
-            case YearMonth ignored -> true;
-            case MonthDay ignored -> true;
-            case BigDecimal ignored -> true;
-            case BigInteger ignored -> true;
-            case AtomicInteger ignored -> true;
-            case AtomicLong ignored -> true;
-            case AtomicBoolean ignored -> true;
-            case Enum<?> ignored -> true;
-            case URL ignored -> true;
-            case URI ignored -> true;
-            case Path ignored -> true;
-            case Blob ignored -> true;
-            case Clob ignored -> true;
-            case byte[] ignored -> true;
-            case null -> true;
-            default -> {
-                Class<?> aClass = param.getClass();
-
-                if (FIELDS.containsKey(aClass)) yield true;
-
-                Field[] fields = getDeclaredInstanceFields(aClass);
-                if (fields.length != 1) yield false;
-                Field field = fields[0];
-
-                try {
-                    field.setAccessible(true);
-
-                    Object value = field.get(param);
-                    boolean supportedType = isSupportedChildType(value);
-                    if (!supportedType) yield false;
-
-                    FIELDS.put(aClass, field);
-                    yield true;
-                } catch (IllegalAccessException | InaccessibleObjectException | SecurityException e) {
-                    yield false;
-                }
-            }
-        };
-    }
-
-    private static Field[] getDeclaredInstanceFields(Class<?> clazz) {
-        Field[] allFields = clazz.getDeclaredFields();
-        return Arrays.stream(allFields)
-                .filter(f -> !Modifier.isStatic(f.getModifiers()))
-                .toArray(Field[]::new);
-    }
-
-    private boolean isSupportedChildType(Object param) {
-        return switch (param) {
-            case String ignored -> true;
-            case StringBuilder ignored -> true;
-            case StringBuffer ignored -> true;
-            case CharSequence ignored -> true;
-            case Byte ignored -> true;
-            case Integer ignored -> true;
-            case Short ignored -> true;
-            case Long ignored -> true;
-            case Float ignored -> true;
-            case Double ignored -> true;
-            case Boolean ignored -> true;
-            case Character ignored -> true;
-            case UUID ignored -> true;
-            case Time ignored -> true;
-            case Timestamp ignored -> true;
-            case LocalDateTime ignored -> true;
-            case LocalDate ignored -> true;
-            case LocalTime ignored -> true;
-            case Instant ignored -> true;
-            case ZonedDateTime ignored -> true;
-            case OffsetDateTime ignored -> true;
-            case Duration ignored -> true;
-            case Period ignored -> true;
-            case Year ignored -> true;
-            case YearMonth ignored -> true;
-            case MonthDay ignored -> true;
-            case BigDecimal ignored -> true;
-            case BigInteger ignored -> true;
-            case AtomicInteger ignored -> true;
-            case AtomicLong ignored -> true;
-            case AtomicBoolean ignored -> true;
-            case Enum<?> ignored -> true;
-            case URL ignored -> true;
-            case URI ignored -> true;
-            case Path ignored -> true;
-            case Blob ignored -> true;
-            case Clob ignored -> true;
-            case byte[] ignored -> true;
-            case null -> true;
-            default -> false;
-        };
     }
 }
