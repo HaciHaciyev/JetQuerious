@@ -3,34 +3,12 @@ package com.hadzhy.jetquerious.jdbc;
 import java.lang.reflect.Field;
 import java.lang.reflect.InaccessibleObjectException;
 import java.lang.reflect.Modifier;
-import java.math.BigDecimal;
-import java.math.BigInteger;
-import java.net.URI;
-import java.net.URL;
-import java.nio.file.Path;
-import java.sql.*;
-import java.time.*;
 import java.util.Arrays;
 import java.util.Locale;
 import java.util.Map;
-import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
 
 public class TypeRegistry {
-
-    static final Class<?>[] SUPPORTED_CLASSES = supportedClasses();
-    static final long TYPE_MASK;
-    static {
-        long mask = 0;
-        for (Class<?> clazz : SUPPORTED_CLASSES) {
-            int hash = System.identityHashCode(clazz);
-            mask |= (1L << (hash & 0x3F));
-        }
-        TYPE_MASK = mask;
-    }
 
     static final Map<Class<?>, Field> FIELDS = new ConcurrentHashMap<>();
 
@@ -78,11 +56,9 @@ public class TypeRegistry {
     }
 
     private static boolean isSupportedSimpleType(Object param) {
-        Class<?> clazz = param.getClass();
-        int hash = System.identityHashCode(clazz);
-        boolean typeNotSupported = (TYPE_MASK & (1L << (hash & 0x3F))) == 0;
-        if (typeNotSupported) return param instanceof Enum<?>;
-        return true;
+        Class<?> aClass = param.getClass();
+        if (ParameterSetter.SETTERS.get(aClass) != null) return true;
+        return aClass.isEnum();
     }
 
     private static boolean isSupportedValueObjectType(Object param) {
@@ -113,47 +89,5 @@ public class TypeRegistry {
         return Arrays.stream(allFields)
                 .filter(f -> !Modifier.isStatic(f.getModifiers()))
                 .toArray(Field[]::new);
-    }
-
-    private static Class<?>[] supportedClasses() {
-        return new Class[]{
-                String.class,
-                StringBuilder.class,
-                StringBuffer.class,
-                CharSequence.class,
-                Byte.class,
-                Integer.class,
-                Short.class,
-                Long.class,
-                Float.class,
-                Double.class,
-                Boolean.class,
-                Character.class,
-                UUID.class,
-                Time.class,
-                Timestamp.class,
-                LocalDateTime.class,
-                LocalDate.class,
-                LocalTime.class,
-                Instant.class,
-                ZonedDateTime.class,
-                OffsetDateTime.class,
-                Duration.class,
-                Period.class,
-                Year.class,
-                YearMonth.class,
-                MonthDay.class,
-                BigDecimal.class,
-                BigInteger.class,
-                AtomicInteger.class,
-                AtomicLong.class,
-                AtomicBoolean.class,
-                URL.class,
-                URI.class,
-                Path.class,
-                Blob.class,
-                Clob.class,
-                byte[].class
-        };
     }
 }
