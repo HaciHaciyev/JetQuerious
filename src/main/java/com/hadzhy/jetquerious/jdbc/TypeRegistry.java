@@ -103,7 +103,7 @@ public class TypeRegistry {
 
             TypeRegistry.FIELDS.put(aClass, field);
             return true;
-        } catch (IllegalAccessException | InaccessibleObjectException | SecurityException e) {
+        } catch (IllegalAccessException | NullPointerException | InaccessibleObjectException | SecurityException e) {
             return false;
         }
     }

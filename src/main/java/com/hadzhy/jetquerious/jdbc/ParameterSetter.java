@@ -24,7 +24,7 @@ public class ParameterSetter {
 
     private ParameterSetter() {}
 
-    public static void setParameter(PreparedStatement stmt, Object param, int idx) throws SQLException {
+    public static void setParameter(final PreparedStatement stmt, final Object param, final int idx) throws SQLException {
         if (param == null) {
             stmt.setNull(idx, Types.NULL);
             return;
@@ -43,14 +43,19 @@ public class ParameterSetter {
         setter.set(stmt, param, idx);
     }
 
-    private static void setValueObjectType(PreparedStatement statement, Object param, int i) throws SQLException {
+    private static void setValueObjectType(final PreparedStatement statement, final Object param, final int i) throws SQLException {
         Class<?> aClass = param.getClass();
         Field field = TypeRegistry.FIELDS.get(aClass);
 
         try {
             Object value = field.get(param);
+            if (value == null) {
+                statement.setNull(i, Types.NULL);
+                return;
+            }
+
             statement.setObject(i, value);
-        } catch (IllegalAccessException e) {
+        } catch (IllegalAccessException | IllegalArgumentException | NullPointerException e) {
             throw new IllegalArgumentException(
                     "Could not record the object of class: %s, you must manually specify its mapping"
                             .formatted(aClass.getName()));
