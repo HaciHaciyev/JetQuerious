@@ -26,21 +26,21 @@ public class ParameterSetter {
 
     public static void setParameter(PreparedStatement stmt, Object param, int idx) throws SQLException {
         if (param == null) {
-            stmt.setNull(idx, Types.NULL);
+            stmt.setNull(idx + 1, Types.NULL);
             return;
         }
         Setter setter = SETTERS.get(param.getClass());
         if (setter == null) {
             if (param instanceof Enum<?>) {
-                stmt.setString(idx, ((Enum<?>) param).name());
+                stmt.setString(idx + 1, ((Enum<?>) param).name());
                 return;
             }
 
-            setValueObjectType(stmt, param, idx);
+            setValueObjectType(stmt, param, idx + 1);
             return;
         }
 
-        setter.set(stmt, param, idx);
+        setter.set(stmt, param, idx + 1);
     }
 
     private static void setValueObjectType(PreparedStatement statement, Object param, int i) throws SQLException {
@@ -49,7 +49,7 @@ public class ParameterSetter {
 
         try {
             Object value = field.get(param);
-            statement.setObject(i + 1, value);
+            statement.setObject(i, value);
         } catch (IllegalAccessException e) {
             throw new IllegalArgumentException(
                     "Could not record the object of class: %s, you must manually specify its mapping"
