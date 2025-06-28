@@ -7,7 +7,7 @@
 
 <groupId>io.github.hacihaciyev</groupId>
 <artifactId>jet-querious</artifactId>
-<version>1.0.3</version>
+<version>1.0.4</version>
 <packaging>jar</packaging>
 <name>JetQuerious</name>
 <url>https://github.com/HaciHaciyev/JetQuerious</url>
