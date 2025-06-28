@@ -757,7 +757,7 @@ public class JetQuerious {
     private void setParameters(final PreparedStatement statement, final Object... params) throws SQLException {
         for (int i = 0; i < params.length; i++) {
             Object param = params[i];
-            ParameterSetter.setParameter(statement, param, i);
+            ParameterSetter.setParameter(statement, param, i + 1);
         }
     }
 

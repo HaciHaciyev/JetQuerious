@@ -26,21 +26,21 @@ public class ParameterSetter {
 
     public static void setParameter(PreparedStatement stmt, Object param, int idx) throws SQLException {
         if (param == null) {
-            stmt.setNull(idx + 1, Types.NULL);
+            stmt.setNull(idx, Types.NULL);
             return;
         }
         Setter setter = SETTERS.get(param.getClass());
         if (setter == null) {
             if (param instanceof Enum<?>) {
-                stmt.setString(idx + 1, ((Enum<?>) param).name());
+                stmt.setString(idx, ((Enum<?>) param).name());
                 return;
             }
 
-            setValueObjectType(stmt, param, idx + 1);
+            setValueObjectType(stmt, param, idx);
             return;
         }
 
-        setter.set(stmt, param, idx + 1);
+        setter.set(stmt, param, idx);
     }
 
     private static void setValueObjectType(PreparedStatement statement, Object param, int i) throws SQLException {
