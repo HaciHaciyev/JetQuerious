@@ -15,62 +15,86 @@ import java.util.concurrent.atomic.AtomicLong;
 
 public class ParameterSetter {
 
+    static final ClassValue<Setter> SETTERS = new ClassValue<>() {
+        @Override
+        protected Setter computeValue(Class<?> type) {
+            return computeSetters(type);
+        }
+    };
+
     private ParameterSetter() {}
 
-    static void setParameter(PreparedStatement statement, Object param, int i) throws SQLException {
-        switch (param) {
-            case UUID uuid -> statement.setObject(i + 1, uuid.toString());
-            case Time time -> statement.setTime(i + 1, time);
-            case Timestamp timestamp -> statement.setTimestamp(i + 1, timestamp);
-            case LocalDateTime localDateTime -> statement.setObject(i + 1, Timestamp.valueOf(localDateTime));
-            case LocalDate localDate -> statement.setObject(i + 1, java.sql.Date.valueOf(localDate));
-            case LocalTime localTime -> statement.setObject(i + 1, Time.valueOf(localTime));
-            case Instant instant -> statement.setObject(i + 1, Timestamp.from(instant));
-            case ZonedDateTime zonedDateTime -> statement.setObject(i + 1, Timestamp.from(zonedDateTime.toInstant()));
-            case OffsetDateTime offsetDateTime -> statement.setObject(i + 1, Timestamp.from(offsetDateTime.toInstant()));
-            case Duration duration -> statement.setObject(i + 1, duration);
-            case Period period -> statement.setObject(i + 1, period);
-            case Year year -> statement.setInt(i + 1, year.getValue());
-            case YearMonth yearMonth -> statement.setString(i + 1, yearMonth.toString());
-            case MonthDay monthDay -> statement.setString(i + 1, monthDay.toString());
-            case BigDecimal bigDecimal -> statement.setBigDecimal(i + 1, bigDecimal);
-            case BigInteger bigInteger -> statement.setBigDecimal(i + 1, new BigDecimal(bigInteger));
-            case Enum<?> enumValue -> statement.setString(i + 1, enumValue.name());
-            case URL url -> statement.setURL(i + 1, url);
-            case URI uri -> statement.setString(i + 1, uri.toString());
-            case Path path -> statement.setString(i + 1, path.toString());
-            case Blob blob -> statement.setBlob(i + 1, blob);
-            case Clob clob -> statement.setClob(i + 1, clob);
-            case byte[] bytes -> statement.setBytes(i + 1, bytes);
-            case null -> statement.setNull(i + 1, Types.NULL);
-            case String string -> statement.setString(i + 1, string);
-            case StringBuilder sb -> statement.setString(i + 1, sb.toString());
-            case StringBuffer sbf -> statement.setString(i + 1, sbf.toString());
-            case CharSequence cs -> statement.setString(i + 1, cs.toString());
-            case Byte byteParam -> statement.setByte(i + 1, byteParam);
-            case Integer integer -> statement.setInt(i + 1, integer);
-            case Short shortParam -> statement.setShort(i + 1, shortParam);
-            case Long longParam -> statement.setLong(i + 1, longParam);
-            case Float floatParam -> statement.setFloat(i + 1, floatParam);
-            case Double doubleParam -> statement.setDouble(i + 1, doubleParam);
-            case AtomicInteger atomicInt -> statement.setInt(i + 1, atomicInt.get());
-            case AtomicLong atomicLong -> statement.setLong(i + 1, atomicLong.get());
-            case AtomicBoolean atomicBool -> statement.setBoolean(i + 1, atomicBool.get());
-            case Boolean booleanParam -> statement.setBoolean(i + 1, booleanParam);
-            case Character character -> statement.setObject(i + 1, character);
-            default -> {
-                Class<?> aClass = param.getClass();
-                Field field = TypeRegistry.FIELDS.get(aClass);
-
-                try {
-                    Object value = field.get(param);
-                    statement.setObject(i + 1, value);
-                } catch (IllegalAccessException e) {
-                    throw new IllegalArgumentException(
-                            "Could not record the object of class: %s, you must manually specify its mapping"
-                                    .formatted(aClass.getName()));
-                }
-            }
+    public static void setParameter(PreparedStatement stmt, Object param, int idx) throws SQLException {
+        if (param == null) {
+            stmt.setNull(idx, Types.NULL);
+            return;
         }
+        Setter setter = SETTERS.get(param.getClass());
+        if (setter == null) {
+            if (param instanceof Enum<?>) {
+                stmt.setString(idx, ((Enum<?>) param).name());
+                return;
+            }
+
+            setValueObjectType(stmt, param, idx);
+            return;
+        }
+
+        setter.set(stmt, param, idx);
+    }
+
+    private static void setValueObjectType(PreparedStatement statement, Object param, int i) throws SQLException {
+        Class<?> aClass = param.getClass();
+        Field field = TypeRegistry.FIELDS.get(aClass);
+
+        try {
+            Object value = field.get(param);
+            statement.setObject(i + 1, value);
+        } catch (IllegalAccessException e) {
+            throw new IllegalArgumentException(
+                    "Could not record the object of class: %s, you must manually specify its mapping"
+                            .formatted(aClass.getName()));
+        }
+    }
+
+    private static Setter computeSetters(Class<?> type) {
+        if (type == String.class) return (statement, param, index) -> statement.setString(index, (String) param);
+        if (type == StringBuilder.class) return (statement, param, index) -> statement.setString(index, param.toString());
+        if (type == StringBuffer.class) return (statement, param, index) -> statement.setString(index, param.toString());
+        if (type == CharSequence.class) return (statement, param, index) -> statement.setString(index, param.toString());
+        if (type == Character.class) return (statement, param, index) -> statement.setString(index, param.toString());
+        if (type == Integer.class) return (statement, param, index) -> statement.setInt(index, (Integer) param);
+        if (type == Long.class) return (statement, param, index) -> statement.setLong(index, (Long) param);
+        if (type == Double.class) return (statement, param, index) -> statement.setDouble(index, (Double) param);
+        if (type == Float.class) return (statement, param, index) -> statement.setFloat(index, (Float) param);
+        if (type == BigDecimal.class) return (statement, param, index) -> statement.setBigDecimal(index, (BigDecimal) param);
+        if (type == BigInteger.class) return (statement, param, index) -> statement.setBigDecimal(index, new BigDecimal((BigInteger) param));
+        if (type == Short.class) return (statement, param, index) -> statement.setShort(index, (Short) param);
+        if (type == Byte.class) return (statement, param, index) -> statement.setByte(index, (Byte) param);
+        if (type == AtomicInteger.class) return (statement, param, index) -> statement.setInt(index, ((AtomicInteger) param).get());
+        if (type == AtomicLong.class) return (statement, param, index) -> statement.setLong(index, ((AtomicLong) param).get());
+        if (type == Boolean.class) return (statement, param, index) -> statement.setBoolean(index, (Boolean) param);
+        if (type == AtomicBoolean.class) return (statement, param, index) -> statement.setBoolean(index, ((AtomicBoolean) param).get());
+        if (type == UUID.class) return (statement, param, index) -> statement.setString(index, param.toString());
+        if (type == byte[].class) return (statement, param, index) -> statement.setBytes(index, (byte[]) param);
+        if (type == Blob.class) return (statement, param, index) -> statement.setBlob(index, (Blob) param);
+        if (type == Clob.class) return (statement, param, index) -> statement.setClob(index, (Clob) param);
+        if (type == Timestamp.class) return (statement, param, index) -> statement.setTimestamp(index, (Timestamp) param);
+        if (type == LocalDateTime.class) return (statement, param, index) -> statement.setObject(index, Timestamp.valueOf((LocalDateTime) param));
+        if (type == LocalDate.class) return (statement, param, index) -> statement.setObject(index, java.sql.Date.valueOf((LocalDate) param));
+        if (type == LocalTime.class) return (statement, param, index) -> statement.setObject(index, Time.valueOf((LocalTime) param));
+        if (type == Instant.class) return (statement, param, index) -> statement.setObject(index, Timestamp.from((Instant) param));
+        if (type == OffsetDateTime.class) return (statement, param, index) -> statement.setObject(index, Timestamp.from(((OffsetDateTime) param).toInstant()));
+        if (type == ZonedDateTime.class) return (statement, param, index) -> statement.setObject(index, Timestamp.from(((ZonedDateTime) param).toInstant()));
+        if (type == Time.class) return (statement, param, index) -> statement.setTime(index, (Time) param);
+        if (type == Duration.class) return (statement, param, index) -> statement.setObject(index, param);
+        if (type == Period.class) return (statement, param, index) -> statement.setObject(index, param);
+        if (type == Year.class) return (statement, param, index) -> statement.setInt(index, ((Year) param).getValue());
+        if (type == YearMonth.class) return (statement, param, index) -> statement.setString(index, param.toString());
+        if (type == MonthDay.class) return (statement, param, index) -> statement.setString(index, param.toString());
+        if (type == URL.class) return (statement, param, index) -> statement.setURL(index, (URL) param);
+        if (type == URI.class) return (statement, param, index) -> statement.setString(index, param.toString());
+        if (type == Path.class) return (statement, param, index) -> statement.setString(index, param.toString());
+        return null;
     }
 }
