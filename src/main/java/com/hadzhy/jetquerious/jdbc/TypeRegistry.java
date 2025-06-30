@@ -50,12 +50,12 @@ public class TypeRegistry {
      * @return true if the parameter type is supported, false otherwise
      */
     static boolean isSupportedType(final Object param) {
-        if (param == null) return true;
         if (isSupportedSimpleType(param)) return true;
         return isSupportedValueObjectType(param);
     }
 
     private static boolean isSupportedSimpleType(Object param) {
+        if (param == null) return true;
         Class<?> aClass = param.getClass();
         if (ParameterSetter.SETTERS.get(aClass) != null) return true;
         return aClass.isEnum();
