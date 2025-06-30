@@ -54,7 +54,7 @@ public class ParameterSetter {
                 return;
             }
 
-            statement.setObject(i, value);
+            setParameter(statement, param, i);
         } catch (IllegalAccessException | IllegalArgumentException | NullPointerException e) {
             throw new IllegalArgumentException(
                     "Could not record the object of class: %s, you must manually specify its mapping"
