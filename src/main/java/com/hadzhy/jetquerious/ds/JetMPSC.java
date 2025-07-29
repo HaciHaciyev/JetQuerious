@@ -2,6 +2,8 @@ package com.hadzhy.jetquerious.ds;
 
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
+import java.util.concurrent.ThreadLocalRandom;
+import java.util.concurrent.locks.LockSupport;
 
 public final class JetMPSC<T> {
 
@@ -63,6 +65,9 @@ public final class JetMPSC<T> {
   }
 
   public boolean offer(T value) {
+    int failCount = 0;
+    ThreadLocalRandom rnd = ThreadLocalRandom.current();
+
     while (true) {
       long t = tail;
       Cell<T> cell = buffer[bufferIndex(t)];
@@ -87,7 +92,18 @@ public final class JetMPSC<T> {
       if (queueIsOvercrowded)
         return false;
 
-      Thread.onSpinWait();
+      failCount++;
+      if (failCount < 12)
+        Thread.onSpinWait();
+
+      else if (failCount < 24)
+        Thread.yield();
+
+      else {
+        long base = 1L << Math.min(failCount - 24, 16);
+        long nanos = base + rnd.nextLong(base);
+        LockSupport.parkNanos(nanos);
+      }
     }
   }
 
