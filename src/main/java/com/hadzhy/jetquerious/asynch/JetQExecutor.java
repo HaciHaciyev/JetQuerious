@@ -3,25 +3,31 @@ package com.hadzhy.jetquerious.asynch;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.locks.LockSupport;
 import java.util.function.Supplier;
+import java.util.logging.Logger;
+
 import com.hadzhy.jetquerious.ds.JetMPSC;
 
 public final class JetQExecutor {
   private final JetMPSC<TaskWrapper<?>> queue;
   private volatile boolean shutdown = false;
 
-  private static final int DEFAULT_QUEUE_SIZE_POWER = 16;
+  private static final int DEFAULT_QUEUE_CAPACITY = 65536; // 2^16
+  private static final Logger log = Logger.getLogger(JetQExecutor.class.getName());
 
   public JetQExecutor() {
-    this(DEFAULT_QUEUE_SIZE_POWER);
+    this(DEFAULT_QUEUE_CAPACITY);
   }
 
-  public JetQExecutor(int queueSizePowerOfTwo) {
-    if (queueSizePowerOfTwo < 0)
-      throw new IllegalArgumentException("Queue size power cannot be negative");
-    if (queueSizePowerOfTwo > 32)
-      throw new IllegalArgumentException("Queue size power too large (max 32)");
+  public JetQExecutor(int queueCapacity) {
+    if (queueCapacity <= 0)
+      throw new IllegalArgumentException("Queue capacity must be positive");
 
-    this.queue = new JetMPSC<>(queueSizePowerOfTwo);
+    if (queueCapacity > DEFAULT_QUEUE_CAPACITY)
+      log.warning(() -> "Queue capacity " + queueCapacity +
+          " is too large. Big queues rarely improve throughput " +
+          "and may increase latency and memory usage.");
+
+    this.queue = new JetMPSC<>(queueCapacity);
     startConsumer();
   }
 
