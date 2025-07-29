@@ -40,11 +40,17 @@ public final class JetQExecutor {
     CompletableFuture<T> future = new CompletableFuture<>();
     TaskWrapper<T> wrapper = new TaskWrapper<>(task, future);
 
-    if (queue.offer(wrapper)) {
+    if (queue.offer(wrapper))
       return future;
-    } else {
-      return CompletableFuture.failedFuture(
-          new IllegalStateException("Queue is full"));
+
+    else {
+      try {
+        wrapper.execute();
+      } catch (Exception e) {
+        future.completeExceptionally(e);
+      }
+
+      return future;
     }
   }
 
