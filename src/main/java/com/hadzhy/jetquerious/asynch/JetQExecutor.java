@@ -1,5 +1,7 @@
 package com.hadzhy.jetquerious.asynch;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.locks.LockSupport;
 import java.util.function.Supplier;
@@ -13,6 +15,7 @@ public final class JetQExecutor {
   private final int highWatermark;
   private final int lowWatermark;
   private final JetMPSC<TaskWrapper<?>> queue;
+  private final BatchErrorHandler batchErrorHandler;
   private volatile boolean shutdown = false;
 
   private static final int DEFAULT_BATCH_SIZE = 64;
@@ -20,10 +23,10 @@ public final class JetQExecutor {
   private static final Logger log = Logger.getLogger(JetQExecutor.class.getName());
 
   public JetQExecutor() {
-    this(DEFAULT_QUEUE_CAPACITY, DEFAULT_BATCH_SIZE);
+    this(DEFAULT_QUEUE_CAPACITY, DEFAULT_BATCH_SIZE, null);
   }
 
-  public JetQExecutor(int queueCapacity, int batchSize) {
+  public JetQExecutor(int queueCapacity, int batchSize, BatchErrorHandler errorHandler) {
     if (queueCapacity <= 0)
       throw new IllegalArgumentException("Queue capacity must be positive");
 
@@ -36,6 +39,12 @@ public final class JetQExecutor {
     this.batchSize = batchSize;
     this.highWatermark = (int) (queueCapacity * 0.8);
     this.lowWatermark = (int) (queueCapacity * 0.3);
+    this.batchErrorHandler = errorHandler != null ? errorHandler : errors -> {
+      for (Throwable e : errors) {
+        log.log(Level.SEVERE, "Task execution failed", e);
+      }
+    };
+
     startConsumer();
   }
 
@@ -108,13 +117,18 @@ public final class JetQExecutor {
 
   private void executeBatch(TaskWrapper<?>[] buf, int n) {
     Thread.startVirtualThread(() -> {
+      List<Throwable> errors = new ArrayList<>();
+
       for (int i = 0; i < n; i++) {
         try {
           buf[i].execute();
         } catch (Exception e) {
-          log.log(Level.SEVERE, "Task execution failed", e);
+          errors.add(e);
         }
       }
+
+      if (!errors.isEmpty())
+        this.batchErrorHandler.onErrors(errors.toArray(new Throwable[errors.size()]));
     });
   }
 
