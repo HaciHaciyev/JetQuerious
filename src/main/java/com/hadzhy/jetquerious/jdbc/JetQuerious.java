@@ -445,11 +445,22 @@ public class JetQuerious {
         }
     }
 
-    public <T> CompletableFuture<Result<T, Throwable>> asynchExecute(final String sql,
+    public <T> CompletableFuture<T> asynchExecute(final String sql,
             final SQLFunction<PreparedStatement, T> callback,
             final @Nullable Object... params) {
 
-        return executor.execute(() -> execute(sql, callback, params));
+        CompletableFuture<T> future = new CompletableFuture<>();
+
+        executor.execute(() -> {
+            Result<T, Throwable> result = execute(sql, callback, params);
+            if (result.success())
+                future.complete(result.value());
+            else
+                future.completeExceptionally(result.throwable());
+            return null;
+        });
+
+        return future;
     }
 
     /**
@@ -538,17 +549,40 @@ public class JetQuerious {
         }
     }
 
-    public <T> CompletableFuture<Result<T, Throwable>> asynchRead(final String sql,
+    public <T> CompletableFuture<T> asynchRead(final String sql,
             final ResultSetExtractor<T> extractor,
             final @Nullable Object... params) {
 
-        return executor.execute(() -> read(sql, extractor, params));
+        CompletableFuture<T> future = new CompletableFuture<T>();
+
+        executor.execute(() -> {
+            Result<T, Throwable> result = read(sql, extractor, params);
+            if (result.success())
+                future.complete(result.value());
+            else
+                future.completeExceptionally(result.throwable());
+            return null;
+        });
+
+        return future;
     }
 
-    public <T> CompletableFuture<Result<T, Throwable>> asynchRead(final String sql,
+    public <T> CompletableFuture<T> asynchRead(final String sql,
             final ResultSetExtractor<T> extractor,
             final ResultSetType resultSetType, final @Nullable Object... params) {
-        return executor.execute(() -> read(sql, extractor, resultSetType, params));
+
+        CompletableFuture<T> future = new CompletableFuture<T>();
+
+        executor.execute(() -> {
+            Result<T, Throwable> result = read(sql, extractor, resultSetType, params);
+            if (result.success())
+                future.complete(result.value());
+            else
+                future.completeExceptionally(result.throwable());
+            return null;
+        });
+
+        return future;
     }
 
     /**
@@ -613,10 +647,19 @@ public class JetQuerious {
         }
     }
 
-    public <T> CompletableFuture<Result<T, Throwable>> asynchReadObjectOf(final String sql, final Class<T> type,
+    public <T> CompletableFuture<T> asynchReadObjectOf(final String sql, final Class<T> type,
             final @Nullable Object... params) {
 
-        return executor.execute(() -> readObjectOf(sql, type, params));
+        CompletableFuture<T> future = new CompletableFuture<>()
+
+        executor.execute(() -> {
+            Result<T, Throwable> result = readObjectOf(sql, type, params);
+            if (result.success()) future.complete(result.value());
+            else future.completeExceptionally(result.throwable());
+            return null;
+        });
+
+        return future;
     }
 
     /**
@@ -705,19 +748,41 @@ public class JetQuerious {
         }
     }
 
-    public <T> CompletableFuture<Result<List<T>, Throwable>> asynchReadListOf(final String sql,
+    public <T> CompletableFuture<List<T>> asynchReadListOf(final String sql,
             final ResultSetExtractor<T> extractor,
             final @Nullable Object... params) {
 
-        return executor.execute(() -> readListOf(sql, extractor, params));
+        CompletableFuture<List<T>> future = new CompletableFuture<>();
+
+        executor.execute(() -> {
+            Result<List<T>, Throwable> result = readListOf(sql, extractor, params);
+            if (result.success())
+                future.complete(result.value());
+            else
+                future.completeExceptionally(result.throwable());
+            return null;
+        });
+
+        return future;
     }
 
-    public <T> CompletableFuture<Result<List<T>, Throwable>> asynchReadListOf(final String sql,
+    public <T> CompletableFuture<List<T>> asynchReadListOf(final String sql,
             final ResultSetExtractor<T> extractor,
             final ResultSetType resultSetType,
             final @Nullable Object... params) {
 
-        return executor.execute(() -> readListOf(sql, extractor, resultSetType, params));
+        CompletableFuture<List<T>> future = new CompletableFuture<>();
+
+        executor.execute(() -> {
+            Result<List<T>, Throwable> result = readListOf(sql, extractor, resultSetType, params);
+            if (result.success())
+                future.complete(result.value());
+            else
+                future.completeExceptionally(result.throwable());
+            return null;
+        });
+
+        return future;
     }
 
     /**
@@ -877,11 +942,23 @@ public class JetQuerious {
         }
     }
 
-    public CompletableFuture<Result<Integer, Throwable>> asynchWriteArrayOf(final String sql,
+    public CompletableFuture<Integer> asynchWriteArrayOf(final String sql,
             final String arrayDefinition,
             final byte arrayIndex, final Object[] array,
             final Object... args) {
-        return executor.execute(() -> writeArrayOf(sql, arrayDefinition, arrayIndex, array, args));
+
+        CompletableFuture<Integer> future = new CompletableFuture<>();
+
+        executor.execute(() -> {
+            Result<Integer, Throwable> result = writeArrayOf(sql, arrayDefinition, arrayIndex, array, args);
+            if (result.success())
+                future.complete(result.value());
+            else
+                future.completeExceptionally(result.throwable());
+            return null;
+        });
+
+        return future;
     }
 
     /**
@@ -943,9 +1020,21 @@ public class JetQuerious {
         }
     }
 
-    public CompletableFuture<Result<int[], Throwable>> asynchWriteBatch(final String sql,
+    public CompletableFuture<int[]> asynchWriteBatch(final String sql,
             final List<Object[]> batchArgs) {
-        return executor.execute(() -> writeBatch(sql, batchArgs));
+
+        CompletableFuture<int[]> future = new CompletableFuture<>();
+
+        executor.execute(() -> {
+            Result<int[], Throwable> result = writeBatch(sql, batchArgs);
+            if (result.success())
+                future.complete(result.value());
+            else
+                future.completeExceptionally(result.throwable());
+            return null;
+        });
+
+        return future;
     }
 
     private static void close(Connection connection) {
@@ -953,7 +1042,7 @@ public class JetQuerious {
             try {
                 connection.close();
             } catch (SQLException closeEx) {
-                LOG.log(Level.WARNING, "Connection close failed: %s".formatted(closeEx.getMessage()));
+                LOG.log(Level.SEVERE, "Connection close failed: %s".formatted(closeEx.getMessage()));
             }
         }
     }
