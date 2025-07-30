@@ -127,6 +127,35 @@ public final class JetMPSC<T> {
     return null;
   }
 
+  /**
+   * Poll up to 'max' elements into the given buffer.
+   * Returns the number of elements actually polled.
+   */
+  public int pollBatch(T[] dst, int max) {
+    int count = 0;
+    long h = head;
+
+    while (count < max) {
+      Cell<T> cell = buffer[bufferIndex(h)];
+      long seq = (long) VH_SEQ.getAcquire(cell);
+      long dif = seq - (h + 1);
+
+      if (dif == 0) {
+        h++;
+        T v = cell.value;
+        cell.value = null;
+        VH_SEQ.setRelease(cell, h + mask + 1);
+        dst[count++] = v;
+      } else
+        break;
+    }
+
+    if (count > 0)
+      head = h;
+
+    return count;
+  }
+
   public long size() {
     return tail - head;
   }
