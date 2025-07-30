@@ -3,22 +3,27 @@ package com.hadzhy.jetquerious.asynch;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.locks.LockSupport;
 import java.util.function.Supplier;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import com.hadzhy.jetquerious.ds.JetMPSC;
 
 public final class JetQExecutor {
+  private final int batchSize;
+  private final int highWatermark;
+  private final int lowWatermark;
   private final JetMPSC<TaskWrapper<?>> queue;
   private volatile boolean shutdown = false;
 
+  private static final int DEFAULT_BATCH_SIZE = 64;
   private static final int DEFAULT_QUEUE_CAPACITY = 65536; // 2^16
   private static final Logger log = Logger.getLogger(JetQExecutor.class.getName());
 
   public JetQExecutor() {
-    this(DEFAULT_QUEUE_CAPACITY);
+    this(DEFAULT_QUEUE_CAPACITY, DEFAULT_BATCH_SIZE);
   }
 
-  public JetQExecutor(int queueCapacity) {
+  public JetQExecutor(int queueCapacity, int batchSize) {
     if (queueCapacity <= 0)
       throw new IllegalArgumentException("Queue capacity must be positive");
 
@@ -28,6 +33,9 @@ public final class JetQExecutor {
           "and may increase latency and memory usage.");
 
     this.queue = new JetMPSC<>(queueCapacity);
+    this.batchSize = batchSize;
+    this.highWatermark = (int) (queueCapacity * 0.8);
+    this.lowWatermark = (int) (queueCapacity * 0.3);
     startConsumer();
   }
 
@@ -63,13 +71,49 @@ public final class JetQExecutor {
 
   private void startConsumer() {
     Thread.startVirtualThread(() -> {
-      while (!shutdown || !queue.isEmpty()) {
-        TaskWrapper<?> task = queue.poll();
+      boolean bulkMode = false;
+      TaskWrapper<?>[] buf = new TaskWrapper[batchSize];
 
-        if (task != null)
-          Thread.startVirtualThread(() -> task.execute());
-        else
+      while (!shutdown || !queue.isEmpty()) {
+        long size = queue.size();
+        if (size > highWatermark)
+          bulkMode = true;
+        else if (size < lowWatermark)
+          bulkMode = false;
+
+        if (!bulkMode) {
+          executeSingleTask();
+          continue;
+        }
+
+        int n = queue.pollBatch(buf, batchSize);
+        if (n == 0) {
           LockSupport.parkNanos(1_000);
+          continue;
+        }
+
+        executeBatch(buf, n);
+      }
+    });
+  }
+
+  private void executeSingleTask() {
+    TaskWrapper<?> task = queue.poll();
+
+    if (task != null)
+      Thread.startVirtualThread(() -> task.execute());
+    else
+      LockSupport.parkNanos(1_000);
+  }
+
+  private void executeBatch(TaskWrapper<?>[] buf, int n) {
+    Thread.startVirtualThread(() -> {
+      for (int i = 0; i < n; i++) {
+        try {
+          buf[i].execute();
+        } catch (Exception e) {
+          log.log(Level.SEVERE, "Task execution failed", e);
+        }
       }
     });
   }
