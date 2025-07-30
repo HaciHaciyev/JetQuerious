@@ -650,12 +650,14 @@ public class JetQuerious {
     public <T> CompletableFuture<T> asynchReadObjectOf(final String sql, final Class<T> type,
             final @Nullable Object... params) {
 
-        CompletableFuture<T> future = new CompletableFuture<>()
+        CompletableFuture<T> future = new CompletableFuture<>();
 
         executor.execute(() -> {
             Result<T, Throwable> result = readObjectOf(sql, type, params);
-            if (result.success()) future.complete(result.value());
-            else future.completeExceptionally(result.throwable());
+            if (result.success())
+                future.complete(result.value());
+            else
+                future.completeExceptionally(result.throwable());
             return null;
         });
 
