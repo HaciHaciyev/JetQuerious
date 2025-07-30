@@ -127,6 +127,10 @@ public final class JetMPSC<T> {
     return null;
   }
 
+  public long size() {
+    return tail - head;
+  }
+
   public boolean isEmpty() {
     return head == tail;
   }
