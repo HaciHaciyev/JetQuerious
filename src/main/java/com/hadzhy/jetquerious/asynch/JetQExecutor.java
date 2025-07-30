@@ -3,6 +3,7 @@ package com.hadzhy.jetquerious.asynch;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.LockSupport;
 import java.util.function.Supplier;
 import java.util.logging.Level;
@@ -34,6 +35,13 @@ public final class JetQExecutor {
       log.warning(() -> "Queue capacity " + queueCapacity +
           " is too large. Big queues rarely improve throughput " +
           "and may increase latency and memory usage.");
+
+    if (batchSize <= 0)
+      throw new IllegalArgumentException("Batch size must be positive.");
+
+    if (batchSize > DEFAULT_BATCH_SIZE)
+      log.warning(() -> "Batch size " + batchSize +
+          " is too large. Be carefull.");
 
     this.queue = new JetMPSC<>(queueCapacity);
     this.batchSize = batchSize;
@@ -76,6 +84,38 @@ public final class JetQExecutor {
 
   public void shutdown() {
     shutdown = true;
+  }
+
+  /**
+   * Graceful shutdown - waits for queue to be empty
+   */
+  public CompletableFuture<Void> shutdownGracefully(long timeout, TimeUnit unit) {
+    shutdown = true;
+
+    return CompletableFuture.runAsync(() -> {
+      long timeoutNanos = unit.toNanos(timeout);
+      long startTime = System.nanoTime();
+      long pollInterval = Math.min(10_000_000L, timeoutNanos / 100);
+
+      while (!queue.isEmpty()) {
+        long elapsed = System.nanoTime() - startTime;
+        if (elapsed >= timeoutNanos) {
+          log.warning("Graceful shutdown timeout exceeded. Queue size: " + queue.size());
+          break;
+        }
+
+        LockSupport.parkNanos(pollInterval);
+      }
+
+      log.fine("JetQExecutor graceful shutdown completed. Queue size: " + queue.size());
+    });
+  }
+
+  /**
+   * Graceful shutdown without timeout
+   */
+  public CompletableFuture<Void> shutdownGracefully() {
+    return shutdownGracefully(Long.MAX_VALUE, TimeUnit.NANOSECONDS);
   }
 
   private void startConsumer() {
