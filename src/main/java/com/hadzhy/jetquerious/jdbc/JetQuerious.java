@@ -429,7 +429,9 @@ public class JetQuerious {
             return Result.failure(new IllegalArgumentException("SQL query cannot be null"));
         if (callback == null)
             return Result.failure(new IllegalArgumentException("Callback function cannot be null"));
-        validateArgumentsTypes(params);
+        var typesResult = validateArgumentsTypes(params);
+        if (!typesResult.success())
+            return Result.failure(typesResult.throwable());
 
         try (Connection connection = dataSource.getConnection();
                 PreparedStatement statement = connection.prepareStatement(sql)) {
@@ -478,7 +480,9 @@ public class JetQuerious {
             return Result.failure(new IllegalArgumentException("SQL query cannot be null"));
         if (extractor == null)
             return Result.failure(new IllegalArgumentException("Extractor cannot be null"));
-        validateArgumentsTypes(params);
+        var typesResult = validateArgumentsTypes(params);
+        if (!typesResult.success())
+            return Result.failure(typesResult.throwable());
 
         try (final Connection connection = dataSource.getConnection();
                 final PreparedStatement statement = connection.prepareStatement(sql)) {
@@ -509,7 +513,9 @@ public class JetQuerious {
             return Result.failure(new IllegalArgumentException("Extractor cannot be null"));
         if (resultSetType == null)
             return Result.failure(new IllegalArgumentException("Result set type can`t be null"));
-        validateArgumentsTypes(params);
+        var typesResult = validateArgumentsTypes(params);
+        if (!typesResult.success())
+            return Result.failure(typesResult.throwable());
 
         try (final Connection connection = dataSource.getConnection();
                 final PreparedStatement statement = connection.prepareStatement(sql, resultSetType.type(),
@@ -575,12 +581,13 @@ public class JetQuerious {
         if (type == null)
             return Result.failure(new IllegalArgumentException("Type cannot be null"));
         for (Object param : params) {
-            if (param instanceof Enum<?>) {
-                throw new InvalidArgumentTypeException(
-                        "\"Enum conversion is not supported directly. Use specific enum type or handle separately.");
-            }
+            if (param instanceof Enum<?>)
+                return Result.failure(new InvalidArgumentTypeException(
+                        "Enum conversion is not supported directly. Use specific enum type or handle separately."));
         }
-        validateArgumentsTypes(params);
+        var typesResult = validateArgumentsTypes(params);
+        if (!typesResult.success())
+            return Result.failure(typesResult.throwable());
 
         try (final Connection connection = dataSource.getConnection();
                 final PreparedStatement statement = connection.prepareStatement(sql)) {
@@ -639,7 +646,9 @@ public class JetQuerious {
             return Result.failure(new IllegalArgumentException("SQL query cannot be null"));
         if (extractor == null)
             return Result.failure(new IllegalArgumentException("Extractor cannot be null"));
-        validateArgumentsTypes(params);
+        var typesResult = validateArgumentsTypes(params);
+        if (!typesResult.success())
+            return Result.failure(typesResult.throwable());
 
         try (final Connection connection = dataSource.getConnection();
                 final PreparedStatement statement = connection.prepareStatement(sql,
@@ -670,7 +679,9 @@ public class JetQuerious {
             return Result.failure(new IllegalArgumentException("SQL query cannot be null"));
         if (extractor == null)
             return Result.failure(new IllegalArgumentException("Extractor cannot be null"));
-        validateArgumentsTypes(params);
+        var typesResult = validateArgumentsTypes(params);
+        if (!typesResult.success())
+            return Result.failure(typesResult.throwable());
 
         try (final Connection connection = dataSource.getConnection();
                 final PreparedStatement statement = connection.prepareStatement(sql, resultSetType.type(),
@@ -733,7 +744,9 @@ public class JetQuerious {
             return Result.failure(new IllegalArgumentException("SQL query cannot be null"));
         if (args == null)
             return Result.failure(new IllegalArgumentException("Arguments cannot be null"));
-        validateArgumentsTypes(args);
+        var typesResult = validateArgumentsTypes(args);
+        if (!typesResult.success())
+            return Result.failure(typesResult.throwable());
 
         Connection connection = null;
         try {
@@ -756,8 +769,19 @@ public class JetQuerious {
         }
     }
 
-    public CompletableFuture<Result<Integer, Throwable>> asynchWrite(final String sql, final Object... args) {
-        return executor.execute(() -> write(sql, args));
+    public CompletableFuture<Integer> asynchWrite(final String sql, final Object... args) {
+        CompletableFuture<Integer> future = new CompletableFuture<>();
+
+        executor.execute(() -> {
+            Result<Integer, Throwable> result = write(sql, args);
+            if (result.success())
+                future.complete(result.value());
+            else
+                future.completeExceptionally(result.throwable());
+            return null;
+        });
+
+        return future;
     }
 
     /**
@@ -808,9 +832,13 @@ public class JetQuerious {
         if (args == null)
             return Result.failure(new IllegalArgumentException("Arguments cannot be null"));
 
-        validateArgumentsTypes(args);
-        TypeRegistry.validateArrayDefinition(arrayDefinition);
-        TypeRegistry.validateArrayElementsMatchDefinition(array, arrayDefinition);
+        var typesResult = validateArgumentsTypes(args);
+        if (!typesResult.success())
+            return Result.failure(typesResult.throwable());
+
+        var arrayRes = validateArray(array, arrayDefinition);
+        if (!arrayRes.success())
+            return Result.failure(arrayRes.throwable());
 
         Connection connection = null;
         Array createdArray = null;
@@ -885,8 +913,11 @@ public class JetQuerious {
             return Result.failure(new IllegalArgumentException("SQL query cannot be null"));
         if (batchArgs == null)
             return Result.failure(new IllegalArgumentException("Batch arguments cannot be null"));
-        for (Object[] params : batchArgs)
-            validateArgumentsTypes(params);
+        for (Object[] params : batchArgs) {
+            var typesResult = validateArgumentsTypes(params);
+            if (!typesResult.success())
+                return Result.failure(typesResult.throwable());
+        }
 
         Connection connection = null;
         try {
@@ -951,16 +982,17 @@ public class JetQuerious {
         }
     }
 
-    /**
-     * Validates that all parameters are of supported types.
-     * Throws an InvalidArgumentTypeException with a detailed message if an
-     * unsupported type is found.
-     *
-     * @param params the parameters to validate
-     * @throws InvalidArgumentTypeException if any parameter is of an unsupported
-     *                                      type
-     */
-    private void validateArgumentsTypes(final @Nullable Object... params) {
+    private Result<Void, Throwable> validateArray(Object[] array, String arrayDefinition) {
+        try {
+            TypeRegistry.validateArrayDefinition(arrayDefinition);
+            TypeRegistry.validateArrayElementsMatchDefinition(array, arrayDefinition);
+            return Result.success(null);
+        } catch (IllegalArgumentException e) {
+            return Result.failure(new InvalidArgumentTypeException(e.getMessage()));
+        }
+    }
+
+    private Result<Void, InvalidArgumentTypeException> validateArgumentsTypes(final @Nullable Object... params) {
         for (int i = 0; i < params.length; i++) {
             Object param = params[i];
             if (!TypeRegistry.isSupportedType(param)) {
@@ -969,7 +1001,7 @@ public class JetQuerious {
                 String packageName = param.getClass().getPackage() != null ? param.getClass().getPackage().getName()
                         : "unknown package";
 
-                throw new InvalidArgumentTypeException(
+                return Result.failure(new InvalidArgumentTypeException(
                         String.format("""
                                 Unsupported parameter type at position %d: %s
                                 - Simple class name: %s
@@ -991,8 +1023,10 @@ public class JetQuerious {
                                 3. Use the specialized methods in this library designed for your data type
                                 4. For collections, flatten them into individual parameters or use batch processing
                                 """,
-                                i, className, simpleName, packageName));
+                                i, className, simpleName, packageName)));
             }
         }
+
+        return Result.success(null);
     }
 }
