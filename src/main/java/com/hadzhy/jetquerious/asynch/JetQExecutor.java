@@ -90,6 +90,11 @@ public final class JetQExecutor {
    * Graceful shutdown - waits for queue to be empty
    */
   public CompletableFuture<Void> shutdownGracefully(long timeout, TimeUnit unit) {
+    if (timeout < 0)
+      throw new IllegalArgumentException("Timeout cannot be negative: " + timeout);
+    if (unit == null)
+      throw new IllegalArgumentException("TimeUnit cannot be null");
+
     shutdown = true;
 
     return CompletableFuture.runAsync(() -> {
