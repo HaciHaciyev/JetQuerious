@@ -154,6 +154,8 @@ public class JetQuerious {
     }
 
     public synchronized void setDatasource(DataSource updatedDataSource) {
+        if (updatedDataSource == null)
+            throw new IllegalArgumentException("Data source cannot be null.");
         this.dataSource = updatedDataSource;
     }
 
@@ -193,12 +195,13 @@ public class JetQuerious {
         }
     }
 
-    public void restartAsynchExecutor() {
+    public synchronized void restartAsynchExecutor() {
         if (this.executor == null)
             this.executor = new JetQExecutor();
     }
 
-    public void restartAsynchExecutor(int queueCapacity, int batchSize, BatchErrorHandler batchErrorHandler) {
+    public synchronized void restartAsynchExecutor(int queueCapacity, int batchSize,
+            BatchErrorHandler batchErrorHandler) {
         if (this.executor == null)
             this.executor = new JetQExecutor(queueCapacity, batchSize, batchErrorHandler);
     }
