@@ -30,6 +30,7 @@
   <maven.compiler.source>21</maven.compiler.source>
   <maven.compiler.target>21</maven.compiler.target>
   <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+  <groovy.version>4.0.26</groovy.version>
 </properties>
 
 <developers>
@@ -116,6 +117,20 @@
 
 <build>
   <plugins>
+    <plugin>
+      <groupId>org.codehaus.gmavenplus</groupId>
+      <artifactId>gmavenplus-plugin</artifactId>
+      <version>4.1.1</version>
+      <executions>
+        <execution>
+          <goals>
+            <goal>compile</goal>
+            <goal>compileTests</goal>
+          </goals>
+        </execution>
+      </executions>
+    </plugin>
+
     <plugin>
       <groupId>org.sonatype.central</groupId>
       <artifactId>central-publishing-maven-plugin</artifactId>
