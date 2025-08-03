@@ -507,41 +507,24 @@ public class JetQuerious {
             return Result.success(doRead(sql, extractor, params));
         } catch (Throwable e) {
             LOG.log(Level.SEVERE, "Error: %s".formatted(e.getMessage()));
-            return handleSQLException(e);
+            return switch (e) {
+                case SQLException sqlException -> handleSQLException(sqlException);
+                default -> Result.failure(e);
+            };
         }
     }
 
     public <T> Result<T, Throwable> read(final String sql, final ResultSetExtractor<T> extractor,
             final ResultSetType resultSetType, final @Nullable Object... params) {
 
-        if (sql == null)
-            return Result.failure(new IllegalArgumentException("SQL query cannot be null"));
-        if (extractor == null)
-            return Result.failure(new IllegalArgumentException("Extractor cannot be null"));
-        if (resultSetType == null)
-            return Result.failure(new IllegalArgumentException("Result set type can`t be null"));
-        var typesResult = validateArgumentsTypes(params);
-        if (!typesResult.success())
-            return Result.failure(typesResult.throwable());
-
-        try (final Connection connection = dataSource.getConnection();
-                final PreparedStatement statement = connection.prepareStatement(sql, resultSetType.type(),
-                        resultSetType.concurrency())) {
-            if (params.length > 0) {
-                setParameters(statement, params);
-            }
-
-            try (final ResultSet resultSet = statement.executeQuery()) {
-                if (!resultSet.next()) {
-                    return Result.failure(new NotFoundException("Data in for this query was not found."));
-                }
-
-                T value = extractor.extractData(resultSet);
-                return Result.success(value);
-            }
-        } catch (SQLException e) {
+        try {
+            return Result.success(doRead(sql, extractor, resultSetType, params));
+        } catch (Throwable e) {
             LOG.log(Level.SEVERE, "Error: %s".formatted(e.getMessage()));
-            return handleSQLException(e);
+            return switch (e) {
+                case SQLException sqlException -> handleSQLException(sqlException);
+                default -> Result.failure(e);
+            };
         }
     }
 
@@ -549,36 +532,32 @@ public class JetQuerious {
             final ResultSetExtractor<T> extractor,
             final @Nullable Object... params) {
 
-        CompletableFuture<T> future = new CompletableFuture<T>();
-
-        executor.execute(() -> {
-            Result<T, Throwable> result = read(sql, extractor, params);
-            if (result.success())
-                future.complete(result.value());
-            else
-                future.completeExceptionally(result.throwable());
-            return null;
+        return executor.execute(() -> {
+            try {
+                return doRead(sql, extractor, params);
+            } catch (Throwable e) {
+                return switch (e) {
+                    case SQLException sqlException -> sneakyThrow(handleSQLException(sqlException).throwable());
+                    default -> sneakyThrow(e);
+                };
+            }
         });
-
-        return future;
     }
 
     public <T> CompletableFuture<T> asynchRead(final String sql,
             final ResultSetExtractor<T> extractor,
             final ResultSetType resultSetType, final @Nullable Object... params) {
 
-        CompletableFuture<T> future = new CompletableFuture<T>();
-
-        executor.execute(() -> {
-            Result<T, Throwable> result = read(sql, extractor, resultSetType, params);
-            if (result.success())
-                future.complete(result.value());
-            else
-                future.completeExceptionally(result.throwable());
-            return null;
+        return executor.execute(() -> {
+            try {
+                return doRead(sql, extractor, resultSetType, params);
+            } catch (Throwable e) {
+                return switch (e) {
+                    case SQLException sqlException -> sneakyThrow(handleSQLException(sqlException).throwable());
+                    default -> sneakyThrow(e);
+                };
+            }
         });
-
-        return future;
     }
 
     public <T> T doRead(final String sql, final ResultSetExtractor<T> extractor,
