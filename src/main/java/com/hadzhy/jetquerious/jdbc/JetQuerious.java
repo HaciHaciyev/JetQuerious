@@ -12,6 +12,7 @@ import javax.sql.DataSource;
 import java.sql.*;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -422,45 +423,53 @@ public class JetQuerious {
      *      }
      * }</pre>
      */
-    public <T> Result<T, Throwable> execute(final String sql, final SQLFunction<PreparedStatement, T> callback,
-            final @Nullable Object... params) {
+    public <T> Result<T, Throwable> execute(
+            String sql,
+            SQLFunction<PreparedStatement, T> callback,
+            @Nullable Object... params) {
 
-        if (sql == null)
-            return Result.failure(new IllegalArgumentException("SQL query cannot be null"));
-        if (callback == null)
-            return Result.failure(new IllegalArgumentException("Callback function cannot be null"));
-        var typesResult = validateArgumentsTypes(params);
-        if (!typesResult.success())
-            return Result.failure(typesResult.throwable());
-
-        try (Connection connection = dataSource.getConnection();
-                PreparedStatement statement = connection.prepareStatement(sql)) {
-            setParameters(statement, params);
-
-            T result = callback.apply(statement);
-            return Result.success(result);
-        } catch (SQLException e) {
+        try {
+            return Result.success(doExecute(sql, callback, params));
+        } catch (Throwable e) {
             LOG.log(Level.SEVERE, "Exception during custom execute", e);
-            return handleSQLException(e);
+            return Result.failure(e);
         }
     }
 
-    public <T> CompletableFuture<T> asynchExecute(final String sql,
-            final SQLFunction<PreparedStatement, T> callback,
-            final @Nullable Object... params) {
+    public <T> CompletionStage<T> asynchExecute(
+            String sql,
+            SQLFunction<PreparedStatement, T> callback,
+            @Nullable Object... params) {
 
-        CompletableFuture<T> future = new CompletableFuture<>();
-
-        executor.execute(() -> {
-            Result<T, Throwable> result = execute(sql, callback, params);
-            if (result.success())
-                future.complete(result.value());
-            else
-                future.completeExceptionally(result.throwable());
-            return null;
+        return executor.execute(() -> {
+            try {
+                return doExecute(sql, callback, params);
+            } catch (Throwable e) {
+                return sneakyThrow(e);
+            }
         });
+    }
 
-        return future;
+    private <T> T doExecute(
+            String sql,
+            SQLFunction<PreparedStatement, T> callback,
+            @Nullable Object... params) throws Exception {
+
+        if (sql == null)
+            throw new IllegalArgumentException("SQL query cannot be null");
+        if (callback == null)
+            throw new IllegalArgumentException("Callback function cannot be null");
+
+        var typesResult = validateArgumentsTypes(params);
+        if (!typesResult.success())
+            throw typesResult.throwable();
+
+        try (Connection connection = dataSource.getConnection();
+                PreparedStatement statement = connection.prepareStatement(sql)) {
+
+            setParameters(statement, params);
+            return callback.apply(statement);
+        }
     }
 
     /**
@@ -1057,6 +1066,11 @@ public class JetQuerious {
                 LOG.log(Level.SEVERE, "Rollback failed: %s".formatted(rollbackEx.getMessage()));
             }
         }
+    }
+
+    @SuppressWarnings("unchecked")
+    private static <E extends Throwable, R> R sneakyThrow(Throwable e) throws E {
+        throw (E) e;
     }
 
     /**
