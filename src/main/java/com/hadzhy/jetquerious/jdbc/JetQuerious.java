@@ -520,7 +520,6 @@ public class JetQuerious {
         try {
             return Result.success(doRead(sql, extractor, resultSetType, params));
         } catch (Throwable e) {
-            LOG.log(Level.SEVERE, "Error: %s".formatted(e.getMessage()));
             return switch (e) {
                 case SQLException sqlException -> handleSQLException(sqlException);
                 default -> Result.failure(e);
@@ -561,7 +560,7 @@ public class JetQuerious {
     }
 
     public <T> T doRead(final String sql, final ResultSetExtractor<T> extractor,
-            final @Nullable Object... params) throws Exception {
+            final @Nullable Object... params) throws Throwable {
 
         if (sql == null)
             throw new IllegalArgumentException("SQL query cannot be null");
@@ -589,7 +588,7 @@ public class JetQuerious {
     }
 
     public <T> T doRead(final String sql, final ResultSetExtractor<T> extractor,
-            final ResultSetType resultSetType, final @Nullable Object... params) throws Exception {
+            final ResultSetType resultSetType, final @Nullable Object... params) throws Throwable {
 
         if (sql == null)
             throw new IllegalArgumentException("SQL query cannot be null");
@@ -644,58 +643,63 @@ public class JetQuerious {
      */
     public <T> Result<T, Throwable> readObjectOf(final String sql, final Class<T> type,
             final @Nullable Object... params) {
-        if (sql == null)
-            return Result.failure(new IllegalArgumentException("SQL query cannot be null"));
-        if (type == null)
-            return Result.failure(new IllegalArgumentException("Type cannot be null"));
-        for (Object param : params) {
-            if (param instanceof Enum<?>)
-                return Result.failure(new InvalidArgumentTypeException(
-                        "Enum conversion is not supported directly. Use specific enum type or handle separately."));
-        }
-        var typesResult = validateArgumentsTypes(params);
-        if (!typesResult.success())
-            return Result.failure(typesResult.throwable());
 
-        try (final Connection connection = dataSource.getConnection();
-                final PreparedStatement statement = connection.prepareStatement(sql)) {
-            if (params.length > 0) {
-                setParameters(statement, params);
-            }
-
-            try (final ResultSet resultSet = statement.executeQuery()) {
-                if (!resultSet.next()) {
-                    return Result.failure(new NotFoundException("Data in query for object was not found."));
-                }
-
-                T value = Mapper.map(resultSet, type);
-                return Result.success(value);
-            }
-        } catch (SQLException | IllegalArgumentException e) {
-            LOG.log(Level.SEVERE, "Error: %s".formatted(e.getMessage()));
-            if (e instanceof IllegalArgumentException) {
-                return Result.failure(e);
-            }
-
-            return handleSQLException((SQLException) e);
+        try {
+            return Result.success(doReadObjectOf(sql, type, params));
+        } catch (Throwable e) {
+            return switch (e) {
+                case SQLException sqlException -> Result.failure(handleSQLException(sqlException).throwable());
+                default -> Result.failure(e);
+            };
         }
     }
 
     public <T> CompletableFuture<T> asynchReadObjectOf(final String sql, final Class<T> type,
             final @Nullable Object... params) {
 
-        CompletableFuture<T> future = new CompletableFuture<>();
-
-        executor.execute(() -> {
-            Result<T, Throwable> result = readObjectOf(sql, type, params);
-            if (result.success())
-                future.complete(result.value());
-            else
-                future.completeExceptionally(result.throwable());
-            return null;
+        return executor.execute(() -> {
+            try {
+                return doReadObjectOf(sql, type, params);
+            } catch (Throwable e) {
+                return switch (e) {
+                    case SQLException sqlException -> sneakyThrow(handleSQLException(sqlException).throwable());
+                    default -> sneakyThrow(e);
+                };
+            }
         });
+    }
 
-        return future;
+    public <T> T doReadObjectOf(final String sql, final Class<T> type,
+                                final @Nullable Object... params) throws Throwable {
+
+        if (sql == null)
+            throw new IllegalArgumentException("SQL query cannot be null");
+        if (type == null)
+            throw new IllegalArgumentException("Type cannot be null");
+        for (Object param : params) {
+            if (param instanceof Enum<?>)
+                throw new InvalidArgumentTypeException(
+                        "Enum conversion is not supported directly. Use specific enum type or handle separately.");
+        }
+        var typesResult = validateArgumentsTypes(params);
+        if (!typesResult.success())
+            throw typesResult.throwable();
+
+        try (final Connection connection = dataSource.getConnection();
+             final PreparedStatement statement = connection.prepareStatement(sql)) {
+            if (params.length > 0) {
+                setParameters(statement, params);
+            }
+
+            try (final ResultSet resultSet = statement.executeQuery()) {
+                if (!resultSet.next()) {
+                    throw new NotFoundException("Data in query for object was not found.");
+                }
+
+                T value = Mapper.map(resultSet, type);
+                return value;
+            }
+        }
     }
 
     /**
