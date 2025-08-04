@@ -1060,14 +1060,40 @@ public class JetQuerious {
      * }</pre>
      */
     public Result<int[], Throwable> writeBatch(final String sql, final List<Object[]> batchArgs) {
+        try {
+            return Result.success(doWriteBatch(sql, batchArgs));
+        } catch (Throwable e) {
+            return switch (e) {
+                case SQLException sqlException -> Result.failure(handleSQLException(sqlException).throwable());
+                default -> Result.failure(e);
+            };
+        }
+    }
+
+    public CompletableFuture<int[]> asynchWriteBatch(final String sql,
+            final List<Object[]> batchArgs) {
+
+        return  executor.execute(() -> {
+            try {
+                return doWriteBatch(sql, batchArgs);
+            } catch (Throwable e) {
+                return switch (e) {
+                    case SQLException sqlException -> sneakyThrow(handleSQLException(sqlException).throwable());
+                    default -> sneakyThrow(e);
+                };
+            }
+        });
+    }
+
+    private int[] doWriteBatch(String sql, List<Object[]> batchArgs) throws Throwable {
         if (sql == null)
-            return Result.failure(new IllegalArgumentException("SQL query cannot be null"));
+            throw new IllegalArgumentException("SQL query cannot be null");
         if (batchArgs == null)
-            return Result.failure(new IllegalArgumentException("Batch arguments cannot be null"));
+            throw new IllegalArgumentException("Batch arguments cannot be null");
         for (Object[] params : batchArgs) {
             var typesResult = validateArgumentsTypes(params);
             if (!typesResult.success())
-                return Result.failure(typesResult.throwable());
+                throw typesResult.throwable();
         }
 
         Connection connection = null;
@@ -1083,32 +1109,14 @@ public class JetQuerious {
                 int[] affectedCounts = statement.executeBatch();
 
                 connection.commit();
-                return Result.success(affectedCounts);
+                return affectedCounts;
             }
         } catch (SQLException e) {
-            LOG.log(Level.SEVERE, "Error: %s".formatted(e.getMessage()));
             rollback(connection);
-            return handleSQLException(e);
+            throw handleSQLException(e).throwable();
         } finally {
             close(connection);
         }
-    }
-
-    public CompletableFuture<int[]> asynchWriteBatch(final String sql,
-            final List<Object[]> batchArgs) {
-
-        CompletableFuture<int[]> future = new CompletableFuture<>();
-
-        executor.execute(() -> {
-            Result<int[], Throwable> result = writeBatch(sql, batchArgs);
-            if (result.success())
-                future.complete(result.value());
-            else
-                future.completeExceptionally(result.throwable());
-            return null;
-        });
-
-        return future;
     }
 
     private static void close(Connection connection) {
