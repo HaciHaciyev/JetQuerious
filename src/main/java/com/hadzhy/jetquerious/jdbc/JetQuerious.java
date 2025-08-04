@@ -862,13 +862,37 @@ public class JetQuerious {
      * }</pre>
      */
     public Result<Integer, Throwable> write(final String sql, final Object... args) {
+        try {
+            return Result.success(doWrite(sql, args));
+        } catch (Throwable e) {
+            return switch (e) {
+                case SQLException sqlException -> Result.failure(handleSQLException(sqlException).throwable());
+                default -> Result.failure(e);
+            };
+        }
+    }
+
+    public CompletionStage<Integer> asynchWrite(final String sql, final Object... args) {
+        return executor.execute(() -> {
+            try {
+                return doWrite(sql, args);
+            } catch (Throwable e) {
+                return switch (e) {
+                    case SQLException sqlException -> sneakyThrow(handleSQLException(sqlException).throwable());
+                    default -> sneakyThrow(e);
+                };
+            }
+        });
+    }
+
+    private Integer doWrite(String sql, Object[] args) throws Throwable {
         if (sql == null)
-            return Result.failure(new IllegalArgumentException("SQL query cannot be null"));
+            throw new IllegalArgumentException("SQL query cannot be null");
         if (args == null)
-            return Result.failure(new IllegalArgumentException("Arguments cannot be null"));
+            throw new IllegalArgumentException("Arguments cannot be null");
         var typesResult = validateArgumentsTypes(args);
         if (!typesResult.success())
-            return Result.failure(typesResult.throwable());
+            throw typesResult.throwable();
 
         Connection connection = null;
         try {
@@ -880,30 +904,14 @@ public class JetQuerious {
                 int affectedRows = statement.executeUpdate();
 
                 connection.commit();
-                return Result.success(affectedRows);
+                return affectedRows;
             }
         } catch (SQLException e) {
-            LOG.log(Level.SEVERE, "Error: %s".formatted(e.getMessage()));
             rollback(connection);
-            return handleSQLException(e);
+            throw handleSQLException(e).throwable();
         } finally {
             close(connection);
         }
-    }
-
-    public CompletableFuture<Integer> asynchWrite(final String sql, final Object... args) {
-        CompletableFuture<Integer> future = new CompletableFuture<>();
-
-        executor.execute(() -> {
-            Result<Integer, Throwable> result = write(sql, args);
-            if (result.success())
-                future.complete(result.value());
-            else
-                future.completeExceptionally(result.throwable());
-            return null;
-        });
-
-        return future;
     }
 
     /**
