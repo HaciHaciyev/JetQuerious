@@ -431,7 +431,6 @@ public class JetQuerious {
         try {
             return Result.success(doExecute(sql, callback, params));
         } catch (Throwable e) {
-            LOG.log(Level.SEVERE, "Exception during custom execute", e);
             return switch (e) {
                 case SQLException sqlException -> handleSQLException(sqlException);
                 default -> Result.failure(e);
@@ -818,6 +817,8 @@ public class JetQuerious {
             throw new IllegalArgumentException("SQL query cannot be null");
         if (extractor == null)
             throw new IllegalArgumentException("Extractor cannot be null");
+        if (resultSetType == null)
+            throw new IllegalArgumentException("Result set type can`t be null");
         var typesResult = validateArgumentsTypes(params);
         if (!typesResult.success())
             throw typesResult.throwable();
@@ -840,6 +841,7 @@ public class JetQuerious {
             return results;
         }
     }
+
     /**
      * Executes a SQL update (INSERT, UPDATE, DELETE) and manages transactions.
      *
