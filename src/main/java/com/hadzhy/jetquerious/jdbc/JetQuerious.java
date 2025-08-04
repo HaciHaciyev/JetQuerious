@@ -951,24 +951,53 @@ public class JetQuerious {
     public Result<Integer, Throwable> writeArrayOf(final String sql, final String arrayDefinition,
             final byte arrayIndex,
             final Object[] array, final Object... args) {
+
+        try {
+            return Result.success(doWriteArray(sql, arrayDefinition, arrayIndex, array, args));
+        } catch (Throwable e) {
+            return switch (e) {
+                case SQLException sqlException -> Result.failure(handleSQLException(sqlException).throwable());
+                default -> Result.failure(e);
+            };
+        }
+    }
+
+    public CompletableFuture<Integer> asynchWriteArrayOf(final String sql,
+            final String arrayDefinition,
+            final byte arrayIndex, final Object[] array,
+            final Object... args) {
+
+        return executor.execute(() -> {
+            try {
+                return doWriteArray(sql, arrayDefinition, arrayIndex, array, args);
+            } catch (Throwable e) {
+                return switch (e) {
+                    case SQLException sqlException -> sneakyThrow(handleSQLException(sqlException).throwable());
+                    default -> sneakyThrow(e);
+                };
+            }
+        });
+    }
+
+    private Integer doWriteArray(String sql, String arrayDefinition, byte arrayIndex, Object[] array, Object[] args) throws Throwable {
         if (sql == null)
-            return Result.failure(new IllegalArgumentException("SQL query cannot be null"));
+            throw new IllegalArgumentException("SQL query cannot be null");
         if (arrayDefinition == null)
-            return Result.failure(new IllegalArgumentException("Array definition cannot be null"));
+            throw new IllegalArgumentException("Array definition cannot be null");
         if (arrayIndex < 1)
-            return Result.failure(new IllegalArgumentException("Array index can`t be below 1"));
+            throw new IllegalArgumentException("Array index can`t be below 1");
         if (array == null)
-            return Result.failure(new IllegalArgumentException("Array cannot be null"));
+            throw new IllegalArgumentException("Array cannot be null");
         if (args == null)
-            return Result.failure(new IllegalArgumentException("Arguments cannot be null"));
+            throw new IllegalArgumentException("Arguments cannot be null");
 
         var typesResult = validateArgumentsTypes(args);
         if (!typesResult.success())
-            return Result.failure(typesResult.throwable());
+            throw typesResult.throwable();
 
         var arrayRes = validateArray(array, arrayDefinition);
         if (!arrayRes.success())
-            return Result.failure(arrayRes.throwable());
+            throw arrayRes.throwable();
 
         Connection connection = null;
         Array createdArray = null;
@@ -983,12 +1012,11 @@ public class JetQuerious {
                 int affectedRows = statement.executeUpdate();
 
                 connection.commit();
-                return Result.success(affectedRows);
+                return affectedRows;
             }
         } catch (SQLException e) {
-            LOG.log(Level.SEVERE, "Error: %s".formatted(e.getMessage()));
             rollback(connection);
-            return handleSQLException(e);
+            throw handleSQLException(e).throwable();
         } finally {
             if (createdArray != null) {
                 try {
@@ -1005,25 +1033,6 @@ public class JetQuerious {
             }
             close(connection);
         }
-    }
-
-    public CompletableFuture<Integer> asynchWriteArrayOf(final String sql,
-            final String arrayDefinition,
-            final byte arrayIndex, final Object[] array,
-            final Object... args) {
-
-        CompletableFuture<Integer> future = new CompletableFuture<>();
-
-        executor.execute(() -> {
-            Result<Integer, Throwable> result = writeArrayOf(sql, arrayDefinition, arrayIndex, array, args);
-            if (result.success())
-                future.complete(result.value());
-            else
-                future.completeExceptionally(result.throwable());
-            return null;
-        });
-
-        return future;
     }
 
     /**
