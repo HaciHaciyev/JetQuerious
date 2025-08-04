@@ -559,7 +559,7 @@ public class JetQuerious {
         });
     }
 
-    public <T> T doRead(final String sql, final ResultSetExtractor<T> extractor,
+    private  <T> T doRead(final String sql, final ResultSetExtractor<T> extractor,
             final @Nullable Object... params) throws Throwable {
 
         if (sql == null)
@@ -587,7 +587,7 @@ public class JetQuerious {
         }
     }
 
-    public <T> T doRead(final String sql, final ResultSetExtractor<T> extractor,
+    private  <T> T doRead(final String sql, final ResultSetExtractor<T> extractor,
             final ResultSetType resultSetType, final @Nullable Object... params) throws Throwable {
 
         if (sql == null)
@@ -669,7 +669,7 @@ public class JetQuerious {
         });
     }
 
-    public <T> T doReadObjectOf(final String sql, final Class<T> type,
+    private  <T> T doReadObjectOf(final String sql, final Class<T> type,
                                 final @Nullable Object... params) throws Throwable {
 
         if (sql == null)
@@ -725,66 +725,26 @@ public class JetQuerious {
     public <T> Result<List<T>, Throwable> readListOf(final String sql, final ResultSetExtractor<T> extractor,
             final @Nullable Object... params) {
 
-        if (sql == null)
-            return Result.failure(new IllegalArgumentException("SQL query cannot be null"));
-        if (extractor == null)
-            return Result.failure(new IllegalArgumentException("Extractor cannot be null"));
-        var typesResult = validateArgumentsTypes(params);
-        if (!typesResult.success())
-            return Result.failure(typesResult.throwable());
-
-        try (final Connection connection = dataSource.getConnection();
-                final PreparedStatement statement = connection.prepareStatement(sql,
-                        ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY)) {
-            if (params.length > 0) {
-                setParameters(statement, params);
-            }
-
-            final List<T> results = new ArrayList<>();
-            try (final ResultSet resultSet = statement.executeQuery()) {
-                while (resultSet.next()) {
-                    T item = extractor.extractData(resultSet);
-                    results.add(item);
-                }
-            }
-
-            return Result.success(results);
-        } catch (SQLException e) {
-            LOG.log(Level.SEVERE, "Error: %s".formatted(e.getMessage()));
-            return handleSQLException(e);
+        try {
+          return Result.success(doReadListOf(sql, extractor, params));
+        } catch (Throwable e) {
+            return switch (e) {
+                case SQLException sqlException -> Result.failure(handleSQLException(sqlException).throwable());
+                default -> Result.failure(e);
+            };
         }
     }
 
     public <T> Result<List<T>, Throwable> readListOf(final String sql, final ResultSetExtractor<T> extractor,
             final ResultSetType resultSetType, final @Nullable Object... params) {
 
-        if (sql == null)
-            return Result.failure(new IllegalArgumentException("SQL query cannot be null"));
-        if (extractor == null)
-            return Result.failure(new IllegalArgumentException("Extractor cannot be null"));
-        var typesResult = validateArgumentsTypes(params);
-        if (!typesResult.success())
-            return Result.failure(typesResult.throwable());
-
-        try (final Connection connection = dataSource.getConnection();
-                final PreparedStatement statement = connection.prepareStatement(sql, resultSetType.type(),
-                        resultSetType.concurrency())) {
-            if (params.length > 0) {
-                setParameters(statement, params);
-            }
-
-            final List<T> results = new ArrayList<>();
-            try (final ResultSet resultSet = statement.executeQuery()) {
-                while (resultSet.next()) {
-                    T item = extractor.extractData(resultSet);
-                    results.add(item);
-                }
-            }
-
-            return Result.success(results);
-        } catch (SQLException e) {
-            LOG.log(Level.SEVERE, "Error: %s".formatted(e.getMessage()));
-            return handleSQLException(e);
+        try {
+          return Result.success(doReadListOf(sql, extractor, resultSetType, params));
+        } catch (Throwable e) {
+            return switch (e) {
+                case SQLException sqlException -> sneakyThrow(handleSQLException(sqlException).throwable());
+                default -> sneakyThrow(e);
+            };
         }
     }
 
@@ -792,18 +752,16 @@ public class JetQuerious {
             final ResultSetExtractor<T> extractor,
             final @Nullable Object... params) {
 
-        CompletableFuture<List<T>> future = new CompletableFuture<>();
-
-        executor.execute(() -> {
-            Result<List<T>, Throwable> result = readListOf(sql, extractor, params);
-            if (result.success())
-                future.complete(result.value());
-            else
-                future.completeExceptionally(result.throwable());
-            return null;
+        return executor.execute(() -> {
+            try {
+                return doReadListOf(sql, extractor, params);
+            } catch (Throwable e) {
+                return switch (e) {
+                    case SQLException sqlException -> sneakyThrow(handleSQLException(sqlException).throwable());
+                    default -> sneakyThrow(e);
+                };
+            }
         });
-
-        return future;
     }
 
     public <T> CompletableFuture<List<T>> asynchReadListOf(final String sql,
@@ -811,20 +769,77 @@ public class JetQuerious {
             final ResultSetType resultSetType,
             final @Nullable Object... params) {
 
-        CompletableFuture<List<T>> future = new CompletableFuture<>();
-
-        executor.execute(() -> {
-            Result<List<T>, Throwable> result = readListOf(sql, extractor, resultSetType, params);
-            if (result.success())
-                future.complete(result.value());
-            else
-                future.completeExceptionally(result.throwable());
-            return null;
+        return executor.execute(() -> {
+            try {
+                return doReadListOf(sql, extractor, resultSetType, params);
+            } catch (Throwable e) {
+                return switch (e) {
+                    case SQLException sqlException -> sneakyThrow(handleSQLException(sqlException).throwable());
+                    default -> sneakyThrow(e);
+                };
+            }
         });
-
-        return future;
     }
 
+    private <T> List<T> doReadListOf(final String sql, final ResultSetExtractor<T> extractor,
+                                     final @Nullable Object... params) throws Throwable {
+
+        if (sql == null)
+            throw new IllegalArgumentException("SQL query cannot be null");
+        if (extractor == null)
+            throw new IllegalArgumentException("Extractor cannot be null");
+        var typesResult = validateArgumentsTypes(params);
+        if (!typesResult.success())
+            throw typesResult.throwable();
+
+        try (final Connection connection = dataSource.getConnection();
+             final PreparedStatement statement = connection.prepareStatement(sql,
+                     ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY)) {
+            if (params.length > 0) {
+                setParameters(statement, params);
+            }
+
+            final List<T> results = new ArrayList<>();
+            try (final ResultSet resultSet = statement.executeQuery()) {
+                while (resultSet.next()) {
+                    T item = extractor.extractData(resultSet);
+                    results.add(item);
+                }
+            }
+
+            return results;
+        }
+    }
+
+    private <T> List<T> doReadListOf(final String sql, final ResultSetExtractor<T> extractor,
+                                     final ResultSetType resultSetType, final @Nullable Object... params) throws Throwable {
+
+        if (sql == null)
+            throw new IllegalArgumentException("SQL query cannot be null");
+        if (extractor == null)
+            throw new IllegalArgumentException("Extractor cannot be null");
+        var typesResult = validateArgumentsTypes(params);
+        if (!typesResult.success())
+            throw typesResult.throwable();
+
+        try (final Connection connection = dataSource.getConnection();
+             final PreparedStatement statement = connection.prepareStatement(sql, resultSetType.type(),
+                     resultSetType.concurrency())) {
+            if (params.length > 0) {
+                setParameters(statement, params);
+            }
+
+            final List<T> results = new ArrayList<>();
+            try (final ResultSet resultSet = statement.executeQuery()) {
+                while (resultSet.next()) {
+                    T item = extractor.extractData(resultSet);
+                    results.add(item);
+                }
+            }
+
+            return results;
+        }
+    }
     /**
      * Executes a SQL update (INSERT, UPDATE, DELETE) and manages transactions.
      *
