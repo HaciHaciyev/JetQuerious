@@ -526,7 +526,7 @@ public class JetQuerious {
         }
     }
 
-    public <T> CompletableFuture<T> asynchRead(final String sql,
+    public <T> CompletionStage<T> asynchRead(final String sql,
             final ResultSetExtractor<T> extractor,
             final @Nullable Object... params) {
 
@@ -542,7 +542,7 @@ public class JetQuerious {
         });
     }
 
-    public <T> CompletableFuture<T> asynchRead(final String sql,
+    public <T> CompletionStage<T> asynchRead(final String sql,
             final ResultSetExtractor<T> extractor,
             final ResultSetType resultSetType, final @Nullable Object... params) {
 
@@ -653,7 +653,7 @@ public class JetQuerious {
         }
     }
 
-    public <T> CompletableFuture<T> asynchReadObjectOf(final String sql, final Class<T> type,
+    public <T> CompletionStage<T> asynchReadObjectOf(final String sql, final Class<T> type,
             final @Nullable Object... params) {
 
         return executor.execute(() -> {
@@ -747,7 +747,7 @@ public class JetQuerious {
         }
     }
 
-    public <T> CompletableFuture<List<T>> asynchReadListOf(final String sql,
+    public <T> CompletionStage<List<T>> asynchReadListOf(final String sql,
             final ResultSetExtractor<T> extractor,
             final @Nullable Object... params) {
 
@@ -763,7 +763,7 @@ public class JetQuerious {
         });
     }
 
-    public <T> CompletableFuture<List<T>> asynchReadListOf(final String sql,
+    public <T> CompletionStage<List<T>> asynchReadListOf(final String sql,
             final ResultSetExtractor<T> extractor,
             final ResultSetType resultSetType,
             final @Nullable Object... params) {
