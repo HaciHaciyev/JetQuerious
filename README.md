@@ -80,7 +80,7 @@ Yoe need to write mapper only once
 Fetching a list?
 
 ```java
-import static com.hadzhy.jetquerious.sql.QueryForge.*;
+
 
 String users = select()
         .all()
