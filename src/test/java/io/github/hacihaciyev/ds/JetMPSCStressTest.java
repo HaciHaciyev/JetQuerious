@@ -4,11 +4,13 @@ import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.stream.IntStream;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -62,6 +64,64 @@ class JetMPSCStressTest {
                 "Lost items detected. Produced: " + produced.get() +
                         ", Consumed: " + consumed.get() +
                         ", Remaining: " + queue.size());
+    }
+
+    @Test
+    void realistic10kRpsTest() throws InterruptedException {
+        final int PRODUCERS = 10_000;
+        final int SHARDS = 16;
+        final int ITEMS_PER_PRODUCER = 10;
+        final int CONSUMER_DELAY_MS = 5;
+
+        List<JetMPSC<Task>> queues = IntStream.range(0, SHARDS)
+                .mapToObj(i -> new JetMPSC<Task>(8192))
+                .toList();
+
+        AtomicInteger consumed = new AtomicInteger();
+        AtomicInteger rejected = new AtomicInteger();
+
+        List<Thread> consumers = queues.stream().map(queue ->
+                new Thread(() -> {
+                    Task[] batch = new Task[64];
+                    while (consumed.get() < PRODUCERS * ITEMS_PER_PRODUCER) {
+                        int count = queue.pollBatch(batch, batch.length);
+                        if (count > 0) {
+                            try {
+                                Thread.sleep(CONSUMER_DELAY_MS);
+                            } catch (InterruptedException e) {
+                                Thread.currentThread().interrupt();
+                            }
+                            consumed.addAndGet(count);
+                        }
+                    }
+                })
+        ).toList();
+        consumers.forEach(Thread::start);
+
+        ExecutorService producerExecutor = Executors.newVirtualThreadPerTaskExecutor();
+        CountDownLatch latch = new CountDownLatch(PRODUCERS);
+
+        for (int i = 0; i < PRODUCERS; i++) {
+            producerExecutor.submit(() -> {
+                try {
+                    for (int j = 0; j < ITEMS_PER_PRODUCER; j++) {
+                        int shardIdx = ThreadLocalRandom.current().nextInt(SHARDS);
+                        if (!queues.get(shardIdx).offer(new Task())) {
+                            rejected.incrementAndGet(); // Backpressure
+                        }
+                    }
+                } finally {
+                    latch.countDown();
+                }
+            });
+        }
+
+        latch.await(30, TimeUnit.SECONDS);
+        consumers.forEach(Thread::interrupt);
+        producerExecutor.shutdown();
+
+        System.out.printf("Consumed: %,d | Rejected: %,d\n", consumed.get(), rejected.get());
+        assertTrue(rejected.get() < PRODUCERS * 0.1, "Too many rejects: " + rejected);
     }
 
     @Test
