@@ -1,14 +1,16 @@
 package io.github.hacihaciyev.ds;
 
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.*;
 
 class JetMPSCStressTest {
 
@@ -61,4 +63,59 @@ class JetMPSCStressTest {
                         ", Consumed: " + consumed.get() +
                         ", Remaining: " + queue.size());
     }
+
+    @Test
+    @Disabled("Will destroy most average devices on execution")
+    void highLoadIoBoundScenario() throws InterruptedException {
+        final int PRODUCERS = 10_000;
+        final int TOTAL_ITEMS = 100_000;
+        final int QUEUE_CAPACITY = 1 << 16;
+        final int CONSUMER_DELAY_MS = 5;
+
+        JetMPSC<Task> queue = new JetMPSC<>(QUEUE_CAPACITY);
+        AtomicInteger consumed = new AtomicInteger();
+
+        Thread consumer = new Thread(() -> {
+            Task[] batch = new Task[64];
+            while (consumed.get() < TOTAL_ITEMS) {
+                int count = queue.pollBatch(batch, batch.length);
+                if (count > 0) {
+                    try {
+                        Thread.sleep(CONSUMER_DELAY_MS);
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                    }
+                    consumed.addAndGet(count);
+                }
+            }
+        });
+        consumer.start();
+
+        ExecutorService producerExecutor = Executors.newVirtualThreadPerTaskExecutor();
+        CountDownLatch latch = new CountDownLatch(PRODUCERS);
+
+        for (int i = 0; i < PRODUCERS; i++) {
+            producerExecutor.submit(() -> {
+                try {
+                    for (int j = 0; j < 10; j++) {
+                        Task task = new Task();
+                        while (!queue.offer(task)) {
+                            Thread.onSpinWait();
+                        }
+                    }
+                } finally {
+                    latch.countDown();
+                }
+            });
+        }
+
+        assertTrue(latch.await(30, TimeUnit.SECONDS), "Producers didn't finish in time");
+        consumer.join();
+        producerExecutor.shutdown();
+
+        assertEquals(TOTAL_ITEMS, consumed.get(), "Items lost");
+        assertTrue(queue.isEmpty(), "Queue should be empty");
+    }
+
+    static class Task {}
 }
