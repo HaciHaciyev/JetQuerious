@@ -1,6 +1,6 @@
 package io.github.hacihaciyev.ds;
 
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.RepeatedTest;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.*;
 
@@ -8,7 +8,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class JetMPSConcurrentTest {
 
-    @Test
+    @RepeatedTest(10)
     void shouldHandleConcurrentProducers() throws InterruptedException {
         final int PRODUCERS = 4;
         final int ITEMS_PER_PRODUCER = 10_000;
@@ -74,7 +74,7 @@ class JetMPSConcurrentTest {
         assertEquals(PRODUCERS * ITEMS_PER_PRODUCER, consumed.get());
     }
 
-    @Test
+    @RepeatedTest(10)
     void correctMPSCTest() throws Exception {
         final int PRODUCERS = 4;
         final int ITEMS_PER_PRODUCER = 10_000;
