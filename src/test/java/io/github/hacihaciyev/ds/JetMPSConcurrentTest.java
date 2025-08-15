@@ -76,7 +76,7 @@ class JetMPSConcurrentTest {
 
     @RepeatedTest(10)
     void correctMPSCTest() throws Exception {
-        final int PRODUCERS = 4;
+        final int PRODUCERS = 1024;
         final int ITEMS_PER_PRODUCER = 10_000;
         final int TOTAL_ITEMS = PRODUCERS * ITEMS_PER_PRODUCER;
 
