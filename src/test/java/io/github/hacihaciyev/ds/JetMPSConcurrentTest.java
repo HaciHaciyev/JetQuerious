@@ -81,10 +81,10 @@ class JetMPSConcurrentTest {
         final int TOTAL_ITEMS = PRODUCERS * ITEMS_PER_PRODUCER;
 
         JetMPSC<Integer> queue = new JetMPSC<>(1 << 16);
-        ExecutorService producerExecutor = Executors.newFixedThreadPool(PRODUCERS);
+        ExecutorService producerExecutor = Executors.newVirtualThreadPerTaskExecutor();
         AtomicInteger produced = new AtomicInteger();
 
-        Thread consumer = new Thread(() -> {
+        Thread consumer = Thread.ofVirtual().start(() -> {
             int consumed = 0;
             while (consumed < TOTAL_ITEMS) {
                 Integer item = queue.poll();
@@ -93,7 +93,6 @@ class JetMPSConcurrentTest {
                 }
             }
         });
-        consumer.start();
 
         for (int i = 0; i < PRODUCERS; i++) {
             producerExecutor.execute(() -> {
