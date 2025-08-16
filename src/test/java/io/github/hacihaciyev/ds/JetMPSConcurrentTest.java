@@ -2,6 +2,7 @@ package io.github.hacihaciyev.ds;
 
 import com.lmax.disruptor.RingBuffer;
 import com.lmax.disruptor.YieldingWaitStrategy;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.RepeatedTest;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.*;
@@ -11,6 +12,11 @@ import static org.junit.jupiter.api.Assertions.*;
 class JetMPSConcurrentTest {
 
     private static final JetMPSC<Integer> QUEUE = new JetMPSC<>(1 << 20);
+
+    @AfterEach
+    void clearQueue() {
+        while (QUEUE.poll() != null) {}
+    }
 
     @RepeatedTest(10)
     void correctMPSCTest() throws Exception {
