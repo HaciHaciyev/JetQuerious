@@ -1,5 +1,7 @@
 package io.github.hacihaciyev.ds;
 
+import com.lmax.disruptor.RingBuffer;
+import com.lmax.disruptor.YieldingWaitStrategy;
 import org.junit.jupiter.api.RepeatedTest;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.*;
@@ -74,7 +76,7 @@ class JetMPSConcurrentTest {
         assertEquals(PRODUCERS * ITEMS_PER_PRODUCER, consumed.get());
     }
 
-    @RepeatedTest(3)
+    @RepeatedTest(10)
     void correctMPSCTest() throws Exception {
         final int PRODUCERS = 1 << 22;
         final int ITEMS_PER_PRODUCER = 10;
@@ -110,5 +112,62 @@ class JetMPSConcurrentTest {
         consumer.join();
 
         assertEquals(TOTAL_ITEMS, produced.get());
+    }
+
+    @RepeatedTest(10)
+    void correctDisruptorPollOfferEquivalent() throws Exception {
+        final int PRODUCERS = 1 << 22;
+        final int ITEMS_PER_PRODUCER = 10;
+        final int TOTAL_ITEMS = PRODUCERS * ITEMS_PER_PRODUCER;
+        final int BUFFER_SIZE = 1 << 20;
+
+        RingBuffer<ValueEvent> ringBuffer = RingBuffer.createMultiProducer(
+                ValueEvent::new,
+                BUFFER_SIZE,
+                new YieldingWaitStrategy()
+        );
+
+        ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor();
+        AtomicInteger produced = new AtomicInteger();
+        AtomicInteger consumed = new AtomicInteger();
+
+        Thread consumer = Thread.ofVirtual().start(() -> {
+            long nextSequence = 0;
+            while (nextSequence < TOTAL_ITEMS) {
+                long availableSequence = ringBuffer.getCursor();
+                while (nextSequence <= availableSequence) {
+                    ringBuffer.get(nextSequence);
+                    consumed.incrementAndGet();
+                    nextSequence++;
+                }
+                Thread.onSpinWait();
+            }
+        });
+
+        for (int i = 0; i < PRODUCERS; i++) {
+            executor.execute(() -> {
+                for (int j = 0; j < ITEMS_PER_PRODUCER; j++) {
+                    long sequence = ringBuffer.next();
+                    try {
+                        ValueEvent event = ringBuffer.get(sequence);
+                        event.value = j;
+                    } finally {
+                        ringBuffer.publish(sequence);
+                        produced.incrementAndGet();
+                    }
+                }
+            });
+        }
+
+        executor.shutdown();
+        executor.awaitTermination(5, TimeUnit.MINUTES);
+        consumer.join();
+
+        assertEquals(TOTAL_ITEMS, produced.get());
+        assertEquals(TOTAL_ITEMS, consumed.get());
+    }
+
+    static class ValueEvent {
+        public int value;
     }
 }
