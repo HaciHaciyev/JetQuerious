@@ -45,7 +45,7 @@ public final class JetMPSC<T> {
   }
 
   private volatile long metrics = 0L; // high 32 bits = success, low 32 bits = failed
-  private volatile int adaptiveParams = (12 << 16) | 24; // spinLimit(16) | yieldLimit(16)
+  private volatile int adaptiveParams = (12 << 16) | 24; // spinLimit - high 16 bits | yieldLimit - low 16 bits
   private volatile long lastAdaptTime = 0L;
 
   private static long incrementSuccess(long current) {
