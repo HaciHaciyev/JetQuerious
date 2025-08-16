@@ -19,6 +19,7 @@ public final class JetMPSC<T> {
   private final long p15, p16, p17, p18, p19, p20, p21;
   private final Cell<T>[] buffer;
 
+  @SuppressWarnings("unused") private final long p22, p23, p24, p25, p26, p27, p28;
   private final int mask;
 
   private static final class Cell<E> {
@@ -60,6 +61,7 @@ public final class JetMPSC<T> {
     p1 = p2 = p3 = p4 = p5 = p6 = p7 = 0L;
     p8 = p9 = p10 = p11 = p12 = p13 = p14 = 0L;
     p15 = p16 = p17 = p18 = p19 = p20 = p21 = 0L;
+    p22 = p23 = p24 = p25 = p26 = p27 = p28 = 0L;
   }
 
   public boolean offer(T value) {
