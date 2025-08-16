@@ -20,7 +20,7 @@ public final class JetQExecutor {
   private volatile boolean shutdown = false;
 
   private static final int DEFAULT_BATCH_SIZE = 64;
-  private static final int DEFAULT_QUEUE_CAPACITY = 65536; // 2^16
+  private static final int DEFAULT_QUEUE_CAPACITY = 1 << 18;
   private static final Logger log = Logger.getLogger(JetQExecutor.class.getName());
 
   public JetQExecutor() {
