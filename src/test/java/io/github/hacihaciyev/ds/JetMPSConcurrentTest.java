@@ -74,10 +74,10 @@ class JetMPSConcurrentTest {
         assertEquals(PRODUCERS * ITEMS_PER_PRODUCER, consumed.get());
     }
 
-    @RepeatedTest(10)
+    @RepeatedTest(3)
     void correctMPSCTest() throws Exception {
-        final int PRODUCERS = 1024;
-        final int ITEMS_PER_PRODUCER = 10_000;
+        final int PRODUCERS = 1 << 22;
+        final int ITEMS_PER_PRODUCER = 10;
         final int TOTAL_ITEMS = PRODUCERS * ITEMS_PER_PRODUCER;
 
         JetMPSC<Integer> queue = new JetMPSC<>(1 << 16);
