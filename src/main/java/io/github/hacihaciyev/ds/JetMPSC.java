@@ -7,31 +7,29 @@ import java.util.concurrent.locks.LockSupport;
 
 public final class JetMPSC<T> {
 
-  @SuppressWarnings("unused")
-  private final long p1, p2, p3, p4, p5, p6, p7;
+  @SuppressWarnings("unused") private final long p00, p01, p02, p03, p04, p05, p06;
   private long head = 0;
 
-  @SuppressWarnings("unused")
-  private final long p8, p9, p10, p11, p12, p13, p14;
+  @SuppressWarnings("unused") private final long p10, p11, p12, p13, p14, p15, p16;
   private volatile long tail = 0;
 
-  @SuppressWarnings("unused")
-  private final long p15, p16, p17, p18, p19, p20, p21;
+  @SuppressWarnings("unused") private final long p20, p21, p22, p23, p24, p25, p26;
   private final Cell<T>[] buffer;
 
-  @SuppressWarnings("unused") private final long p22, p23, p24, p25, p26, p27, p28;
+  @SuppressWarnings("unused") private final long p30, p31, p32, p33, p34, p35, p36;
   private final int mask;
 
   private static final class Cell<E> {
+    @SuppressWarnings("unused") private final long p00, p01, p02, p03, p04, p05, p06;
+
     volatile long seq;
     E value;
 
-    @SuppressWarnings("unused")
-    final long p1, p2, p3, p4, p5, p6;
-
+    @SuppressWarnings("unused") private final long p10, p11, p12, p13, p14, p15, p16;
     Cell(long s) {
       seq = s;
-      p1 = p2 = p3 = p4 = p5 = p6 = 0L;
+      p00 = p01 = p02 = p03 = p04 = p05 = p06 = 0L;
+      p10 = p11 = p12 = p13 = p14 = p15 = p16 = 0L;
     }
   }
 
@@ -53,15 +51,12 @@ public final class JetMPSC<T> {
 
     this.mask = capacityPowerOfTwo - 1;
     this.buffer = new Cell[capacityPowerOfTwo];
+    for (int i = 0; i < capacityPowerOfTwo; i++) buffer[i] = new Cell<>(i);
 
-    for (int i = 0; i < capacityPowerOfTwo; i++) {
-      buffer[i] = new Cell<>(i);
-    }
-
-    p1 = p2 = p3 = p4 = p5 = p6 = p7 = 0L;
-    p8 = p9 = p10 = p11 = p12 = p13 = p14 = 0L;
-    p15 = p16 = p17 = p18 = p19 = p20 = p21 = 0L;
-    p22 = p23 = p24 = p25 = p26 = p27 = p28 = 0L;
+    p00 = p01 = p02 = p03 = p04 = p05 = p06 = 0L;
+    p10 = p11 = p12 = p13 = p14 = p15 = p16 = 0L;
+    p20 = p21 = p22 = p23 = p24 = p25 = p26 = 0L;
+    p30 = p31 = p32 = p33 = p34 = p35 = p36 = 0L;
   }
 
   public boolean offer(T value) {
