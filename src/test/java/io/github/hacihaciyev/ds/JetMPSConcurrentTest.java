@@ -80,7 +80,7 @@ class JetMPSConcurrentTest {
         final int ITEMS_PER_PRODUCER = 10;
         final int TOTAL_ITEMS = PRODUCERS * ITEMS_PER_PRODUCER;
 
-        JetMPSC<Integer> queue = new JetMPSC<>(1 << 16);
+        JetMPSC<Integer> queue = new JetMPSC<>(1 << 20);
         ExecutorService producerExecutor = Executors.newVirtualThreadPerTaskExecutor();
         AtomicInteger produced = new AtomicInteger();
 
