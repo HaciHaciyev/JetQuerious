@@ -44,6 +44,26 @@ public final class JetMPSC<T> {
     }
   }
 
+  private volatile long metrics = 0L; // high 32 bits = success, low 32 bits = failed
+  private volatile int adaptiveParams = (12 << 16) | 24; // spinLimit(16) | yieldLimit(16)
+  private volatile long lastAdaptTime = 0L;
+
+  private static long incrementSuccess(long current) {
+    return current + (1L << 32);
+  }
+
+  private static long incrementFailed(long current) {
+    return current + 1L;
+  }
+
+  private static int getSuccess(long metrics) {
+    return (int) (metrics >>> 32);
+  }
+
+  private static int getFailed(long metrics) {
+    return (int) (metrics & 0xFFFFFFFFL);
+  }
+
   @SuppressWarnings("unchecked")
   public JetMPSC(int capacityPowerOfTwo) {
     if (Integer.bitCount(capacityPowerOfTwo) != 1)
@@ -79,6 +99,8 @@ public final class JetMPSC<T> {
         if (VH_TAIL.compareAndSet(this, expected, updated)) {
           cell.value = value;
           VH_SEQ.setRelease(cell, updated);
+          long currentMetrics = metrics;
+          metrics = incrementSuccess(currentMetrics);
           return true;
         }
       }
@@ -87,11 +109,21 @@ public final class JetMPSC<T> {
       if (queueIsOvercrowded)
         return false;
 
+      if (failCount == 0) {
+        long currentMetrics = metrics;
+        metrics = incrementFailed(currentMetrics);
+      }
+
+      int params = adaptiveParams;
+      int spinLimit = params >>> 16;
+      int yieldLimit = params & 0xFFFF;
+
       failCount++;
-      if (failCount < 12)
+
+      if (failCount < spinLimit)
         Thread.onSpinWait();
 
-      else if (failCount < 24)
+      else if (failCount < spinLimit + yieldLimit)
         Thread.yield();
 
       else {
@@ -99,7 +131,49 @@ public final class JetMPSC<T> {
         long nanos = base + rnd.nextLong(base);
         LockSupport.parkNanos(nanos);
       }
+
+      if (failCount == 32) tryAdapt();
     }
+  }
+
+  private void tryAdapt() {
+    long now = System.nanoTime();
+    long lastTime = lastAdaptTime;
+
+    boolean wasAdaptedNotLongAgo = now - lastTime < 100_000_000L;
+    if (wasAdaptedNotLongAgo) return;
+
+    boolean toMuchAdaptations = lastTime != 0L && now - lastTime < 200_000_000L;
+    if (toMuchAdaptations) return;
+
+    lastAdaptTime = now;
+
+    long currentMetrics = metrics;
+    int success = getSuccess(currentMetrics);
+    int failed = getFailed(currentMetrics);
+
+    boolean notEnoughStats = success + failed < 100;
+    if (notEnoughStats) return;
+
+    metrics = 0L;
+    double failureRate = (double) failed / (success + failed);
+    int currentParams = adaptiveParams;
+    int spinLimit = currentParams >>> 16;
+    int yieldLimit = currentParams & 0xFFFF;
+
+    boolean concurrencyIsToHighIncreaseSpinning = failureRate > 0.6;
+    if (concurrencyIsToHighIncreaseSpinning) {
+      spinLimit = Math.max(4, spinLimit - 2);
+      yieldLimit = Math.max(8, yieldLimit - 4);
+    }
+
+    boolean concurrencyIsLowDecreaseSpinning = failureRate < 0.3;
+    if (concurrencyIsLowDecreaseSpinning) {
+      spinLimit = Math.min(32, spinLimit + 2);
+      yieldLimit = Math.min(48, yieldLimit + 4);
+    }
+
+    adaptiveParams = (spinLimit << 16) | yieldLimit;
   }
 
   public T poll() {
