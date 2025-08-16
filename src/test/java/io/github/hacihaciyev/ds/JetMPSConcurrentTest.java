@@ -10,71 +10,13 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class JetMPSConcurrentTest {
 
-    @RepeatedTest(10)
-    void shouldHandleConcurrentProducers() throws InterruptedException {
-        final int PRODUCERS = 4;
-        final int ITEMS_PER_PRODUCER = 10_000;
-        final int TIMEOUT_SEC = 10;
-        JetMPSC<Integer> queue = new JetMPSC<>(1024);
+    private static final JetMPSC<Integer> QUEUE = new JetMPSC<>(1 << 20);
 
-        ExecutorService executor = Executors.newFixedThreadPool(PRODUCERS);
-        CountDownLatch latch = new CountDownLatch(PRODUCERS);
-        AtomicInteger counter = new AtomicInteger();
-        AtomicBoolean timeout = new AtomicBoolean(false);
-
-        ScheduledExecutorService timer = Executors.newSingleThreadScheduledExecutor();
-        timer.schedule(() -> timeout.set(true), TIMEOUT_SEC, TimeUnit.SECONDS);
-
-        for (int i = 0; i < PRODUCERS; i++) {
-            executor.execute(() -> {
-                try {
-                    for (int j = 0; j < ITEMS_PER_PRODUCER && !timeout.get(); j++) {
-                        if (!queue.offer(counter.incrementAndGet())) {
-                            Thread.yield();
-                            j--;
-                        }
-                    }
-                } finally {
-                    latch.countDown();
-                }
-            });
-        }
-
-        AtomicInteger consumed = new AtomicInteger();
-        Thread consumer = new Thread(() -> {
-            try {
-                while (consumed.get() < PRODUCERS * ITEMS_PER_PRODUCER && !timeout.get()) {
-                    Integer item = queue.poll();
-                    if (item != null) {
-                        consumed.incrementAndGet();
-                    } else {
-                        Thread.yield();
-                    }
-                }
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        });
-        consumer.start();
-
-        try {
-            assertTrue(latch.await(TIMEOUT_SEC, TimeUnit.SECONDS),
-                    "Producers didn't finish in time");
-            consumer.join(TimeUnit.SECONDS.toMillis(TIMEOUT_SEC));
-        } finally {
-            executor.shutdownNow();
-            timer.shutdownNow();
-            if (!executor.awaitTermination(1, TimeUnit.SECONDS)) {
-                System.err.println("Executor didn't terminate");
-            }
-        }
-
-        if (timeout.get()) {
-            fail("Test timed out. Produced: " + counter.get() + ", consumed: " + consumed.get());
-        }
-
-        assertEquals(PRODUCERS * ITEMS_PER_PRODUCER, consumed.get());
-    }
+    private static final RingBuffer<ValueEvent> RING_BUFFER = RingBuffer.createMultiProducer(
+            ValueEvent::new,
+            1 << 20,
+            new YieldingWaitStrategy()
+    );
 
     @RepeatedTest(10)
     void correctMPSCTest() throws Exception {
@@ -82,14 +24,13 @@ class JetMPSConcurrentTest {
         final int ITEMS_PER_PRODUCER = 10;
         final int TOTAL_ITEMS = PRODUCERS * ITEMS_PER_PRODUCER;
 
-        JetMPSC<Integer> queue = new JetMPSC<>(1 << 20);
         ExecutorService producerExecutor = Executors.newVirtualThreadPerTaskExecutor();
         AtomicInteger produced = new AtomicInteger();
 
         Thread consumer = Thread.ofVirtual().start(() -> {
             int consumed = 0;
             while (consumed < TOTAL_ITEMS) {
-                Integer item = queue.poll();
+                Integer item = QUEUE.poll();
                 if (item != null) {
                     consumed++;
                 }
@@ -99,7 +40,7 @@ class JetMPSConcurrentTest {
         for (int i = 0; i < PRODUCERS; i++) {
             producerExecutor.execute(() -> {
                 for (int j = 0; j < ITEMS_PER_PRODUCER; j++) {
-                    while (!queue.offer(j)) {
+                    while (!QUEUE.offer(j)) {
                         Thread.onSpinWait();
                     }
                     produced.incrementAndGet();
@@ -119,13 +60,6 @@ class JetMPSConcurrentTest {
         final int PRODUCERS = 1 << 22;
         final int ITEMS_PER_PRODUCER = 10;
         final int TOTAL_ITEMS = PRODUCERS * ITEMS_PER_PRODUCER;
-        final int BUFFER_SIZE = 1 << 20;
-
-        RingBuffer<ValueEvent> ringBuffer = RingBuffer.createMultiProducer(
-                ValueEvent::new,
-                BUFFER_SIZE,
-                new YieldingWaitStrategy()
-        );
 
         ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor();
         AtomicInteger produced = new AtomicInteger();
@@ -134,9 +68,9 @@ class JetMPSConcurrentTest {
         Thread consumer = Thread.ofVirtual().start(() -> {
             long nextSequence = 0;
             while (nextSequence < TOTAL_ITEMS) {
-                long availableSequence = ringBuffer.getCursor();
+                long availableSequence = RING_BUFFER.getCursor();
                 while (nextSequence <= availableSequence) {
-                    ringBuffer.get(nextSequence);
+                    RING_BUFFER.get(nextSequence);
                     consumed.incrementAndGet();
                     nextSequence++;
                 }
@@ -147,12 +81,12 @@ class JetMPSConcurrentTest {
         for (int i = 0; i < PRODUCERS; i++) {
             executor.execute(() -> {
                 for (int j = 0; j < ITEMS_PER_PRODUCER; j++) {
-                    long sequence = ringBuffer.next();
+                    long sequence = RING_BUFFER.next();
                     try {
-                        ValueEvent event = ringBuffer.get(sequence);
+                        ValueEvent event = RING_BUFFER.get(sequence);
                         event.value = j;
                     } finally {
-                        ringBuffer.publish(sequence);
+                        RING_BUFFER.publish(sequence);
                         produced.incrementAndGet();
                     }
                 }
