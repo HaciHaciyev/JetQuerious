@@ -7,41 +7,25 @@ import java.util.concurrent.locks.LockSupport;
 
 public final class JetMPSC<T> {
 
-  @SuppressWarnings("unused")
-  private final long p1, p2, p3, p4, p5, p6, p7;
-
-  private volatile long head = 0;
-
-  @SuppressWarnings("unused")
-  private final long p8, p9, p10, p11, p12, p13, p14;
-
+  @SuppressWarnings("unused") private final long p1, p2, p3, p4, p5, p6, p7;
+  private long head = 0;
+  @SuppressWarnings("unused") private final long p8, p9, p10, p11, p12, p13, p14;
   private volatile long tail = 0;
+  @SuppressWarnings("unused") private final long p15, p16, p17, p18, p19, p20, p21;
 
-  @SuppressWarnings("unused")
-  private final long p15, p16, p17, p18, p19, p20, p21;
+  @SuppressWarnings("unused")  private final long p22, p23, p24, p25, p26, p27, p28;
+  private final T[] buffer;
+  @SuppressWarnings("unused") private final long p29, p30, p31, p32, p33, p34, p35;
+  private final long[] seqs;
 
-  private final Cell<T>[] buffer;
   private final int mask;
-
-  private static final class Cell<E> {
-    volatile long seq;
-    volatile E value;
-
-    @SuppressWarnings("unused")
-    final long p1, p2, p3, p4, p5, p6;
-
-    Cell(long s) {
-      seq = s;
-      p1 = p2 = p3 = p4 = p5 = p6 = 0L;
-    }
-  }
 
   private static final VarHandle VH_TAIL;
   private static final VarHandle VH_SEQ;
   static {
     try {
       VH_TAIL = MethodHandles.lookup().findVarHandle(JetMPSC.class, "tail", long.class);
-      VH_SEQ = MethodHandles.lookup().findVarHandle(Cell.class, "seq", long.class);
+      VH_SEQ = MethodHandles.arrayElementVarHandle(long[].class);
     } catch (Exception e) {
       throw new RuntimeException(e);
     }
@@ -53,15 +37,15 @@ public final class JetMPSC<T> {
       throw new IllegalArgumentException("Capacity must be a power of 2");
 
     this.mask = capacityPowerOfTwo - 1;
-    this.buffer = new Cell[capacityPowerOfTwo];
-
-    for (int i = 0; i < capacityPowerOfTwo; i++) {
-      buffer[i] = new Cell<>(i);
-    }
+    this.seqs = new long[capacityPowerOfTwo];
+    this.buffer = (T[]) new Object[capacityPowerOfTwo];
+    for (int i = 0; i < capacityPowerOfTwo; i++) seqs[i] = i;
 
     p1 = p2 = p3 = p4 = p5 = p6 = p7 = 0L;
     p8 = p9 = p10 = p11 = p12 = p13 = p14 = 0L;
     p15 = p16 = p17 = p18 = p19 = p20 = p21 = 0L;
+    p22 = p23 = p24 = p25 = p26 = p27 = p28 = 0L;
+    p29 = p30 = p31 = p32 = p33 = p34 = p35 = 0L;
   }
 
   public boolean offer(T value) {
@@ -70,11 +54,10 @@ public final class JetMPSC<T> {
 
     while (true) {
       long t = tail;
-      Cell<T> cell = buffer[bufferIndex(t)];
+      int idx = bufferIndex(t);
+      long seq = (long) VH_SEQ.getAcquire(seqs, idx);
 
-      long seq = (long) VH_SEQ.getAcquire(cell);
       long dif = seq - t;
-
       boolean slotIsReadyForWrite = dif == 0;
 
       if (slotIsReadyForWrite) {
@@ -82,8 +65,8 @@ public final class JetMPSC<T> {
         long updated = t + 1;
 
         if (VH_TAIL.compareAndSet(this, expected, updated)) {
-          cell.value = value;
-          VH_SEQ.setRelease(cell, updated);
+          buffer[idx] = value;
+          VH_SEQ.setRelease(seqs, idx, updated);
           return true;
         }
       }
@@ -109,18 +92,17 @@ public final class JetMPSC<T> {
 
   public T poll() {
     long h = head;
-    Cell<T> cell = buffer[bufferIndex(h)];
+    int idx = bufferIndex(h);
+    long seq = (long) VH_SEQ.getAcquire(seqs, idx);
 
-    long seq = (long) VH_SEQ.getAcquire(cell);
     long dif = seq - (h + 1);
-
     boolean slotIsReadyForRead = dif == 0;
-    if (slotIsReadyForRead) {
-      head = h + 1;
 
-      T v = cell.value;
-      cell.value = null;
-      VH_SEQ.setRelease(cell, h + mask + 1);
+    if (slotIsReadyForRead) {
+      T v = buffer[idx];
+      buffer[idx] = null;
+      head = h + 1;
+      VH_SEQ.setRelease(seqs, idx, h + mask + 1);
       return v;
     }
 
@@ -136,15 +118,17 @@ public final class JetMPSC<T> {
     long h = head;
 
     while (count < max) {
-      Cell<T> cell = buffer[bufferIndex(h)];
-      long seq = (long) VH_SEQ.getAcquire(cell);
-      long dif = seq - (h + 1);
+      int idx = bufferIndex(h);
+      T v = buffer[idx];
+      long seq = (long) VH_SEQ.getAcquire(seqs, idx);
 
-      if (dif == 0) {
+      long dif = seq - (h + 1);
+      boolean slotIsReadyForRead = dif == 0;
+
+      if (slotIsReadyForRead) {
         h++;
-        T v = cell.value;
-        cell.value = null;
-        VH_SEQ.setRelease(cell, h + mask + 1);
+        buffer[idx] = null;
+        VH_SEQ.setRelease(seqs, idx, h + mask + 1);
         dst[count++] = v;
       } else
         break;
