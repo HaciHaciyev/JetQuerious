@@ -12,12 +12,6 @@ class JetMPSConcurrentTest {
 
     private static final JetMPSC<Integer> QUEUE = new JetMPSC<>(1 << 20);
 
-    private static final RingBuffer<ValueEvent> RING_BUFFER = RingBuffer.createMultiProducer(
-            ValueEvent::new,
-            1 << 20,
-            new YieldingWaitStrategy()
-    );
-
     @RepeatedTest(10)
     void correctMPSCTest() throws Exception {
         final int PRODUCERS = 1 << 22;
@@ -61,6 +55,12 @@ class JetMPSConcurrentTest {
         final int ITEMS_PER_PRODUCER = 10;
         final int TOTAL_ITEMS = PRODUCERS * ITEMS_PER_PRODUCER;
 
+        RingBuffer<ValueEvent> ringBuffer = RingBuffer.createMultiProducer(
+                ValueEvent::new,
+                1 << 20,
+                new YieldingWaitStrategy()
+        );
+
         ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor();
         AtomicInteger produced = new AtomicInteger();
         AtomicInteger consumed = new AtomicInteger();
@@ -68,9 +68,9 @@ class JetMPSConcurrentTest {
         Thread consumer = Thread.ofVirtual().start(() -> {
             long nextSequence = 0;
             while (nextSequence < TOTAL_ITEMS) {
-                long availableSequence = RING_BUFFER.getCursor();
+                long availableSequence = ringBuffer.getCursor();
                 while (nextSequence <= availableSequence) {
-                    RING_BUFFER.get(nextSequence);
+                    ringBuffer.get(nextSequence);
                     consumed.incrementAndGet();
                     nextSequence++;
                 }
@@ -81,12 +81,12 @@ class JetMPSConcurrentTest {
         for (int i = 0; i < PRODUCERS; i++) {
             executor.execute(() -> {
                 for (int j = 0; j < ITEMS_PER_PRODUCER; j++) {
-                    long sequence = RING_BUFFER.next();
+                    long sequence = ringBuffer.next();
                     try {
-                        ValueEvent event = RING_BUFFER.get(sequence);
+                        ValueEvent event = ringBuffer.get(sequence);
                         event.value = j;
                     } finally {
-                        RING_BUFFER.publish(sequence);
+                        ringBuffer.publish(sequence);
                         produced.incrementAndGet();
                     }
                 }

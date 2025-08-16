@@ -9,23 +9,21 @@ public final class JetMPSC<T> {
 
   @SuppressWarnings("unused")
   private final long p1, p2, p3, p4, p5, p6, p7;
-
-  private volatile long head = 0;
+  private long head = 0;
 
   @SuppressWarnings("unused")
   private final long p8, p9, p10, p11, p12, p13, p14;
-
   private volatile long tail = 0;
 
   @SuppressWarnings("unused")
   private final long p15, p16, p17, p18, p19, p20, p21;
-
   private final Cell<T>[] buffer;
+
   private final int mask;
 
   private static final class Cell<E> {
     volatile long seq;
-    volatile E value;
+    E value;
 
     @SuppressWarnings("unused")
     final long p1, p2, p3, p4, p5, p6;
