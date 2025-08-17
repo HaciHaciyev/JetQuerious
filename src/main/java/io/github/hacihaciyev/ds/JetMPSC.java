@@ -3,6 +3,7 @@ package io.github.hacihaciyev.ds;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.concurrent.atomic.AtomicLongArray;
 import java.util.concurrent.locks.LockSupport;
 
 public final class JetMPSC<T> {
@@ -11,12 +12,17 @@ public final class JetMPSC<T> {
   private long head = 0;
 
   @SuppressWarnings("unused") private final long p10, p11, p12, p13, p14, p15, p16;
-  private volatile long tail = 0;
+  private static final int SEGMENTS = 8;
+  private static final int SEGMENT_MASK = SEGMENTS - 1;
+  private AtomicLongArray tail = new AtomicLongArray(SEGMENTS);
 
   @SuppressWarnings("unused") private final long p20, p21, p22, p23, p24, p25, p26;
-  private final Cell<T>[] buffer;
+  private volatile long globalTail = 0;
 
   @SuppressWarnings("unused") private final long p30, p31, p32, p33, p34, p35, p36;
+  private final Cell<T>[] buffer;
+
+  @SuppressWarnings("unused") private final long p37, p38, p39, p40, p41, p42, p43;
   private final int mask;
 
   private static final class Cell<E> {
@@ -33,11 +39,9 @@ public final class JetMPSC<T> {
     }
   }
 
-  private static final VarHandle VH_TAIL;
   private static final VarHandle VH_SEQ;
   static {
     try {
-      VH_TAIL = MethodHandles.lookup().findVarHandle(JetMPSC.class, "tail", long.class);
       VH_SEQ = MethodHandles.lookup().findVarHandle(Cell.class, "seq", long.class);
     } catch (Exception e) {
       throw new RuntimeException(e);
@@ -57,31 +61,32 @@ public final class JetMPSC<T> {
     p10 = p11 = p12 = p13 = p14 = p15 = p16 = 0L;
     p20 = p21 = p22 = p23 = p24 = p25 = p26 = 0L;
     p30 = p31 = p32 = p33 = p34 = p35 = p36 = 0L;
+    p37 = p38 = p39 = p40 = p41 = p42 = p43 = 0L;
   }
 
   public boolean offer(T value) {
     int failCount = 0;
     ThreadLocalRandom rnd = ThreadLocalRandom.current();
+    int segmentIndex = Thread.currentThread().hashCode() & SEGMENT_MASK;
 
     while (true) {
-      long t = tail;
-      Cell<T> cell = buffer[bufferIndex(t)];
+      long localIndex = tail.getAndAdd(segmentIndex, SEGMENTS);
+      Cell<T> cell = buffer[bufferIndex(localIndex)];
 
       long seq = (long) VH_SEQ.getAcquire(cell);
-      long dif = seq - t;
+      long dif = seq - localIndex;
 
       boolean slotIsReadyForWrite = dif == 0;
 
       if (slotIsReadyForWrite) {
-        long expected = t;
-        long updated = t + 1;
+        long updated = localIndex + 1;
 
-        if (VH_TAIL.compareAndSet(this, expected, updated)) {
-          cell.value = value;
-          VH_SEQ.setRelease(cell, updated);
-          return true;
-        }
+        cell.value = value;
+        VH_SEQ.setRelease(cell, updated);
+        return true;
       }
+
+      tail.addAndGet(segmentIndex, -SEGMENTS);
 
       boolean queueIsOvercrowded = dif < 0;
       if (queueIsOvercrowded)
@@ -152,14 +157,28 @@ public final class JetMPSC<T> {
   }
 
   public long size() {
-    return tail - head;
+    synchronizeGlobalTail();
+    return globalTail - head;
   }
 
   public boolean isEmpty() {
-    return head == tail;
+    synchronizeGlobalTail();
+    return head == globalTail;
   }
 
   private int bufferIndex(long value) {
     return (int) (value & mask);
+  }
+
+  private void synchronizeGlobalTail() {
+    long minTail = Long.MAX_VALUE;
+    for (int i = 0; i < SEGMENTS; i++) {
+      long segmentTail = tail.get(i);
+      if (segmentTail < minTail) {
+        minTail = segmentTail;
+      }
+    }
+
+    globalTail = minTail;
   }
 }
