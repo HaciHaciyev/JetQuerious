@@ -177,22 +177,15 @@ public final class JetQExecutor {
     });
   }
 
-  private static final class TaskWrapper<T> {
-    private final Supplier<T> task;
-    private final CompletableFuture<T> future;
-
-    TaskWrapper(Supplier<T> task, CompletableFuture<T> future) {
-      this.task = task;
-      this.future = future;
-    }
+  private record TaskWrapper<T>(Supplier<T> task, CompletableFuture<T> future) {
 
     void execute() {
-      try {
-        T result = task.get();
-        future.complete(result);
-      } catch (Throwable ex) {
-        future.completeExceptionally(ex);
+        try {
+          T result = task.get();
+          future.complete(result);
+        } catch (Throwable ex) {
+          future.completeExceptionally(ex);
+        }
       }
     }
-  }
 }
