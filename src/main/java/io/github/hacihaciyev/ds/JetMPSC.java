@@ -52,10 +52,13 @@ public final class JetMPSC<T> {
   public JetMPSC(int capacityPowerOfTwo) {
     if (Integer.bitCount(capacityPowerOfTwo) != 1)
       throw new IllegalArgumentException("Capacity must be a power of 2");
+    if ((capacityPowerOfTwo & (SEGMENTS - 1)) != 0)
+      throw new IllegalArgumentException("capacity must be multiple of SEGMENTS");
 
     this.mask = capacityPowerOfTwo - 1;
     this.buffer = new Cell[capacityPowerOfTwo];
     for (int i = 0; i < capacityPowerOfTwo; i++) buffer[i] = new Cell<>(i);
+    for (int s = 0; s < SEGMENTS; s++) tail.set(s, s);
 
     p00 = p01 = p02 = p03 = p04 = p05 = p06 = 0L;
     p10 = p11 = p12 = p13 = p14 = p15 = p16 = 0L;
@@ -171,14 +174,13 @@ public final class JetMPSC<T> {
   }
 
   private void synchronizeGlobalTail() {
-    long minTail = Long.MAX_VALUE;
+    long maxNext = Long.MIN_VALUE;
     for (int i = 0; i < SEGMENTS; i++) {
-      long segmentTail = tail.get(i);
-      if (segmentTail < minTail) {
-        minTail = segmentTail;
-      }
+      long t = tail.get(i);
+      if (t > maxNext) maxNext = t;
     }
-
-    globalTail = minTail;
+    long lastIssued = maxNext - SEGMENTS;
+    if (lastIssued < 0) lastIssued = 0;
+    globalTail = lastIssued;
   }
 }
