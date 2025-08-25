@@ -14,6 +14,21 @@ class SelectBuilderTest {
 
     @Test
     void test() {
+        assertEquals("SELECT d.id AS id, d.rides AS rides, d.total_reviews AS total_reviews, d.sum_of_scores AS sum_of_scores , CASE WHEN total_reviews > 0 THEN sum_of_scores::decimal / total_reviews ELSE NULL END AS average FROM driver d ORDER BY average LIMIT ? OFFSET ? ", select()
+                .column("d.id").as("id")
+                .column("d.rides").as("rides")
+                .column("d.total_reviews").as("total_reviews")
+                .column("d.sum_of_scores").as("sum_of_scores")
+                .caseStatement()
+                .when("total_reviews > 0")
+                .then("sum_of_scores::decimal / total_reviews")
+                .elseCase("NULL")
+                .endAs("average")
+                .from("driver d")
+                .orderBy("average")
+                .limitAndOffset()
+                .sql());
+
         assertEquals("SELECT a.id AS id, a.author_id AS author_id, a.header AS header, a.summary AS summary, a.body AS body, a.status AS status, a.creation_date AS creation_date, a.last_updated AS last_updated , COUNT(v.id) AS views , COUNT(l.article_id) AS likes FROM Articles a JOIN Views v ON v.article_id = a.id JOIN Likes l ON l.article_id = a.id WHERE a.id = ? ",
                 select()
                 .column("a.id").as("id")
