@@ -14,6 +14,7 @@ public class ColumnBuilder {
     }
 
     public CaseBuilder caseStatement() {
+        deleteSurplusComa(query);
         return new CaseBuilder(query.append(", "));
     }
 
