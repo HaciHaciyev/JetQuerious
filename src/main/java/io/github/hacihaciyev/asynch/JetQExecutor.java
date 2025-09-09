@@ -28,8 +28,8 @@ public final class JetQExecutor {
   }
 
   public JetQExecutor(int queueCapacity, int batchSize, BatchErrorHandler errorHandler) {
-    if (queueCapacity <= 0)
-      throw new IllegalArgumentException("Queue capacity must be positive");
+    if (queueCapacity < 2)
+      throw new IllegalArgumentException("Queue capacity must be 2 or power of 2");
 
     if (queueCapacity > DEFAULT_QUEUE_CAPACITY)
       log.warning(() -> "Queue capacity " + queueCapacity +
