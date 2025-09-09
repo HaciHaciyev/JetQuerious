@@ -138,6 +138,12 @@ public final class JetMPSC<T> {
       if (dif == 0) {
         h++;
         T v = cell.value;
+
+        if (v == null) {
+          h++;
+          continue;
+        }
+
         cell.value = null;
         VH_SEQ.setRelease(cell, h + mask + 1);
         dst[count++] = v;
