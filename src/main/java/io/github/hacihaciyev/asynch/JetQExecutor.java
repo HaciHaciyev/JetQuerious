@@ -126,7 +126,6 @@ public final class JetQExecutor {
   private void startConsumer() {
     Thread.startVirtualThread(() -> {
       boolean bulkMode = false;
-      TaskWrapper<?>[] buf = new TaskWrapper[batchSize];
 
       while (!shutdown || !queue.isEmpty()) {
         long size = queue.size();
@@ -140,13 +139,14 @@ public final class JetQExecutor {
           continue;
         }
 
-        int n = queue.pollBatch(buf, batchSize);
+        TaskWrapper<?>[] batch = new TaskWrapper[batchSize];
+        int n = queue.pollBatch(batch, batchSize);
         if (n == 0) {
           LockSupport.parkNanos(1_000);
           continue;
         }
 
-        executeBatch(buf, n);
+        executeBatch(batch, n);
       }
     });
   }
@@ -160,20 +160,20 @@ public final class JetQExecutor {
       LockSupport.parkNanos(1_000);
   }
 
-  private void executeBatch(TaskWrapper<?>[] buf, int n) {
+  private void executeBatch(TaskWrapper<?>[] batch, int n) {
     Thread.startVirtualThread(() -> {
       List<Throwable> errors = new ArrayList<>();
 
       for (int i = 0; i < n; i++) {
         try {
-          buf[i].execute();
+          batch[i].execute();
         } catch (Throwable t) {
           errors.add(t);
         }
       }
 
       if (!errors.isEmpty())
-        this.batchErrorHandler.onErrors(errors.toArray(new Throwable[errors.size()]));
+        this.batchErrorHandler.onErrors(errors.toArray(new Throwable[0]));
     });
   }
 
