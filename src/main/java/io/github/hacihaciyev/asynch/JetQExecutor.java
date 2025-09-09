@@ -167,8 +167,8 @@ public final class JetQExecutor {
       for (int i = 0; i < n; i++) {
         try {
           buf[i].execute();
-        } catch (Exception e) {
-          errors.add(e);
+        } catch (Throwable t) {
+          errors.add(t);
         }
       }
 
