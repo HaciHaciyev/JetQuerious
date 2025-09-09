@@ -65,6 +65,10 @@ public final class JetQExecutor {
       return CompletableFuture.failedFuture(
           new IllegalStateException("Executor is shutdown"));
 
+    if (task == null)
+      return CompletableFuture.failedFuture(
+              new IllegalStateException("Task cannot be null"));
+
     CompletableFuture<T> future = new CompletableFuture<>();
     TaskWrapper<T> wrapper = new TaskWrapper<>(task, future);
 
