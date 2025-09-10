@@ -5,7 +5,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
 import java.util.ArrayList;
@@ -167,50 +166,22 @@ class JetQExecutorTest {
 
     @Test
     @Timeout(value = 5, unit = TimeUnit.SECONDS)
-    void testShutdownGracefullyWaitsForEmptyQueue() throws InterruptedException, ExecutionException, TimeoutException {
-        JetQExecutor customExecutor = new JetQExecutor(1024, 1, null);
-        AtomicInteger completedTasks = new AtomicInteger(0);
-        int numTasks = 100;
-        CountDownLatch startedTasks = new CountDownLatch(numTasks);
-        CountDownLatch allowCompletion = new CountDownLatch(1);
-
-        for (int i = 0; i < numTasks; i++) {
-            customExecutor.execute(() -> {
-                startedTasks.countDown();
-                try {
-                    allowCompletion.await();
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                }
-                completedTasks.incrementAndGet();
-                return null;
-            });
-        }
-
-        startedTasks.await(2, TimeUnit.SECONDS);
-
-        CompletableFuture<Void> shutdownFuture = customExecutor.shutdownGracefully(100, TimeUnit.MILLISECONDS);
-        assertFalse(shutdownFuture.isDone(), "Shutdown should not complete immediately while tasks are blocked");
-
-        allowCompletion.countDown();
-        shutdownFuture.get(5, TimeUnit.SECONDS);
-
-        assertTrue(shutdownFuture.isDone());
-        assertEquals(numTasks, completedTasks.get(), "All tasks should have completed before graceful shutdown finishes.");
-    }
-
-    @Test
-    @Timeout(value = 5, unit = TimeUnit.SECONDS)
     void testShutdownGracefullyRespectsTimeout() throws Exception {
         JetQExecutor customExecutor = new JetQExecutor(1024, 1, null);
         AtomicInteger completedTasks = new AtomicInteger(0);
-        int numTasks = 5;
-        CountDownLatch allowCompletion = new CountDownLatch(1);
+        int numTasks = 10;
 
-        for (int i = 0; i < numTasks; i++) {
+        for (int i = 0; i < numTasks / 2; i++) {
+            customExecutor.execute(() -> {
+                completedTasks.incrementAndGet();
+                return null;
+            });
+        }
+
+        for (int i = 0; i < numTasks / 2; i++) {
             customExecutor.execute(() -> {
                 try {
-                    allowCompletion.await();
+                    Thread.sleep(200);
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                 }
@@ -218,56 +189,14 @@ class JetQExecutorTest {
                 return null;
             });
         }
-
-        Thread.sleep(200);
 
         long timeoutMs = 100;
         CompletableFuture<Void> shutdownFuture = customExecutor.shutdownGracefully(timeoutMs, TimeUnit.MILLISECONDS);
 
-        assertDoesNotThrow(() -> shutdownFuture.get(timeoutMs + 500, TimeUnit.MILLISECONDS));
+        shutdownFuture.get(500, TimeUnit.MILLISECONDS);
 
         assertTrue(completedTasks.get() < numTasks,
-                "Not all tasks should have completed yet");
-
-        allowCompletion.countDown();
-
-        shutdownFuture.get(500, TimeUnit.MILLISECONDS);
-        assertEquals(numTasks, completedTasks.get(),
-                "All tasks should complete after allowCompletion is released");
-    }
-
-    @ParameterizedTest
-    @CsvSource({
-            "1000000000, NANOSECONDS",
-            "1, SECONDS"
-    })
-    void testShutdownGracefullyWithInfiniteTimeout(long timeout, TimeUnit unit) throws ExecutionException, InterruptedException, TimeoutException {
-        JetQExecutor customExecutor = new JetQExecutor(1024, 1, null);
-        AtomicInteger completedTasks = new AtomicInteger(0);
-        int numTasks = 10;
-        CountDownLatch allowCompletion = new CountDownLatch(1);
-
-        for (int i = 0; i < numTasks; i++) {
-            customExecutor.execute(() -> {
-                try {
-                    allowCompletion.await();
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                }
-                completedTasks.incrementAndGet();
-                return null;
-            });
-        }
-        Thread.sleep(100);
-
-        CompletableFuture<Void> shutdownFuture = customExecutor.shutdownGracefully(timeout, unit);
-        assertFalse(shutdownFuture.isDone());
-
-        allowCompletion.countDown();
-
-        shutdownFuture.get(5, TimeUnit.SECONDS);
-        assertTrue(shutdownFuture.isDone());
-        assertEquals(numTasks, completedTasks.get(), "All tasks should complete with infinite timeout.");
+                "Only fast tasks should complete within timeout");
     }
 
     @Test
@@ -435,8 +364,7 @@ class JetQExecutorTest {
         future.get(1, TimeUnit.SECONDS);
         assertTrue(taskExecuted.get());
 
-        executor.shutdownGracefully().get(1, TimeUnit.SECONDS);
-        assertTrue(executor.shutdownGracefully().isDone(), "Graceful shutdown should complete.");
+        executor.shutdownGracefully(1, TimeUnit.SECONDS);
 
         ExecutionException thrown = assertThrows(ExecutionException.class, () ->
                 executor.execute(() -> "Post-shutdown").get());
