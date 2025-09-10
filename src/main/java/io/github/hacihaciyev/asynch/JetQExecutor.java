@@ -5,7 +5,6 @@ import io.github.hacihaciyev.ds.JetMPSC;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.LockSupport;
 import java.util.function.Supplier;
@@ -19,6 +18,7 @@ public final class JetQExecutor {
   private final JetMPSC<TaskWrapper<?>> queue;
   private final BatchErrorHandler batchErrorHandler;
   private volatile boolean shutdown = false;
+  private volatile boolean shutdownGracefully = false;
 
   private static final int DEFAULT_BATCH_SIZE = 64;
   private static final int DEFAULT_QUEUE_CAPACITY = 1 << 18;
@@ -62,7 +62,7 @@ public final class JetQExecutor {
    * Hot path - optimized for minimal latency
    */
   public <T> CompletableFuture<T> execute(Supplier<T> task) {
-    if (shutdown)
+    if (shutdown || shutdownGracefully)
       return CompletableFuture.failedFuture(
           new IllegalStateException("Executor is shutdown"));
 
@@ -95,50 +95,19 @@ public final class JetQExecutor {
    * Graceful shutdown - waits for queue to be empty
    */
   public CompletableFuture<Void> shutdownGracefully(long timeout, TimeUnit unit) {
-    if (timeout < 0)
-      throw new IllegalArgumentException("Timeout cannot be negative: " + timeout);
-    if (unit == null)
-      throw new IllegalArgumentException("TimeUnit cannot be null");
-
-    shutdown = true;
+    if (timeout < 0) throw new IllegalArgumentException("Timeout cannot be negative: " + timeout);
+    if (unit == null) throw new IllegalArgumentException("TimeUnit cannot be null");
+    shutdownGracefully = true;
 
     return CompletableFuture.runAsync(() -> {
       long timeoutNanos = unit.toNanos(timeout);
       long startTime = System.nanoTime();
 
-      var pendingTasks = new ArrayList<TaskWrapper<?>>();
-      TaskWrapper<?> task;
-      while ((task = queue.poll()) != null)
-        pendingTasks.add(task);
+      while (System.nanoTime() - startTime < timeoutNanos && !queue.isEmpty())
+        LockSupport.parkNanos(10_000);
 
-      CountDownLatch latch = new CountDownLatch(pendingTasks.size());
-
-      for (TaskWrapper<?> t : pendingTasks) {
-        Thread.startVirtualThread(() -> {
-          try {
-            t.execute();
-          } finally {
-            latch.countDown();
-          }
-        });
-      }
-
-      boolean completedInTime = false;
-      try {
-        long remaining;
-        while ((remaining = timeoutNanos - (System.nanoTime() - startTime)) > 0 && latch.getCount() > 0) {
-          completedInTime = latch.await(remaining, TimeUnit.NANOSECONDS);
-          if (completedInTime) break;
-        }
-      } catch (InterruptedException e) {
-        Thread.currentThread().interrupt();
-      }
-
-      if (!completedInTime && latch.getCount() > 0)
-        log.warning("Graceful shutdown timeout exceeded. Remaining tasks: " + latch.getCount());
-
-      else
-        log.fine("JetQExecutor graceful shutdown completed. All tasks executed.");
+      if (!queue.isEmpty()) log.warning("Graceful shutdown timeout exceeded. Remaining tasks: " + queue.size());
+      else  log.fine("JetQExecutor graceful shutdown completed. All tasks executed.");
     });
   }
 
