@@ -130,6 +130,9 @@ public class JetQuerious {
     private static final Logger LOG = Logger.getLogger(JetQuerious.class.getName());
 
     private JetQuerious(DataSource dataSource, JetQExecutor executor) {
+        if (dataSource == null)
+            throw new IllegalArgumentException("Provided datasource is null");
+
         this.dataSource = dataSource;
         this.executor = executor;
     }
@@ -162,7 +165,7 @@ public class JetQuerious {
 
     public static JetQuerious instance() {
         if (instance == null)
-            throw new IllegalStateException("JetQuerious is not initialized. Call JDBC.init(dataSource) first.");
+            throw new IllegalStateException("JetQuerious is not initialized. Call JetQuerious.init(dataSource) first.");
         return instance;
     }
 
