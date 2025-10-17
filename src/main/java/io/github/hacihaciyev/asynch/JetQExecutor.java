@@ -1,7 +1,5 @@
 package io.github.hacihaciyev.asynch;
 
-import io.github.hacihaciyev.ds.JetMPSC;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;

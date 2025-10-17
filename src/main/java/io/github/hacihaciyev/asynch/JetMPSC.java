@@ -1,4 +1,4 @@
-package io.github.hacihaciyev.ds;
+package io.github.hacihaciyev.asynch;
 
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
