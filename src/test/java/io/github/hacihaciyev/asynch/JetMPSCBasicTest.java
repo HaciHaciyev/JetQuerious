@@ -1,6 +1,5 @@
-package io.github.hacihaciyev.ds;
+package io.github.hacihaciyev.asynch;
 
-import io.github.hacihaciyev.asynch.JetMPSC;
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 
