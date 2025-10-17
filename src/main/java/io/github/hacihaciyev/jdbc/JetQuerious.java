@@ -17,7 +17,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import static io.github.hacihaciyev.jdbc.SQLErrorHandler.handleSQLException;
+import static io.github.hacihaciyev.jdbc.SQLErrorTranslation.handleSQLException;
 
 /**
  * The {@code JetQuerious} class provides a set of utility methods for
