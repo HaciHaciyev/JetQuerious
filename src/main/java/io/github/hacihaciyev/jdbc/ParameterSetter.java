@@ -30,18 +30,19 @@ class ParameterSetter {
             stmt.setNull(idx, Types.NULL);
             return;
         }
-        Setter setter = SETTERS.get(param.getClass());
-        if (setter == null) {
-            if (param instanceof Enum<?>) {
-                stmt.setString(idx, ((Enum<?>) param).name());
-                return;
-            }
 
-            setValueObjectType(stmt, param, idx);
+        Setter setter = SETTERS.get(param.getClass());
+        if (setter != null) {
+            setter.set(stmt, param, idx);
             return;
         }
 
-        setter.set(stmt, param, idx);
+        if (param instanceof Enum<?>) {
+            stmt.setString(idx, ((Enum<?>) param).name());
+            return;
+        }
+
+        setValueObjectType(stmt, param, idx);
     }
 
     public static void setParameter(
@@ -57,7 +58,6 @@ class ParameterSetter {
 
         setParameter(stmt, param, idx);
     }
-
 
     private static void setValueObjectType(final PreparedStatement statement, final Object param, final int i) throws SQLException {
         Class<?> aClass = param.getClass();
