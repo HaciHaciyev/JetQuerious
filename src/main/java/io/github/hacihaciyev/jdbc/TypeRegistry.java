@@ -1,16 +1,15 @@
 package io.github.hacihaciyev.jdbc;
 
-import java.lang.reflect.Field;
-import java.lang.reflect.InaccessibleObjectException;
-import java.lang.reflect.Modifier;
-import java.util.Arrays;
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
+import java.lang.reflect.RecordComponent;
 import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class TypeRegistry {
 
-    static final Map<Class<?>, Field> FIELDS = new ConcurrentHashMap<>();
+    static final ConcurrentHashMap<Class<?>, MethodHandle> RECORD_ACCESSORS = new ConcurrentHashMap<>();
 
     static final Map<String, Class<?>> SUPPORTED_ARRAY_TYPES = Map.ofEntries(
             Map.entry("text", String.class),
@@ -43,12 +42,6 @@ public class TypeRegistry {
         }
     }
 
-    /**
-     * Determines if a parameter is of a type that is directly supported by the setParameters method.
-     *
-     * @param param the parameter to check
-     * @return true if the parameter type is supported, false otherwise
-     */
     static boolean isSupportedType(final Object param) {
         if (isSupportedSimpleType(param)) return true;
         return isSupportedValueObjectType(param);
@@ -62,32 +55,30 @@ public class TypeRegistry {
     }
 
     private static boolean isSupportedValueObjectType(Object param) {
-        Class<?> aClass = param.getClass();
+        Class<?> clazz = param.getClass();
 
-        if (TypeRegistry.FIELDS.containsKey(aClass)) return true;
+        if (!clazz.isRecord()) return false;
 
-        Field[] fields = getDeclaredInstanceFields(aClass);
-        if (fields.length != 1) return false;
-        Field field = fields[0];
+        MethodHandle accessor = RECORD_ACCESSORS.computeIfAbsent(clazz, TypeRegistry::getRecordAccessor);
+        if (accessor == null) return false;
 
         try {
-            field.setAccessible(true);
-
-            Object value = field.get(param);
-            boolean supportedType = isSupportedSimpleType(value);
-            if (!supportedType) return false;
-
-            TypeRegistry.FIELDS.put(aClass, field);
-            return true;
-        } catch (IllegalAccessException | NullPointerException | InaccessibleObjectException | SecurityException e) {
+            Object value = accessor.invoke(param);
+            return isSupportedSimpleType(value);
+        } catch (Throwable t) {
             return false;
         }
     }
 
-    private static Field[] getDeclaredInstanceFields(Class<?> clazz) {
-        Field[] allFields = clazz.getDeclaredFields();
-        return Arrays.stream(allFields)
-                .filter(f -> !Modifier.isStatic(f.getModifiers()))
-                .toArray(Field[]::new);
+    private static MethodHandle getRecordAccessor(Class<?> recordClass) {
+        return RECORD_ACCESSORS.computeIfAbsent(recordClass, cls -> {
+            try {
+                RecordComponent[] comps = cls.getRecordComponents();
+                if (comps == null || comps.length != 1) return null;
+                return MethodHandles.lookup().unreflect(comps[0].getAccessor());
+            } catch (IllegalAccessException e) {
+                return null;
+            }
+        });
     }
 }

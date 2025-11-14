@@ -1,6 +1,6 @@
 package io.github.hacihaciyev.jdbc;
 
-import java.lang.reflect.Field;
+import java.lang.invoke.MethodHandle;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.net.URI;
@@ -61,20 +61,25 @@ class ParameterSetter {
 
     private static void setValueObjectType(final PreparedStatement statement, final Object param, final int i) throws SQLException {
         Class<?> aClass = param.getClass();
-        Field field = TypeRegistry.FIELDS.get(aClass);
+        MethodHandle accessor = TypeRegistry.RECORD_ACCESSORS.get(aClass);
+
+        if (accessor == null)
+            throw new IllegalArgumentException(
+                    "Could not find accessor for record class: %s, you must manually specify its mapping"
+                            .formatted(aClass.getName()));
 
         try {
-            Object value = field.get(param);
+            Object value = accessor.invoke(param);
             if (value == null) {
-                statement.setNull(i, Types.NULL);
+                statement.setNull(i, java.sql.Types.NULL);
                 return;
             }
 
             setParameter(statement, value, i);
-        } catch (IllegalAccessException | IllegalArgumentException | NullPointerException e) {
+        } catch (Throwable e) {
             throw new IllegalArgumentException(
-                    "Could not record the object of class: %s, you must manually specify its mapping"
-                            .formatted(aClass.getName()));
+                    "Could not read the value of record class: %s, you must manually specify its mapping"
+                            .formatted(aClass.getName()), e);
         }
     }
 
