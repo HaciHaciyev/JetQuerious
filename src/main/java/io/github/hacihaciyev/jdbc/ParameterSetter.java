@@ -5,6 +5,7 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.net.URI;
 import java.net.URL;
+import java.nio.ByteBuffer;
 import java.nio.file.Path;
 import java.sql.*;
 import java.time.*;
@@ -13,7 +14,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
-public class ParameterSetter {
+class ParameterSetter {
 
     static final ClassValue<Setter> SETTERS = new ClassValue<>() {
         @Override
@@ -24,7 +25,7 @@ public class ParameterSetter {
 
     private ParameterSetter() {}
 
-    public static void setParameter(final PreparedStatement stmt, final Object param, final int idx) throws SQLException {
+    static void setParameter(final PreparedStatement stmt, final Object param, final int idx) throws SQLException {
         if (param == null) {
             stmt.setNull(idx, Types.NULL);
             return;
@@ -42,6 +43,21 @@ public class ParameterSetter {
 
         setter.set(stmt, param, idx);
     }
+
+    public static void setParameter(
+            final PreparedStatement stmt,
+            final Object param,
+            final int idx,
+            final UUIDStrategy uuidStrategy) throws SQLException {
+
+        if (param instanceof UUID uuid) {
+            setUUID(stmt, uuid, idx, uuidStrategy);
+            return;
+        }
+
+        setParameter(stmt, param, idx);
+    }
+
 
     private static void setValueObjectType(final PreparedStatement statement, final Object param, final int i) throws SQLException {
         Class<?> aClass = param.getClass();
@@ -101,5 +117,24 @@ public class ParameterSetter {
         if (type == URI.class) return (statement, param, index) -> statement.setString(index, param.toString());
         if (type == Path.class) return (statement, param, index) -> statement.setString(index, param.toString());
         return null;
+    }
+
+    private static void setUUID(PreparedStatement stmt, UUID uuid, int idx, UUIDStrategy uuidStrategy) throws SQLException {
+        switch (uuidStrategy) {
+            case STRING -> stmt.setString(idx, uuid.toString());
+            case OBJECT -> stmt.setObject(idx, uuid);
+            case BINARY -> {
+                ByteBuffer bb = ByteBuffer.wrap(new byte[16]);
+                bb.putLong(uuid.getMostSignificantBits());
+                bb.putLong(uuid.getLeastSignificantBits());
+                stmt.setBytes(idx, bb.array());
+            }
+        }
+    }
+
+    enum UUIDStrategy {
+        STRING,
+        BINARY,
+        OBJECT
     }
 }
