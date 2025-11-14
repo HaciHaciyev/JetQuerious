@@ -698,7 +698,7 @@ public class JetQuerious {
                     throw new NotFoundException("Data in query for object was not found.");
                 }
 
-                T value = Mapper.map(resultSet, type);
+                T value = OutboundMapper.map(resultSet, type);
                 return value;
             }
         }

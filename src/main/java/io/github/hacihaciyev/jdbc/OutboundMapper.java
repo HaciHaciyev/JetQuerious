@@ -16,9 +16,9 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Function;
 
-public class Mapper {
+public class OutboundMapper {
 
-    private Mapper() {}
+    private OutboundMapper() {}
 
     static final Map<Class<?>, Function<ResultSet, ?>> TYPES_MAPPER = typesMapper();
 
