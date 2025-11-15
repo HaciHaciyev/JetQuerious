@@ -121,6 +121,7 @@ class ParameterSetter {
         if (type == URL.class) return (statement, param, index) -> statement.setURL(index, (URL) param);
         if (type == URI.class) return (statement, param, index) -> statement.setString(index, param.toString());
         if (type == Path.class) return (statement, param, index) -> statement.setString(index, param.toString());
+        if (type == Void.class) return (statement, param, index) -> statement.setNull(index, Types.NULL);
         return null;
     }
 
