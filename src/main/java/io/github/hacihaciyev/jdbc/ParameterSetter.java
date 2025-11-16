@@ -45,7 +45,7 @@ class ParameterSetter {
         setValueObjectType(stmt, param, idx);
     }
 
-    public static void setParameter(
+    static void setParameter(
             final PreparedStatement stmt,
             final Object param,
             final int idx,

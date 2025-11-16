@@ -7,7 +7,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class TypeRegistry {
+class TypeRegistry {
 
     static final ConcurrentHashMap<Class<?>, MethodHandle> RECORD_ACCESSORS = new ConcurrentHashMap<>();
 
@@ -42,9 +42,18 @@ public class TypeRegistry {
         }
     }
 
+    static boolean isSupportedType(final Class<?> type, final ColumnMeta columnMeta) {
+        if (columnMeta.type().isSupportedType(type)) return true;
+
+        Object object = recordAccessor(type);
+        return columnMeta.type().isSupportedType(object);
+    }
+
     static boolean isSupportedType(final Object param) {
         if (isSupportedSimpleType(param)) return true;
-        return isSupportedValueObjectType(param);
+
+        Object object = recordAccessor(param);
+        return isSupportedSimpleType(object);
     }
 
     private static boolean isSupportedSimpleType(Object param) {
@@ -54,19 +63,17 @@ public class TypeRegistry {
         return aClass.isEnum();
     }
 
-    private static boolean isSupportedValueObjectType(Object param) {
+    private static Object recordAccessor(Object param) {
         Class<?> clazz = param.getClass();
-
         if (!clazz.isRecord()) return false;
 
         MethodHandle accessor = RECORD_ACCESSORS.computeIfAbsent(clazz, TypeRegistry::getRecordAccessor);
         if (accessor == null) return false;
 
         try {
-            Object value = accessor.invoke(param);
-            return isSupportedSimpleType(value);
+            return accessor.invoke(param);
         } catch (Throwable t) {
-            return false;
+            return null;
         }
     }
 
