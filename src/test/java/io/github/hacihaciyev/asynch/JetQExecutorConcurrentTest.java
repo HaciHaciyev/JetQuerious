@@ -1,6 +1,7 @@
 package io.github.hacihaciyev.asynch;
 
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.RepeatedTest;
 
 import java.util.concurrent.CompletableFuture;
@@ -13,6 +14,7 @@ import java.util.function.Supplier;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+@Disabled("For separate run")
 class JetQExecutorConcurrentTest {
     private static final int QUEUE_CAPACITY = 1 << 20;
     private JetQExecutor executor;
@@ -61,6 +63,8 @@ class JetQExecutorConcurrentTest {
 
         assertEquals(TOTAL_ITEMS, completedFutures, "All futures should be completed");
         assertEquals(TOTAL_ITEMS, consumed.get(), "All tasks should be consumed");
+
+        Thread.sleep(TimeUnit.SECONDS.toMillis(1));
     }
 
     private void producerExecutes(ExecutorService producerExecutor, int ITEMS_PER_PRODUCER, int producerID,

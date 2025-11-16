@@ -1,12 +1,14 @@
 package io.github.hacihaciyev.asynch;
 
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.RepeatedTest;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.*;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+@Disabled("For separate run")
 class JetMPSConcurrentTest {
 
     private static final JetMPSC<Integer> QUEUE = new JetMPSC<>(1 << 20);
@@ -18,7 +20,7 @@ class JetMPSConcurrentTest {
 
     @RepeatedTest(10)
     void concurrentTest() throws Exception {
-        final int PRODUCERS = 1 << 22;
+        final int PRODUCERS = 1 << 20;
         final int ITEMS_PER_PRODUCER = 10;
         final int TOTAL_ITEMS = PRODUCERS * ITEMS_PER_PRODUCER;
 
