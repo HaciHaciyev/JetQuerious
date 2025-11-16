@@ -101,7 +101,7 @@ class ParameterSetter {
         if (type == AtomicLong.class) return (statement, param, index) -> statement.setLong(index, ((AtomicLong) param).get());
         if (type == Boolean.class) return (statement, param, index) -> statement.setBoolean(index, (Boolean) param);
         if (type == AtomicBoolean.class) return (statement, param, index) -> statement.setBoolean(index, ((AtomicBoolean) param).get());
-        if (type == UUID.class) return (statement, param, index) -> statement.setString(index, param.toString());
+        if (type == UUID.class) return (statement, param, index) -> statement.setObject(index, param.toString());
         if (type == byte[].class) return (statement, param, index) -> statement.setBytes(index, (byte[]) param);
         if (type == Blob.class) return (statement, param, index) -> statement.setBlob(index, (Blob) param);
         if (type == Clob.class) return (statement, param, index) -> statement.setClob(index, (Clob) param);
