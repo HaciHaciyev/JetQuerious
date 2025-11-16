@@ -1163,8 +1163,7 @@ public class JetQuerious {
 
     private Result<Void, Throwable> validateArray(Object[] array, String arrayDefinition) {
         try {
-            TypeRegistry.validateArrayDefinition(arrayDefinition);
-            TypeRegistry.validateArrayElementsMatchDefinition(array, arrayDefinition);
+            TypeRegistry.validateArrayElementsMatchDefinition(array, ArrayDefinition.from(arrayDefinition));
             return Result.success(null);
         } catch (IllegalArgumentException e) {
             return Result.failure(new InvalidArgumentTypeException(e.getMessage()));

@@ -3,37 +3,15 @@ package io.github.hacihaciyev.jdbc;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.reflect.RecordComponent;
-import java.util.Locale;
-import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 class TypeRegistry {
-
     static final ConcurrentHashMap<Class<?>, MethodHandle> RECORD_ACCESSORS = new ConcurrentHashMap<>();
-
-    static final Map<String, Class<?>> SUPPORTED_ARRAY_TYPES = Map.ofEntries(
-            Map.entry("text", String.class),
-            Map.entry("varchar", String.class),
-            Map.entry("int", Integer.class),
-            Map.entry("integer", Integer.class),
-            Map.entry("bigint", Long.class),
-            Map.entry("boolean", Boolean.class),
-            Map.entry("uuid", java.util.UUID.class),
-            Map.entry("date", java.sql.Date.class),
-            Map.entry("timestamp", java.sql.Timestamp.class)
-    );
 
     private TypeRegistry() {}
 
-    static void validateArrayDefinition(String definition) {
-        if (!SUPPORTED_ARRAY_TYPES.containsKey(definition.toLowerCase(Locale.ROOT)))
-            throw new IllegalArgumentException("Unsupported array definition: " + definition);
-    }
-
-    static void validateArrayElementsMatchDefinition(Object[] array, String definition) {
-        Class<?> expectedType = SUPPORTED_ARRAY_TYPES.get(definition.toLowerCase(Locale.ROOT));
-        if (expectedType == null)
-            throw new IllegalArgumentException("Cannot determine expected type for: " + definition);
+    static void validateArrayElementsMatchDefinition(Object[] array, ArrayDefinition definition) {
+        Class<?> expectedType = definition.typeClass();
 
         for (Object element : array) {
             if (element != null && !expectedType.isAssignableFrom(element.getClass()))
