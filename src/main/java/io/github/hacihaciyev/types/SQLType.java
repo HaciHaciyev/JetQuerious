@@ -13,7 +13,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
-public enum SqlType {
+public enum SQLType {
 
     NULL(Void.class),
 
@@ -101,7 +101,7 @@ public enum SqlType {
 
     private final Class<?>[] supported;
 
-    SqlType(Class<?>... supported) {
+    SQLType(Class<?>... supported) {
         this.supported = supported;
     }
 
@@ -119,7 +119,7 @@ public enum SqlType {
         return isSupportedType(object.getClass());
     }
 
-    public static SqlType from(String s) {
+    public static SQLType from(String s) {
         if (s == null) return null;
         try {
             return valueOf(s.trim().toUpperCase()
