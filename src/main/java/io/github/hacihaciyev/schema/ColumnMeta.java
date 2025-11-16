@@ -1,6 +1,6 @@
 package io.github.hacihaciyev.schema;
 
-import io.github.hacihaciyev.sql.SqlType;
+import io.github.hacihaciyev.types.SqlType;
 
 public record ColumnMeta(String name, SqlType type, boolean nullable) {
 

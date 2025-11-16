@@ -1,4 +1,4 @@
-package io.github.hacihaciyev.sql;
+package io.github.hacihaciyev.types;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
