@@ -1,16 +1,18 @@
-package io.github.hacihaciyev.jdbc;
+package io.github.hacihaciyev.types;
+
+import io.github.hacihaciyev.schema.ColumnMeta;
 
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.reflect.RecordComponent;
 import java.util.concurrent.ConcurrentHashMap;
 
-class TypeRegistry {
+public class TypeRegistry {
     static final ConcurrentHashMap<Class<?>, MethodHandle> RECORD_ACCESSORS = new ConcurrentHashMap<>();
 
     private TypeRegistry() {}
 
-    static void validateArrayElementsMatchDefinition(Object[] array, ArrayDefinition definition) {
+    public static void validateArrayElementsMatchDefinition(Object[] array, ArrayDefinition definition) {
         Class<?> expectedType = definition.typeClass();
 
         for (Object element : array) {
@@ -20,14 +22,14 @@ class TypeRegistry {
         }
     }
 
-    static boolean isSupportedType(final Class<?> type, final ColumnMeta columnMeta) {
+    public static boolean isSupportedType(final Class<?> type, final ColumnMeta columnMeta) {
         if (columnMeta.type().isSupportedType(type)) return true;
 
         Object object = recordAccessor(type);
         return columnMeta.type().isSupportedType(object);
     }
 
-    static boolean isSupportedType(final Object param) {
+    public static boolean isSupportedType(final Object param) {
         if (isSupportedSimpleType(param)) return true;
 
         Object object = recordAccessor(param);

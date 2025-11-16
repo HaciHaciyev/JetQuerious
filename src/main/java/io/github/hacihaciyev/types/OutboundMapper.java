@@ -1,4 +1,4 @@
-package io.github.hacihaciyev.jdbc;
+package io.github.hacihaciyev.types;
 
 import io.github.hacihaciyev.exceptions.InvalidArgumentTypeException;
 
@@ -22,7 +22,7 @@ public class OutboundMapper {
 
     static final Map<Class<?>, Function<ResultSet, ?>> TYPES_MAPPER = typesMapper();
 
-    static <T> T map(ResultSet rs, Class<T> type) {
+    public static <T> T map(ResultSet rs, Class<T> type) {
         Function<ResultSet, ?> resultSetFunction = TYPES_MAPPER.get(type);
         if (resultSetFunction == null) throw new InvalidArgumentTypeException("Unsupported wrapper type.");
         return (T) resultSetFunction.apply(rs);

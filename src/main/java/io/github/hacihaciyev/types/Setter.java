@@ -1,4 +1,4 @@
-package io.github.hacihaciyev.jdbc;
+package io.github.hacihaciyev.types;
 
 import java.sql.PreparedStatement;
 import java.sql.SQLException;

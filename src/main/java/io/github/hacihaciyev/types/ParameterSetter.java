@@ -1,11 +1,10 @@
-package io.github.hacihaciyev.jdbc;
+package io.github.hacihaciyev.types;
 
 import java.lang.invoke.MethodHandle;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.net.URI;
 import java.net.URL;
-import java.nio.ByteBuffer;
 import java.nio.file.Path;
 import java.sql.*;
 import java.time.*;
@@ -14,7 +13,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
-class ParameterSetter {
+public class ParameterSetter {
 
     static final ClassValue<Setter> SETTERS = new ClassValue<>() {
         @Override
@@ -25,7 +24,7 @@ class ParameterSetter {
 
     private ParameterSetter() {}
 
-    static void setParameter(final PreparedStatement stmt, final Object param, final int idx) throws SQLException {
+    public static void setParameter(final PreparedStatement stmt, final Object param, final int idx) throws SQLException {
         if (param == null) {
             stmt.setNull(idx, Types.NULL);
             return;
@@ -45,21 +44,7 @@ class ParameterSetter {
         setValueObjectType(stmt, param, idx);
     }
 
-    static void setParameter(
-            final PreparedStatement stmt,
-            final Object param,
-            final int idx,
-            final UUIDStrategy uuidStrategy) throws SQLException {
-
-        if (param instanceof UUID uuid) {
-            setUUID(stmt, uuid, idx, uuidStrategy);
-            return;
-        }
-
-        setParameter(stmt, param, idx);
-    }
-
-    private static void setValueObjectType(final PreparedStatement statement, final Object param, final int i) throws SQLException {
+    private static void setValueObjectType(final PreparedStatement statement, final Object param, final int i) {
         Class<?> aClass = param.getClass();
         MethodHandle accessor = TypeRegistry.RECORD_ACCESSORS.get(aClass);
 
@@ -123,24 +108,5 @@ class ParameterSetter {
         if (type == Path.class) return (statement, param, index) -> statement.setString(index, param.toString());
         if (type == Void.class) return (statement, param, index) -> statement.setNull(index, Types.NULL);
         return null;
-    }
-
-    private static void setUUID(PreparedStatement stmt, UUID uuid, int idx, UUIDStrategy uuidStrategy) throws SQLException {
-        switch (uuidStrategy) {
-            case STRING -> stmt.setString(idx, uuid.toString());
-            case OBJECT -> stmt.setObject(idx, uuid);
-            case BINARY -> {
-                ByteBuffer bb = ByteBuffer.wrap(new byte[16]);
-                bb.putLong(uuid.getMostSignificantBits());
-                bb.putLong(uuid.getLeastSignificantBits());
-                stmt.setBytes(idx, bb.array());
-            }
-        }
-    }
-
-    enum UUIDStrategy {
-        STRING,
-        BINARY,
-        OBJECT
     }
 }

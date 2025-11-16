@@ -1,4 +1,4 @@
-package io.github.hacihaciyev.jdbc;
+package io.github.hacihaciyev.types;
 
 public enum ArrayDefinition {
     TEXT(String.class),

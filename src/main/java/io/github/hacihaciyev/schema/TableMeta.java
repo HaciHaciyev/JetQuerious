@@ -1,8 +1,8 @@
-package io.github.hacihaciyev.jdbc;
+package io.github.hacihaciyev.schema;
 
 import java.util.Arrays;
 
-record TableMeta(String table, String primaryKey, ColumnMeta[] columns) {
+public record TableMeta(String table, String primaryKey, ColumnMeta[] columns) {
 
     public ColumnMeta[] columns() {
         return columns.clone();

@@ -5,6 +5,10 @@ import io.github.hacihaciyev.asynch.BatchErrorHandler;
 import io.github.hacihaciyev.asynch.JetQExecutor;
 import io.github.hacihaciyev.exceptions.InvalidArgumentTypeException;
 import io.github.hacihaciyev.exceptions.TransactionException;
+import io.github.hacihaciyev.types.ArrayDefinition;
+import io.github.hacihaciyev.types.OutboundMapper;
+import io.github.hacihaciyev.types.ParameterSetter;
+import io.github.hacihaciyev.types.TypeRegistry;
 import io.github.hacihaciyev.util.Nullable;
 import io.github.hacihaciyev.util.Result;
 
@@ -17,7 +21,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import static io.github.hacihaciyev.jdbc.SQLErrorTranslation.handleSQLException;
+import static io.github.hacihaciyev.exceptions.SQLErrorTranslation.handleSQLException;
 
 /**
  * The {@code JetQuerious} class provides a set of utility methods for

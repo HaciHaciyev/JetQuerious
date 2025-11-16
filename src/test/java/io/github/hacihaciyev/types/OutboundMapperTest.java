@@ -1,4 +1,4 @@
-package io.github.hacihaciyev.jdbc;
+package io.github.hacihaciyev.types;
 
 import io.github.hacihaciyev.exceptions.InvalidArgumentTypeException;
 import org.junit.jupiter.api.BeforeEach;
