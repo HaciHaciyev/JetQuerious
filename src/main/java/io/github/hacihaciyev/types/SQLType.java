@@ -118,15 +118,4 @@ public enum SQLType {
         if (object == null) return true;
         return isSupportedType(object.getClass());
     }
-
-    public static SQLType from(String s) {
-        if (s == null) return null;
-        try {
-            return valueOf(s.trim().toUpperCase()
-                    .replace(' ', '_')
-                    .replace('-', '_'));
-        } catch (Exception e) {
-            throw new IllegalArgumentException("Unknown SQL type: " + s, e);
-        }
-    }
 }
