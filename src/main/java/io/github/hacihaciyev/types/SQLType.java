@@ -111,7 +111,7 @@ public enum SQLType {
 
     public boolean isSupportedType(Class<?> type) {
         if (type == null) return true;
-        return Arrays.stream(supportedTypes()).anyMatch(supportedType -> type.isAssignableFrom(supportedType));
+        return Arrays.stream(supportedTypes()).anyMatch(supportedType -> supportedType.isAssignableFrom(type));
     }
 
     public boolean isSupportedType(Object object) {
