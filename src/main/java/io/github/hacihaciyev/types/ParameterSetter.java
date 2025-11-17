@@ -130,7 +130,7 @@ public class ParameterSetter {
                 }
             };
 
-            setParameter(statement, value, index);
+            setSimpleValue(statement, value, index);
         };
     }
 
