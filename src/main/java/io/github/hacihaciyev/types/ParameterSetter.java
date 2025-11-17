@@ -30,18 +30,23 @@ public class ParameterSetter {
             return;
         }
 
+        if (setSimpleValue(stmt, param, idx)) return;
+        setValueObjectType(stmt, param, idx);
+    }
+
+    private static boolean setSimpleValue(PreparedStatement stmt, Object param, int idx) throws SQLException {
         Setter setter = SETTERS.get(param.getClass());
         if (setter != null) {
             setter.set(stmt, param, idx);
-            return;
+            return true;
         }
 
         if (param instanceof Enum<?>) {
             stmt.setString(idx, ((Enum<?>) param).name());
-            return;
+            return true;
         }
 
-        setValueObjectType(stmt, param, idx);
+        return false;
     }
 
     private static void setValueObjectType(final PreparedStatement statement, final Object param, final int i) {
@@ -60,7 +65,7 @@ public class ParameterSetter {
                 return;
             }
 
-            setParameter(statement, value, i);
+            setSimpleValue(statement, value, i);
         } catch (Throwable e) {
             throw new IllegalArgumentException(
                     "Could not read the value of record class: %s, you must manually specify its mapping"
