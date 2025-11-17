@@ -86,6 +86,7 @@ public class ParameterSetter {
         if (type == AtomicLong.class) return (statement, param, index) -> statement.setLong(index, ((AtomicLong) param).get());
         if (type == Boolean.class) return (statement, param, index) -> statement.setBoolean(index, (Boolean) param);
         if (type == AtomicBoolean.class) return (statement, param, index) -> statement.setBoolean(index, ((AtomicBoolean) param).get());
+        if (UUIDStrategy.class.isAssignableFrom(type)) return setUUID();
         if (type == UUID.class) return (statement, param, index) -> statement.setObject(index, param.toString());
         if (type == byte[].class) return (statement, param, index) -> statement.setBytes(index, (byte[]) param);
         if (type == Blob.class) return (statement, param, index) -> statement.setBlob(index, (Blob) param);
@@ -108,5 +109,46 @@ public class ParameterSetter {
         if (type == Path.class) return (statement, param, index) -> statement.setString(index, param.toString());
         if (type == Void.class) return (statement, param, index) -> statement.setNull(index, Types.NULL);
         return null;
+    }
+
+    private static Setter setUUID() {
+        return (statement, param, index) -> {
+            UUIDStrategy strategy = (UUIDStrategy) param;
+
+            Object value = switch (strategy) {
+                case UUIDStrategy.Native n -> n.value();
+                case UUIDStrategy.Charseq c -> c.value().toString();
+                case UUIDStrategy.Binary b -> {
+                    byte[] bytes = new byte[16];
+                    writeUUIDToBytes(b.value(), bytes);
+                    yield bytes;
+                }
+            };
+
+            setParameter(statement, value, index);
+        };
+    }
+
+    private static void writeUUIDToBytes(UUID uuid, byte[] dest) {
+        long msb = uuid.getMostSignificantBits();
+        long lsb = uuid.getLeastSignificantBits();
+
+        dest[0] = (byte) (msb >>> 56);
+        dest[1] = (byte) (msb >>> 48);
+        dest[2] = (byte) (msb >>> 40);
+        dest[3] = (byte) (msb >>> 32);
+        dest[4] = (byte) (msb >>> 24);
+        dest[5] = (byte) (msb >>> 16);
+        dest[6] = (byte) (msb >>> 8);
+        dest[7] = (byte) (msb);
+
+        dest[8] = (byte) (lsb >>> 56);
+        dest[9] = (byte) (lsb >>> 48);
+        dest[10] = (byte) (lsb >>> 40);
+        dest[11] = (byte) (lsb >>> 32);
+        dest[12] = (byte) (lsb >>> 24);
+        dest[13] = (byte) (lsb >>> 16);
+        dest[14] = (byte) (lsb >>> 8);
+        dest[15] = (byte) (lsb);
     }
 }
