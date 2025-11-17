@@ -20,4 +20,19 @@ public enum ArrayDefinition {
     public Class<?> typeClass() {
         return typeClass;
     }
+
+    public static ArrayDefinition from(String name) {
+        return switch (name.toLowerCase()) {
+            case "text" -> TEXT;
+            case "varchar" -> VARCHAR;
+            case "int" -> INT;
+            case "integer" -> INTEGER;
+            case "bigint" -> BIGINT;
+            case "boolean" -> BOOLEAN;
+            case "uuid" -> UUID;
+            case "date" -> DATE;
+            case "timestamp" -> TIMESTAMP;
+            default -> throw new IllegalArgumentException("Unsupported type: " + name);
+        };
+    }
 }
