@@ -280,7 +280,7 @@ public class JetQuerious {
      *         if the transaction fails.
      *         </p>
      */
-    public Result<Void, Throwable> transactional(SQLConsumer<Connection> action) {
+    public Result<Void, Throwable> transactional(TransactionContext<Connection> action) {
         if (action == null)
             return Result.failure(new IllegalArgumentException("Action must not be null"));
 
@@ -293,8 +293,8 @@ public class JetQuerious {
         }
     }
 
-    private static Result<Void, Throwable> commitTransaction(SQLConsumer<Connection> action,
-            Connection connection) throws SQLException {
+    private static Result<Void, Throwable> commitTransaction(TransactionContext<Connection> action,
+                                                             Connection connection) throws SQLException {
         try {
             action.accept(connection);
             connection.commit();
@@ -311,7 +311,7 @@ public class JetQuerious {
      * <p>
      * This method is intended for internal use within transactional blocks managed
      * by
-     * {@link #transactional(SQLConsumer)}. It prepares and executes the given SQL
+     * {@link #transactional(TransactionContext)}. It prepares and executes the given SQL
      * statement
      * with the provided parameters using the given JDBC connection.
      * <p>
