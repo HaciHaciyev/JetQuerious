@@ -96,7 +96,7 @@ public enum SQLType {
     OBJECT(Object.class),
     ANY(Object.class),
 
-    ENUM(String.class),
+    ENUM(Enum.class, CharSequence.class),
     SET_TYPE(Set.class);
 
     private final Class<?>[] supported;
