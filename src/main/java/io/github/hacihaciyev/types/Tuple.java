@@ -7,6 +7,8 @@ public sealed interface Tuple {
 
     int length();
 
+    Record value();
+
     record Duo(Record value) implements Tuple {
         public Duo {
             validateRecord(value, 2);
