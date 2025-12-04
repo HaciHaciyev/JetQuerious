@@ -295,20 +295,21 @@ public final class JavaTypeRegistry {
 
         if (type == Instant.class)
             return info(
-                    (stmt, p, i) -> stmt.setObject(i, p),
-                    SQLType.TIMESTAMP, SQLType.TIMESTAMP_WITH_TIME_ZONE
+                    (stmt, p, i) -> stmt.setObject(i, p, JDBCType.TIMESTAMP_WITH_TIMEZONE),
+                    SQLType.TIMESTAMP_WITH_TIME_ZONE, SQLType.DATETIMEOFFSET
             );
 
         if (type == OffsetDateTime.class)
             return info(
-                    (stmt, p, i) -> stmt.setObject(i, p),
-                    SQLType.TIMESTAMP_WITH_TIME_ZONE, SQLType.DATETIMEOFFSET, SQLType.TIMESTAMP
+                    (stmt, p, i) -> stmt.setObject(i, p, JDBCType.TIMESTAMP_WITH_TIMEZONE),
+                    SQLType.TIMESTAMP_WITH_TIME_ZONE, SQLType.DATETIMEOFFSET
             );
 
         if (type == ZonedDateTime.class)
             return info(
-                    (stmt, p, i) -> stmt.setObject(i, ((ZonedDateTime) p).toOffsetDateTime()),
-                    SQLType.TIMESTAMP_WITH_TIME_ZONE, SQLType.TIMESTAMP
+                    (stmt, p, i) ->
+                            stmt.setObject(i, ((ZonedDateTime) p).toOffsetDateTime(), JDBCType.TIMESTAMP_WITH_TIMEZONE),
+                    SQLType.TIMESTAMP_WITH_TIME_ZONE, SQLType.DATETIMEOFFSET
             );
 
         if (type == Time.class)
