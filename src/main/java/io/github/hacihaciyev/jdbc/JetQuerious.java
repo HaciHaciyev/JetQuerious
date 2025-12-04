@@ -5,10 +5,7 @@ import io.github.hacihaciyev.asynch.BatchErrorHandler;
 import io.github.hacihaciyev.asynch.JetQExecutor;
 import io.github.hacihaciyev.exceptions.InvalidArgumentTypeException;
 import io.github.hacihaciyev.exceptions.TransactionException;
-import io.github.hacihaciyev.types.ArrayDefinition;
 import io.github.hacihaciyev.types.OutboundMapper;
-import io.github.hacihaciyev.types.ParameterSetter;
-import io.github.hacihaciyev.types.LegacyTypeRegistry;
 import io.github.hacihaciyev.util.Nullable;
 import io.github.hacihaciyev.util.Result;
 
@@ -1161,13 +1158,13 @@ public class JetQuerious {
     private void setParameters(final PreparedStatement statement, final Object... params) throws SQLException {
         for (int i = 0; i < params.length; i++) {
             Object param = params[i];
-            ParameterSetter.setParameter(statement, param, i + 1);
+            //ParameterSetter.setParameter(statement, param, i + 1); TODO
         }
     }
 
     private Result<Void, Throwable> validateArray(Object[] array, String arrayDefinition) {
         try {
-            LegacyTypeRegistry.validateArrayElementsMatchDefinition(array, ArrayDefinition.from(arrayDefinition));
+            // TODO LegacyTypeRegistry.validateArrayElementsMatchDefinition(array, ArrayDefinition.from(arrayDefinition));
             return Result.success(null);
         } catch (IllegalArgumentException e) {
             return Result.failure(new InvalidArgumentTypeException(e.getMessage()));
@@ -1177,7 +1174,7 @@ public class JetQuerious {
     private Result<Void, InvalidArgumentTypeException> validateArgumentsTypes(final @Nullable Object... params) {
         for (int i = 0; i < params.length; i++) {
             Object param = params[i];
-            if (!LegacyTypeRegistry.isSupportedType(param)) {
+            /* TODO if (!LegacyTypeRegistry.isSupportedType(param)) {
                 String className = param.getClass().getName();
                 String simpleName = param.getClass().getSimpleName();
                 String packageName = param.getClass().getPackage() != null ? param.getClass().getPackage().getName()
@@ -1206,7 +1203,7 @@ public class JetQuerious {
                                 4. For collections, flatten them into individual parameters or use batch processing
                                 """,
                                 i, className, simpleName, packageName)));
-            }
+            }*/
         }
 
         return Result.success(null);

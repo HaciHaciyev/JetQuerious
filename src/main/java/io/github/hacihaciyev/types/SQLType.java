@@ -1,121 +1,84 @@
 package io.github.hacihaciyev.types;
 
-import java.math.BigDecimal;
-import java.math.BigInteger;
-import java.sql.*;
-import java.time.*;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.List;
-import java.util.Set;
-import java.util.UUID;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
-
 public enum SQLType {
+    NULL,
 
-    NULL(Void.class),
+    TINYINT,
+    SMALLINT,
+    INT,
+    INTEGER,
+    BIGINT,
 
-    TINYINT(byte.class, Byte.class),
-    SMALLINT(short.class, Short.class, byte.class, Byte.class),
-    INT(int.class, Integer.class, short.class, Short.class, byte.class, Byte.class, AtomicInteger.class),
-    INTEGER(int.class, Integer.class, short.class, Short.class, byte.class, Byte.class, AtomicInteger.class),
-    BIGINT(long.class, Long.class, int.class, Integer.class, short.class, Short.class, byte.class, Byte.class,
-            AtomicLong.class, AtomicInteger.class),
+    DECIMAL,
+    NUMERIC,
 
-    DECIMAL(BigDecimal.class, BigInteger.class, long.class, Long.class, int.class, Integer.class,
-            short.class, Short.class, byte.class, Byte.class),
-    NUMERIC(BigDecimal.class, BigInteger.class, long.class, Long.class, int.class, Integer.class,
-            short.class, Short.class, byte.class, Byte.class),
+    FLOAT,
+    REAL,
+    DOUBLE,
+    DOUBLE_PRECISION,
 
-    FLOAT(float.class, Float.class, double.class, Double.class, BigDecimal.class),
-    REAL(float.class, Float.class, double.class, Double.class, BigDecimal.class),
-    DOUBLE(double.class, Double.class, float.class, Float.class, BigDecimal.class),
-    DOUBLE_PRECISION(double.class, Double.class),
+    MONEY,
+    SMALLMONEY,
 
-    MONEY(BigDecimal.class),
-    SMALLMONEY(BigDecimal.class),
+    BOOLEAN,
+    BIT,
 
-    BOOLEAN(boolean.class, Boolean.class, AtomicBoolean.class),
-    BIT(boolean.class, Boolean.class, AtomicBoolean.class),
+    CHAR,
+    CHARACTER,
+    NCHAR,
 
-    CHAR(char.class, Character.class, CharSequence.class),
-    CHARACTER(char.class, Character.class, CharSequence.class),
-    NCHAR(char.class, Character.class, CharSequence.class),
+    VARCHAR,
+    CHARACTER_VARYING,
+    NATIONAL_CHAR,
+    NVARCHAR,
+    NATIONAL_CHAR_VARYING,
 
-    VARCHAR(CharSequence.class),
-    CHARACTER_VARYING(CharSequence.class),
-    NATIONAL_CHAR(CharSequence.class),
-    NVARCHAR(CharSequence.class),
-    NATIONAL_CHAR_VARYING(CharSequence.class),
+    TEXT,
+    CLOB,
 
-    TEXT(String.class, CharSequence.class),
-    CLOB(Clob.class, String.class, StringBuilder.class, CharSequence.class),
+    BINARY,
+    VARBINARY,
+    BINARY_VARYING,
+    BLOB,
 
-    BINARY(byte[].class),
-    VARBINARY(byte[].class),
-    BINARY_VARYING(byte[].class),
-    BLOB(Blob.class, byte[].class),
+    DATE,
+    TIME,
+    TIMESTAMP,
+    TIMESTAMP_WITH_TIME_ZONE,
+    TIMESTAMP_WITHOUT_TIME_ZONE,
 
-    DATE(Date.class, LocalDate.class),
-    TIME(Time.class, LocalTime.class),
-    TIMESTAMP(Timestamp.class, LocalDateTime.class, Instant.class, ZonedDateTime.class, OffsetDateTime.class),
-    TIMESTAMP_WITH_TIME_ZONE(OffsetDateTime.class, ZonedDateTime.class, Instant.class),
-    TIMESTAMP_WITHOUT_TIME_ZONE(LocalDateTime.class),
+    DATETIME,
+    DATETIME2,
+    DATETIMEOFFSET,
+    SMALLDATETIME,
 
-    DATETIME(Timestamp.class, LocalDateTime.class),
-    DATETIME2(LocalDateTime.class),
-    DATETIMEOFFSET(OffsetDateTime.class),
-    SMALLDATETIME(Timestamp.class),
+    INTERVAL,
+    YEAR,
 
-    INTERVAL(Duration.class, Period.class),
-    YEAR(int.class, Integer.class, Year.class),
+    UUID,
+    UNIQUEIDENTIFIER,
 
-    UUID(UUID.class),
-    UNIQUEIDENTIFIER(UUID.class),
+    XML,
+    JSON,
+    JSONB,
+    JSON_ELEMENT,
+    GEOMETRY,
+    GEOGRAPHY,
+    HIERARCHYID,
+    ROWVERSION,
+    SQL_VARIANT,
+    CURSOR,
+    TABLE_TYPE,
 
-    XML(CharSequence.class),
-    JSON(CharSequence.class),
-    JSONB(CharSequence.class),
-    JSON_ELEMENT(Object.class),
-    GEOMETRY(Object.class),
-    GEOGRAPHY(Object.class),
-    HIERARCHYID(CharSequence.class),
-    ROWVERSION(byte[].class),
-    SQL_VARIANT(Object.class),
-    CURSOR(Void.class),
-    TABLE_TYPE(Void.class),
+    ARRAY,
+    LIST,
+    MULTISET,
+    SET,
 
-    ARRAY(Object[].class, List.class),
-    LIST(Collection.class, List.class),
-    MULTISET(Collection.class),
-    SET(Set.class),
+    VARIANT,
+    OBJECT,
+    ANY,
 
-    VARIANT(Object.class),
-    OBJECT(Object.class),
-    ANY(Object.class),
-
-    ENUM(Enum.class, CharSequence.class),
-    SET_TYPE(Set.class);
-
-    private final Class<?>[] supported;
-
-    SQLType(Class<?>... supported) {
-        this.supported = supported;
-    }
-
-    public Class<?>[] supportedTypes() {
-        return supported;
-    }
-
-    public boolean isSupportedType(Class<?> type) {
-        if (type == null) return true;
-        return Arrays.stream(supportedTypes()).anyMatch(supportedType -> supportedType.isAssignableFrom(type));
-    }
-
-    public boolean isSupportedType(Object object) {
-        if (object == null) return true;
-        return isSupportedType(object.getClass());
-    }
+    ENUM,
+    SET_TYPE;
 }
