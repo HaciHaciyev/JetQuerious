@@ -326,7 +326,7 @@ public final class JavaTypeRegistry {
                     SQLType.NULL, SQLType.CURSOR, SQLType.TABLE_TYPE
             );
 
-        throw new IllegalArgumentException("No TypeInfo registered for " + type.getName());
+        return null;
     }
 
     private static TypeInfo info(Setter setter, SQLType... sqlTypes) {
