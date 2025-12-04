@@ -2,6 +2,8 @@ package io.github.hacihaciyev.types;
 
 import io.github.hacihaciyev.util.Nullable;
 
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.net.URI;
@@ -16,8 +18,12 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 import static io.github.hacihaciyev.types.ParameterSetter.SETTERS;
+import static java.util.Objects.isNull;
+import static java.util.Objects.nonNull;
 
 public final class TypeRegistry {
+
+    private static final MethodHandles.Lookup LOOKUP = MethodHandles.lookup();
 
     static final ClassValue<TypeInfo> REGISTRY = new ClassValue<>() {
         @Override
@@ -29,13 +35,13 @@ public final class TypeRegistry {
     private TypeRegistry() {}
 
     public static boolean setParameter(final PreparedStatement stmt, final Object param, final int idx) throws SQLException {
-        if (param == null) {
+        if (isNull(param)) {
             stmt.setNull(idx, Types.NULL);
             return true;
         }
 
         Setter setter = SETTERS.get(param.getClass());
-        if (setter != null) {
+        if (nonNull(setter)) {
             setter.set(stmt, param, idx);
             return true;
         }
@@ -351,6 +357,8 @@ public final class TypeRegistry {
                     SQLType.NULL, SQLType.CURSOR, SQLType.TABLE_TYPE
             );
 
+        TypeInfo typeInfo = typeSetter(type);
+        if (nonNull(typeInfo)) return typeInfo;
         return null;
     }
 
@@ -402,5 +410,36 @@ public final class TypeRegistry {
         };
 
         REGISTRY.get(value.getClass()).setter().set(stmt, value, idx);
+    }
+
+    private static TypeInfo typeSetter(Class<?> type) {
+        if (!type.isRecord()) return null;
+
+        var components = type.getRecordComponents();
+        if (components.length != 1) return null;
+
+        TypeInfo componentTypeInfo = REGISTRY.get(components[0].getType());
+        if (componentTypeInfo == null) return null;
+
+        try {
+            MethodHandle accessor = LOOKUP.unreflect(components[0].getAccessor());
+            return recordInfo(accessor, componentTypeInfo);
+        } catch (Throwable ignored) {
+            return null;
+        }
+    }
+
+    private static TypeInfo recordInfo(MethodHandle accessor, TypeInfo componentTypeInfo) {
+        return info(
+                (stmt, p, i) -> {
+                    try {
+                        Object value = accessor.invoke(p);
+                        componentTypeInfo.setter().set(stmt, value, i);
+                    } catch (Throwable e) {
+                        throw new IllegalArgumentException("Unable to provide mapping for the record you should provide it manually");
+                    }
+                },
+                componentTypeInfo.sqlTypes().toArray(SQLType[]::new)
+        );
     }
 }
