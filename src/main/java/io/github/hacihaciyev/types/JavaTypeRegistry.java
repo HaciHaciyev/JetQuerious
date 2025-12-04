@@ -36,6 +36,22 @@ public final class JavaTypeRegistry {
 
     private static TypeInfo computeTypeInfo(Class<?> type) {
 
+        if (type == AsObject.class)
+            return info(
+                    (stmt, param, idx) -> stmt.setObject(idx, type)
+            );
+
+        if (type == AsString.class)
+            return info(
+                    (stmt, param, idx) -> stmt.setString(idx, type.toString())
+            );
+
+        if (UUIDStrategy.class.isAssignableFrom(type))
+            return info(
+                    JavaTypeRegistry::setUUID,
+                    SQLType.UUID, SQLType.UNIQUEIDENTIFIER, SQLType.BINARY, SQLType.VARCHAR, SQLType.CHAR, SQLType.CHARACTER
+            );
+
         if (type == String.class)
             return info(
                     (stmt, p, i) -> stmt.setString(i, (String) p),
@@ -197,12 +213,6 @@ public final class JavaTypeRegistry {
             return info(
                     (stmt, p, i) -> stmt.setObject(i, p),
                     SQLType.UUID, SQLType.UNIQUEIDENTIFIER
-            );
-
-        if (UUIDStrategy.class.isAssignableFrom(type))
-            return info(
-                    JavaTypeRegistry::setUUID,
-                    SQLType.UUID, SQLType.UNIQUEIDENTIFIER, SQLType.BINARY, SQLType.VARCHAR, SQLType.CHAR, SQLType.CHARACTER
             );
 
         if (type == byte[].class)
