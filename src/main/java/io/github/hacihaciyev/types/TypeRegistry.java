@@ -17,7 +17,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
-import static io.github.hacihaciyev.types.ParameterSetter.SETTERS;
 import static java.util.Objects.isNull;
 import static java.util.Objects.nonNull;
 
@@ -40,7 +39,7 @@ public final class TypeRegistry {
             return true;
         }
 
-        Setter setter = SETTERS.get(param.getClass());
+        Setter setter = REGISTRY.get(param.getClass()).setter();
         if (nonNull(setter)) {
             setter.set(stmt, param, idx);
             return true;
