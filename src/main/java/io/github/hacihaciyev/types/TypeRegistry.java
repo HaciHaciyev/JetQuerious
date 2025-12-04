@@ -51,6 +51,7 @@ public final class TypeRegistry {
     }
 
     public static @Nullable TypeInfo get(Class<?> type) {
+        if (isNull(type)) return new TypeInfo.None();
         return REGISTRY.get(type);
     }
 
