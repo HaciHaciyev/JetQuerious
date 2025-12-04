@@ -1,5 +1,7 @@
 package io.github.hacihaciyev.types;
 
+import io.github.hacihaciyev.util.Nullable;
+
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.net.URI;
@@ -13,6 +15,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
+import static io.github.hacihaciyev.types.ParameterSetter.SETTERS;
+
 public final class JavaTypeRegistry {
 
     static final ClassValue<TypeInfo> REGISTRY = new ClassValue<>() {
@@ -24,8 +28,32 @@ public final class JavaTypeRegistry {
 
     private JavaTypeRegistry() {}
 
-    public static TypeInfo get(Class<?> type) {
-        return REGISTRY.get(type);
+    public static void setParameter(final PreparedStatement stmt, final Object param, final int idx) throws SQLException {
+        if (setStatic(stmt, param, idx)) return;
+        setDynamicOrThrow(stmt, param, idx);
+    }
+
+    private static boolean setStatic(PreparedStatement stmt, Object param, int idx) throws SQLException {
+        if (param == null) {
+            stmt.setNull(idx, Types.NULL);
+            return true;
+        }
+
+        Setter setter = SETTERS.get(param.getClass());
+        if (setter != null) {
+            setter.set(stmt, param, idx);
+            return true;
+        }
+
+        return false;
+    }
+
+    private static void setDynamicOrThrow(PreparedStatement stmt, Object param, int idx) {
+
+    }
+
+    public static @Nullable Set<SQLType> get(Class<?> type) {
+        return REGISTRY.get(type).sqlTypes();
     }
 
     public record TypeInfo(Setter setter, Set<SQLType> sqlTypes) {
