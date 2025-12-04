@@ -1,92 +1,415 @@
 package io.github.hacihaciyev.types;
 
-import io.github.hacihaciyev.schema.ColumnMeta;
+import io.github.hacihaciyev.util.Nullable;
 
-import java.lang.invoke.MethodHandle;
-import java.lang.invoke.MethodHandles;
-import java.lang.reflect.RecordComponent;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
+import java.math.BigDecimal;
+import java.math.BigInteger;
+import java.net.URI;
+import java.net.URL;
+import java.nio.file.Path;
+import java.sql.*;
+import java.sql.Date;
+import java.time.*;
+import java.util.*;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
-public class TypeRegistry {
-    static final ConcurrentMap<Class<?>, MethodHandle> RECORD_ACCESSORS = new ConcurrentHashMap<>();
-    private static final ConcurrentMap<Class<?>, Class<?>> RECORD_COMPONENT_TYPES = new ConcurrentHashMap<>();
+import static io.github.hacihaciyev.types.ParameterSetter.SETTERS;
+
+public final class TypeRegistry {
+
+    static final ClassValue<TypeInfo> REGISTRY = new ClassValue<>() {
+        @Override
+        protected TypeInfo computeValue(Class<?> type) {
+            return computeTypeInfo(type);
+        }
+    };
 
     private TypeRegistry() {}
 
-    public static void validateArrayElementsMatchDefinition(Object[] array, ArrayDefinition definition) {
-        Class<?> expectedType = definition.typeClass();
+    public static void setParameter(final PreparedStatement stmt, final Object param, final int idx) throws SQLException {
+        if (setStatic(stmt, param, idx)) return;
+        setDynamicOrThrow(stmt, param, idx);
+    }
 
-        for (Object element : array) {
-            if (element != null && !expectedType.isAssignableFrom(element.getClass()))
-                throw new IllegalArgumentException("Element '%s' does not match expected type %s"
-                        .formatted(element, expectedType.getSimpleName()));
+    private static boolean setStatic(PreparedStatement stmt, Object param, int idx) throws SQLException {
+        if (param == null) {
+            stmt.setNull(idx, Types.NULL);
+            return true;
         }
-    }
 
-    public static boolean isSupportedType(final Class<?> type, final ColumnMeta columnMeta) {
-        if (columnMeta.type().isSupportedType(type)) return true;
-
-        Class<?> componentType = singleComponentOfRecord(type);
-        if (componentType != null) return columnMeta.type().isSupportedType(componentType);
-        return false;
-    }
-
-    public static boolean isSupportedType(final Object param) {
-        if (isSupportedSimpleType(param)) return true;
-
-        MethodHandle methodHandle = singleRecordMethodHandle(param);
-        if (methodHandle == null) return false;
-
-        Object extracted = extractSingleComponent(param, methodHandle);
-        if (extracted != null && extracted != param) return isSupportedSimpleType(extracted);
+        Setter setter = SETTERS.get(param.getClass());
+        if (setter != null) {
+            setter.set(stmt, param, idx);
+            return true;
+        }
 
         return false;
     }
 
-    private static boolean isSupportedSimpleType(Object param) {
-        if (param == null) return true;
-        Class<?> aClass = param.getClass();
-        if (ParameterSetter.SETTERS.get(aClass) != null) return true;
-        return aClass.isEnum();
+    private static void setDynamicOrThrow(PreparedStatement stmt, Object param, int idx) {
+
     }
 
-    private static Class<?> singleComponentOfRecord(Class<?> clazz) {
-        if (!clazz.isRecord()) return null;
-
-        return RECORD_COMPONENT_TYPES.computeIfAbsent(clazz, cls -> {
-            RecordComponent[] comps = cls.getRecordComponents();
-            if (comps == null || comps.length != 1) return null;
-
-            RECORD_ACCESSORS.computeIfAbsent(cls, TypeRegistry::createRecordAccessor);
-            return comps[0].getType();
-        });
+    public static @Nullable Set<SQLType> get(Class<?> type) {
+        return REGISTRY.get(type).sqlTypes();
     }
 
-    private static MethodHandle singleRecordMethodHandle(Object param) {
-        if (param == null) return null;
-
-        Class<?> clazz = param.getClass();
-        if (!clazz.isRecord()) return null;
-
-        return RECORD_ACCESSORS.computeIfAbsent(clazz, TypeRegistry::createRecordAccessor);
-    }
-
-    private static MethodHandle createRecordAccessor(Class<?> recordClass) {
-        try {
-            RecordComponent[] comps = recordClass.getRecordComponents();
-            if (comps == null || comps.length != 1) return null;
-            return MethodHandles.lookup().unreflect(comps[0].getAccessor());
-        } catch (IllegalAccessException e) {
-            return null;
+    public record TypeInfo(Setter setter, Set<SQLType> sqlTypes) {
+        public TypeInfo {
+            sqlTypes = Set.copyOf(sqlTypes);
         }
     }
 
-    private static Object extractSingleComponent(Object param, MethodHandle methodHandle) {
-        try {
-            return methodHandle.invoke(param);
-        } catch (Throwable e) {
-            return null;
-        }
+    private static TypeInfo computeTypeInfo(Class<?> type) {
+
+        if (type == AsObject.class)
+            return info(
+                    (stmt, p, idx) -> stmt.setObject(idx, p)
+            );
+
+        if (type == AsString.class)
+            return info(
+                    (stmt, p, idx) -> stmt.setString(idx, String.valueOf(p))
+            );
+
+        if (UUIDStrategy.class.isAssignableFrom(type))
+            return info(
+                    TypeRegistry::setUUID,
+                    SQLType.UUID, SQLType.UNIQUEIDENTIFIER, SQLType.BINARY, SQLType.VARCHAR, SQLType.CHAR, SQLType.CHARACTER
+            );
+
+        if (Enum.class.isAssignableFrom(type))
+            return info(
+                    (stmt, p, idx) -> stmt.setString(idx, ((Enum<?>) p).name())
+            );
+
+        if (type == String.class)
+            return info(
+                    (stmt, p, i) -> stmt.setString(i, (String) p),
+                    charseqtypes()
+            );
+
+        if (type == StringBuilder.class)
+            return info(
+                    (stmt, p, i) -> stmt.setString(i, p.toString()),
+                    charseqtypes()
+            );
+
+        if (type == StringBuffer.class)
+            return info(
+                    (stmt, p, i) -> stmt.setString(i, p.toString()),
+                    charseqtypes()
+            );
+
+        if (type == CharSequence.class)
+            return info(
+                    (stmt, p, i) -> stmt.setString(i, p.toString()),
+                    charseqtypes()
+            );
+
+        if (type == Character.class || type == char.class)
+            return info(
+                    (stmt, p, i) -> stmt.setString(i, String.valueOf(p)),
+                    charseqtypes()
+            );
+
+        if (type == URI.class)
+            return info(
+                    (stmt, p, i) -> stmt.setString(i, p.toString()),
+                    charseqtypes()
+            );
+
+        if (type == URL.class)
+            return info(
+                    (stmt, p, i) -> stmt.setString(i, p.toString()),
+                    charseqtypes()
+            );
+
+        if (type == Path.class)
+            return info(
+                    (stmt, p, i) -> stmt.setString(i, p.toString()),
+                    charseqtypes()
+            );
+
+        if (type == int.class)
+            return info(
+                    (stmt, p, i) -> stmt.setInt(i, (int) p),
+                    SQLType.INT, SQLType.INTEGER, SQLType.BIGINT
+            );
+
+        if (type == Integer.class)
+            return info(
+                    (stmt, p, i) -> stmt.setInt(i, (Integer) p),
+                    SQLType.INT, SQLType.INTEGER, SQLType.BIGINT
+            );
+
+        if (type == AtomicInteger.class)
+            return info(
+                    (stmt, p, i) -> stmt.setInt(i, ((AtomicInteger) p).get()),
+                    SQLType.INT, SQLType.INTEGER, SQLType.BIGINT
+            );
+
+        if (type == long.class)
+            return info(
+                    (stmt, p, i) -> stmt.setLong(i, (long) p),
+                    SQLType.BIGINT, SQLType.INT, SQLType.INTEGER
+            );
+
+        if (type == Long.class)
+            return info(
+                    (stmt, p, i) -> stmt.setLong(i, (Long) p),
+                    SQLType.BIGINT, SQLType.INT, SQLType.INTEGER
+            );
+
+        if (type == AtomicLong.class)
+            return info(
+                    (stmt, p, i) -> stmt.setLong(i, ((AtomicLong) p).get()),
+                    SQLType.BIGINT, SQLType.INT, SQLType.INTEGER
+            );
+
+        if (type == short.class)
+            return info(
+                    (stmt, p, i) -> stmt.setShort(i, (short) p),
+                    SQLType.SMALLINT, SQLType.INT, SQLType.INTEGER, SQLType.BIGINT
+            );
+
+        if (type == Short.class)
+            return info(
+                    (stmt, p, i) -> stmt.setShort(i, (Short) p),
+                    SQLType.SMALLINT, SQLType.INT, SQLType.INTEGER, SQLType.BIGINT
+            );
+
+        if (type == byte.class)
+            return info(
+                    (stmt, p, i) -> stmt.setByte(i, (byte) p),
+                    SQLType.TINYINT, SQLType.SMALLINT, SQLType.INT, SQLType.INTEGER
+            );
+
+        if (type == Byte.class)
+            return info(
+                    (stmt, p, i) -> stmt.setByte(i, (Byte) p),
+                    SQLType.TINYINT, SQLType.SMALLINT, SQLType.INT, SQLType.INTEGER
+            );
+
+        if (type == double.class)
+            return info(
+                    (stmt, p, i) -> stmt.setDouble(i, (double) p),
+                    SQLType.DOUBLE, SQLType.DOUBLE_PRECISION, SQLType.FLOAT, SQLType.REAL
+            );
+
+        if (type == Double.class)
+            return info(
+                    (stmt, p, i) -> stmt.setDouble(i, (double) p),
+                    SQLType.DOUBLE, SQLType.DOUBLE_PRECISION, SQLType.FLOAT, SQLType.REAL
+            );
+
+        if (type == float.class)
+            return info(
+                    (stmt, p, i) -> stmt.setFloat(i, ((Number) p).floatValue()),
+                    SQLType.FLOAT, SQLType.REAL, SQLType.DOUBLE
+            );
+
+        if (type == Float.class)
+            return info(
+                    (stmt, p, i) -> stmt.setFloat(i, (Float) p),
+                    SQLType.FLOAT, SQLType.REAL, SQLType.DOUBLE
+            );
+
+        if (type == BigDecimal.class)
+            return info(
+                    (stmt, p, i) -> stmt.setBigDecimal(i, (BigDecimal) p),
+                    SQLType.DECIMAL, SQLType.NUMERIC, SQLType.MONEY, SQLType.SMALLMONEY,
+                    SQLType.FLOAT, SQLType.DOUBLE
+            );
+
+        if (type == BigInteger.class)
+            return info(
+                    (stmt, p, i) -> stmt.setBigDecimal(i, new BigDecimal((BigInteger) p)),
+                    SQLType.DECIMAL, SQLType.NUMERIC, SQLType.BIGINT
+            );
+
+        if (type == boolean.class || type == Boolean.class)
+            return info(
+                    (stmt, p, i) -> stmt.setBoolean(i, (Boolean) p),
+                    SQLType.BOOLEAN, SQLType.BIT
+            );
+
+        if (type == AtomicBoolean.class)
+            return info(
+                    (stmt, p, i) -> stmt.setBoolean(i, ((AtomicBoolean) p).get()),
+                    SQLType.BOOLEAN, SQLType.BIT
+            );
+
+        if (type == UUID.class)
+            return info(
+                    (stmt, p, i) -> stmt.setObject(i, p),
+                    SQLType.UUID, SQLType.UNIQUEIDENTIFIER
+            );
+
+        if (type == byte[].class)
+            return info(
+                    (stmt, p, i) -> stmt.setBytes(i, (byte[]) p),
+                    SQLType.BINARY, SQLType.VARBINARY, SQLType.BINARY_VARYING,
+                    SQLType.BLOB, SQLType.ROWVERSION
+            );
+
+        if (type == Blob.class)
+            return info(
+                    (stmt, p, i) -> stmt.setBlob(i, (Blob) p),
+                    SQLType.BLOB, SQLType.BINARY, SQLType.VARBINARY
+            );
+
+        if (type == Clob.class)
+            return info(
+                    (stmt, p, i) -> stmt.setClob(i, (Clob) p),
+                    SQLType.CLOB, SQLType.TEXT
+            );
+
+        if (type == Timestamp.class)
+            return info(
+                    (stmt, p, i) -> stmt.setTimestamp(i, (Timestamp) p),
+                    SQLType.TIMESTAMP, SQLType.DATETIME, SQLType.SMALLDATETIME,
+                    SQLType.TIMESTAMP_WITHOUT_TIME_ZONE
+            );
+
+        if (type == LocalDateTime.class)
+            return info(
+                    (stmt, p, i) -> stmt.setObject(i, p),
+                    SQLType.TIMESTAMP, SQLType.DATETIME, SQLType.DATETIME2,
+                    SQLType.TIMESTAMP_WITHOUT_TIME_ZONE
+            );
+
+        if (type == LocalDate.class)
+            return info(
+                    (stmt, p, i) -> stmt.setDate(i, Date.valueOf((LocalDate) p)),
+                    SQLType.DATE
+            );
+
+        if (type == LocalTime.class)
+            return info(
+                    (stmt, p, i) -> stmt.setTime(i, Time.valueOf((LocalTime) p)),
+                    SQLType.TIME
+            );
+
+        if (type == Instant.class)
+            return info(
+                    (stmt, p, i) -> stmt.setObject(i, p, JDBCType.TIMESTAMP_WITH_TIMEZONE),
+                    SQLType.TIMESTAMP_WITH_TIME_ZONE, SQLType.DATETIMEOFFSET
+            );
+
+        if (type == OffsetDateTime.class)
+            return info(
+                    (stmt, p, i) -> stmt.setObject(i, p, JDBCType.TIMESTAMP_WITH_TIMEZONE),
+                    SQLType.TIMESTAMP_WITH_TIME_ZONE, SQLType.DATETIMEOFFSET
+            );
+
+        if (type == ZonedDateTime.class)
+            return info(
+                    (stmt, p, i) ->
+                            stmt.setObject(i, ((ZonedDateTime) p).toOffsetDateTime(), JDBCType.TIMESTAMP_WITH_TIMEZONE),
+                    SQLType.TIMESTAMP_WITH_TIME_ZONE, SQLType.DATETIMEOFFSET
+            );
+
+        if (type == Time.class)
+            return info(
+                    (stmt, p, i) -> stmt.setTime(i, (Time) p),
+                    SQLType.TIME
+            );
+
+        if (type == Date.class)
+            return info(
+                    (stmt, p, i) -> stmt.setDate(i, (Date) p),
+                    SQLType.DATE
+            );
+
+        if (type == Duration.class)
+            return info(
+                    (stmt, p, i) -> stmt.setObject(i, p),
+                    SQLType.INTERVAL
+            );
+
+        if (type == Period.class)
+            return info(
+                    (stmt, p, i) -> stmt.setObject(i, p),
+                    SQLType.INTERVAL
+            );
+
+        if (type == Year.class)
+            return info(
+                    (stmt, p, i) -> stmt.setInt(i, ((Year) p).getValue()),
+                    SQLType.YEAR, SQLType.INT, SQLType.SMALLINT
+            );
+
+        if (type == YearMonth.class)
+            return info(
+                    (stmt, p, i) -> stmt.setString(i, p.toString()),
+                    charseqtypes()
+            );
+
+        if (type == MonthDay.class)
+            return info(
+                    (stmt, p, i) -> stmt.setString(i, p.toString()),
+                    charseqtypes()
+            );
+
+        if (type == Void.class)
+            return info(
+                    (stmt, p, i) -> stmt.setNull(i, Types.NULL),
+                    SQLType.NULL, SQLType.CURSOR, SQLType.TABLE_TYPE
+            );
+
+        return null;
+    }
+
+    private static TypeInfo info(Setter setter, SQLType... sqlTypes) {
+        return new TypeInfo(setter, Set.of(sqlTypes));
+    }
+
+    private static SQLType[] charseqtypes() {
+        return new SQLType[]{
+                SQLType.VARCHAR, SQLType.TEXT, SQLType.CHAR, SQLType.CHARACTER,
+                SQLType.NCHAR, SQLType.NVARCHAR, SQLType.CHARACTER_VARYING,
+                SQLType.NATIONAL_CHAR, SQLType.NATIONAL_CHAR_VARYING,
+                SQLType.XML, SQLType.JSON, SQLType.JSONB, SQLType.HIERARCHYID
+        };
+    }
+
+    private static void setUUID(PreparedStatement stmt, Object param, int idx) throws SQLException {
+        UUIDStrategy strategy = (UUIDStrategy) param;
+
+        var value = switch (strategy) {
+            case UUIDStrategy.Native n -> n.value();
+            case UUIDStrategy.Charseq c -> c.value().toString();
+            case UUIDStrategy.Binary b -> {
+                byte[] bytes = new byte[16];
+                UUID uuid = b.value();
+                long msb = uuid.getMostSignificantBits();
+                long lsb = uuid.getLeastSignificantBits();
+
+                bytes[0] = (byte) (msb >>> 56);
+                bytes[1] = (byte) (msb >>> 48);
+                bytes[2] = (byte) (msb >>> 40);
+                bytes[3] = (byte) (msb >>> 32);
+                bytes[4] = (byte) (msb >>> 24);
+                bytes[5] = (byte) (msb >>> 16);
+                bytes[6] = (byte) (msb >>> 8);
+                bytes[7] = (byte) (msb);
+
+                bytes[8] = (byte) (lsb >>> 56);
+                bytes[9] = (byte) (lsb >>> 48);
+                bytes[10] = (byte) (lsb >>> 40);
+                bytes[11] = (byte) (lsb >>> 32);
+                bytes[12] = (byte) (lsb >>> 24);
+                bytes[13] = (byte) (lsb >>> 16);
+                bytes[14] = (byte) (lsb >>> 8);
+                bytes[15] = (byte) (lsb);
+
+                yield bytes;
+            }
+        };
+
+        REGISTRY.get(value.getClass()).setter().set(stmt, value, idx);
     }
 }

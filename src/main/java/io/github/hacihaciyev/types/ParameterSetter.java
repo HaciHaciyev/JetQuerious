@@ -51,7 +51,7 @@ public class ParameterSetter {
 
     private static void setValueObjectType(final PreparedStatement statement, final Object param, final int i) {
         Class<?> aClass = param.getClass();
-        MethodHandle accessor = TypeRegistry.RECORD_ACCESSORS.get(aClass);
+        MethodHandle accessor = LegacyTypeRegistry.RECORD_ACCESSORS.get(aClass);
 
         if (accessor == null)
             throw new IllegalArgumentException(
