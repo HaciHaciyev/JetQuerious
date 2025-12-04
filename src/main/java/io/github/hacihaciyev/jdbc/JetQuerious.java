@@ -5,7 +5,6 @@ import io.github.hacihaciyev.asynch.BatchErrorHandler;
 import io.github.hacihaciyev.asynch.JetQExecutor;
 import io.github.hacihaciyev.exceptions.InvalidArgumentTypeException;
 import io.github.hacihaciyev.exceptions.TransactionException;
-import io.github.hacihaciyev.types.OutboundMapper;
 import io.github.hacihaciyev.util.Nullable;
 import io.github.hacihaciyev.util.Result;
 
@@ -699,7 +698,7 @@ public class JetQuerious {
                     throw new NotFoundException("Data in query for object was not found.");
                 }
 
-                T value = OutboundMapper.map(resultSet, type);
+                T value = null; // TODO OutboundMapper.map(resultSet, type);
                 return value;
             }
         }
