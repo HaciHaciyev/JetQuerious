@@ -4,6 +4,7 @@ import io.github.hacihaciyev.util.Nullable;
 
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodType;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.net.URI;
@@ -424,13 +425,19 @@ public final class TypeRegistry {
         var components = type.getRecordComponents();
         if (components.length != 1) return new TypeInfo.None();
 
-        TypeInfo componentTypeInfo = REGISTRY.get(components[0].getType());
-        return switch (componentTypeInfo) {
-            case TypeInfo.Ok typeSetter -> {
+        var component = components[0];
+        Class<?> componentType = component.getType();
+        TypeInfo componentInfo = REGISTRY.get(componentType);
+
+        return switch (componentInfo) {
+            case TypeInfo.Ok ok -> {
                 try {
-                    MethodHandle accessor = LOOKUP.unreflect(components[0].getAccessor());
-                    yield recordInfo(accessor, typeSetter);
-                } catch (Throwable ignored) {
+                    MethodHandle accessor = LOOKUP
+                            .findVirtual(type, component.getAccessor().getName(), MethodType.methodType(componentType))
+                            .asType(MethodType.methodType(Object.class, Object.class));
+
+                    yield recordInfo(accessor, ok);
+                } catch (Throwable t) {
                     yield new TypeInfo.None();
                 }
             }
@@ -442,10 +449,12 @@ public final class TypeRegistry {
         return info(
                 (stmt, p, i) -> {
                     try {
-                        Object value = accessor.invoke(p);
+                        Object value = accessor.invokeExact(p);
                         componentTypeInfo.setter().set(stmt, value, i);
-                    } catch (Throwable e) {
-                        throw new IllegalArgumentException("Unable to provide mapping for the record you should provide it manually");
+                    } catch (Throwable t) {
+                        throw new IllegalArgumentException(
+                                "Unable to provide mapping for this record; provide a custom mapping instead.", t
+                        );
                     }
                 },
                 componentTypeInfo.sqlTypes().toArray(SQLType[]::new)
