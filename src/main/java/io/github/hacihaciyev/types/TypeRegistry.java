@@ -18,7 +18,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 import static java.util.Objects.isNull;
-import static java.util.Objects.nonNull;
 
 public final class TypeRegistry {
 
@@ -39,23 +38,30 @@ public final class TypeRegistry {
             return true;
         }
 
-        Setter setter = REGISTRY.get(param.getClass()).setter();
-        if (nonNull(setter)) {
-            setter.set(stmt, param, idx);
-            return true;
+        TypeInfo typeInfo = REGISTRY.get(param.getClass());
+        switch (typeInfo) {
+            case TypeInfo.Ok typeSetter -> {
+                typeSetter.setter().set(stmt, param, idx);
+                return true;
+            }
+            case TypeInfo.None ignored -> {
+                return false;
+            }
         }
-
-        return false;
     }
 
-    public static @Nullable Set<SQLType> get(Class<?> type) {
-        return REGISTRY.get(type).sqlTypes();
+    public static @Nullable TypeInfo get(Class<?> type) {
+        return REGISTRY.get(type);
     }
 
-    public record TypeInfo(Setter setter, Set<SQLType> sqlTypes) {
-        public TypeInfo {
-            sqlTypes = Set.copyOf(sqlTypes);
+    public sealed interface TypeInfo {
+        record Ok(Setter setter, Set<SQLType> sqlTypes) implements TypeInfo {
+            public Ok {
+                sqlTypes = Set.copyOf(sqlTypes);
+            }
         }
+
+        record None() implements TypeInfo {}
     }
 
     private static TypeInfo computeTypeInfo(Class<?> type) {
@@ -356,13 +362,11 @@ public final class TypeRegistry {
                     SQLType.NULL, SQLType.CURSOR, SQLType.TABLE_TYPE
             );
 
-        TypeInfo typeInfo = typeSetter(type);
-        if (nonNull(typeInfo)) return typeInfo;
-        return null;
+        return typeSetter(type);
     }
 
     private static TypeInfo info(Setter setter, SQLType... sqlTypes) {
-        return new TypeInfo(setter, Set.of(sqlTypes));
+        return new TypeInfo.Ok(setter, Set.of(sqlTypes));
     }
 
     private static SQLType[] charseqtypes() {
@@ -408,27 +412,32 @@ public final class TypeRegistry {
             }
         };
 
-        REGISTRY.get(value.getClass()).setter().set(stmt, value, idx);
+        TypeInfo typeInfo = REGISTRY.get(value.getClass());
+        if (typeInfo instanceof TypeInfo.Ok typeSetter)
+            typeSetter.setter().set(stmt, value, idx);
     }
 
     private static TypeInfo typeSetter(Class<?> type) {
-        if (!type.isRecord()) return null;
+        if (!type.isRecord()) return new TypeInfo.None();
 
         var components = type.getRecordComponents();
-        if (components.length != 1) return null;
+        if (components.length != 1) return new TypeInfo.None();
 
         TypeInfo componentTypeInfo = REGISTRY.get(components[0].getType());
-        if (componentTypeInfo == null) return null;
-
-        try {
-            MethodHandle accessor = LOOKUP.unreflect(components[0].getAccessor());
-            return recordInfo(accessor, componentTypeInfo);
-        } catch (Throwable ignored) {
-            return null;
-        }
+        return switch (componentTypeInfo) {
+            case TypeInfo.Ok typeSetter -> {
+                try {
+                    MethodHandle accessor = LOOKUP.unreflect(components[0].getAccessor());
+                    yield recordInfo(accessor, typeSetter);
+                } catch (Throwable ignored) {
+                    yield new TypeInfo.None();
+                }
+            }
+            case TypeInfo.None none -> none;
+        };
     }
 
-    private static TypeInfo recordInfo(MethodHandle accessor, TypeInfo componentTypeInfo) {
+    private static TypeInfo recordInfo(MethodHandle accessor, TypeInfo.Ok componentTypeInfo) {
         return info(
                 (stmt, p, i) -> {
                     try {
