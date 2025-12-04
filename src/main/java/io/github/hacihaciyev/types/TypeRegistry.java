@@ -28,12 +28,7 @@ public final class TypeRegistry {
 
     private TypeRegistry() {}
 
-    public static void setParameter(final PreparedStatement stmt, final Object param, final int idx) throws SQLException {
-        if (setStatic(stmt, param, idx)) return;
-        setDynamicOrThrow(stmt, param, idx);
-    }
-
-    private static boolean setStatic(PreparedStatement stmt, Object param, int idx) throws SQLException {
+    public static boolean setParameter(final PreparedStatement stmt, final Object param, final int idx) throws SQLException {
         if (param == null) {
             stmt.setNull(idx, Types.NULL);
             return true;
@@ -46,10 +41,6 @@ public final class TypeRegistry {
         }
 
         return false;
-    }
-
-    private static void setDynamicOrThrow(PreparedStatement stmt, Object param, int idx) {
-
     }
 
     public static @Nullable Set<SQLType> get(Class<?> type) {
