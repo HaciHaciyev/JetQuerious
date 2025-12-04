@@ -38,18 +38,23 @@ public final class JavaTypeRegistry {
 
         if (type == AsObject.class)
             return info(
-                    (stmt, param, idx) -> stmt.setObject(idx, type)
+                    (stmt, p, idx) -> stmt.setObject(idx, p)
             );
 
         if (type == AsString.class)
             return info(
-                    (stmt, param, idx) -> stmt.setString(idx, type.toString())
+                    (stmt, p, idx) -> stmt.setString(idx, p.toString())
             );
 
         if (UUIDStrategy.class.isAssignableFrom(type))
             return info(
                     JavaTypeRegistry::setUUID,
                     SQLType.UUID, SQLType.UNIQUEIDENTIFIER, SQLType.BINARY, SQLType.VARCHAR, SQLType.CHAR, SQLType.CHARACTER
+            );
+
+        if (Enum.class.isAssignableFrom(type))
+            return info(
+                    (stmt, p, idx) -> stmt.setString(idx, ((Enum<?>) p).name())
             );
 
         if (type == String.class)
