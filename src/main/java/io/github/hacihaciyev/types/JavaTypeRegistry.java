@@ -71,7 +71,7 @@ public final class JavaTypeRegistry {
 
         if (type == AsString.class)
             return info(
-                    (stmt, p, idx) -> stmt.setString(idx, p.toString())
+                    (stmt, p, idx) -> stmt.setString(idx, String.valueOf(p))
             );
 
         if (UUIDStrategy.class.isAssignableFrom(type))
