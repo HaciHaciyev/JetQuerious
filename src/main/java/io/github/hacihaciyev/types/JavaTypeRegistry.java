@@ -283,13 +283,13 @@ public final class JavaTypeRegistry {
 
         if (type == LocalDate.class)
             return info(
-                    (stmt, p, i) -> stmt.setObject(i, Date.valueOf((LocalDate) p)),
+                    (stmt, p, i) -> stmt.setDate(i, Date.valueOf((LocalDate) p)),
                     SQLType.DATE
             );
 
         if (type == LocalTime.class)
             return info(
-                    (stmt, p, i) -> stmt.setObject(i, Time.valueOf((LocalTime) p)),
+                    (stmt, p, i) -> stmt.setTime(i, Time.valueOf((LocalTime) p)),
                     SQLType.TIME
             );
 
