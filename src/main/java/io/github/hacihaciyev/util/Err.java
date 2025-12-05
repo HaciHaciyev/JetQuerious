@@ -67,6 +67,11 @@ public record Err<T, E extends Exception>(E err) implements Result<T, E> {
     }
 
     @Override
+    public <U> U fold(Function<? super T, ? extends U> okMapper, Function<? super E, ? extends U> errMapper) {
+        return errMapper.apply(err);
+    }
+
+    @Override
     public T recover(Function<? super E, ? extends T> fallback) {
         return fallback.apply(err);
     }

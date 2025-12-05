@@ -26,6 +26,7 @@ public sealed interface Result<T, E extends Exception> permits Ok, Err {
     <U> Result<U, E> flatMap(Function<? super T, ? extends Result<U, E>> mapper);
 
     void handle(Consumer<? super T> onOk, Consumer<? super E> onErr);
+    <U> U fold(Function<? super T, ? extends U> okMapper, Function<? super E, ? extends U> errMapper);
 
     T recover(Function<? super E, ? extends T> fallback);
     default Result<T, E> recoverWith(Function<? super E, ? extends Result<T, E>> fallback) { return this; }
