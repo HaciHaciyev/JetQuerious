@@ -1,6 +1,7 @@
 package io.github.hacihaciyev.util;
 
 import java.util.Optional;
+import java.util.function.Function;
 import java.util.function.Supplier;
 
 import static java.util.Objects.requireNonNull;
@@ -47,5 +48,14 @@ public record Err<T, E extends Exception>(E err) implements Result<T, E> {
         throw err;
     }
 
+    @Override
+    public <U> Result<U, E> map(Function<? super T, ? extends U> mapper) {
+        return new Err<>(err);
+    }
+
+    @Override
+    public <F extends Exception> Result<T, F> mapErr(Function<? super E, ? extends F> mapper) {
+        return new Err<>(mapper.apply(err));
+    }
 
 }

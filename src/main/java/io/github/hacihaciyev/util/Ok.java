@@ -1,6 +1,7 @@
 package io.github.hacihaciyev.util;
 
 import java.util.Optional;
+import java.util.function.Function;
 import java.util.function.Supplier;
 
 import static java.util.Objects.requireNonNull;
@@ -35,6 +36,16 @@ public record Ok<T, E extends Exception>(T value) implements Result<T, E> {
     @Override
     public Optional<E> errOptional() {
         return Optional.empty();
+    }
+
+    @Override
+    public <U> Result<U, E> map(Function<? super T, ? extends U> mapper) {
+        return new Ok<>(mapper.apply(value));
+    }
+
+    @Override
+    public <F extends Exception> Result<T, F> mapErr(Function<? super E, ? extends F> mapper) {
+        return new Ok<>(value);
     }
 
 

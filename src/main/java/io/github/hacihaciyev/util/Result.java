@@ -1,6 +1,7 @@
 package io.github.hacihaciyev.util;
 
 import java.util.Optional;
+import java.util.function.Function;
 import java.util.function.Supplier;
 
 public sealed interface Result<T, E extends Exception> permits Ok, Err {
@@ -15,4 +16,7 @@ public sealed interface Result<T, E extends Exception> permits Ok, Err {
 
     default void throwErr() throws E {}
     default void throwErr(Supplier<E> error) throws E {}
+
+    <U> Result<U, E> map(Function<? super T, ? extends U> mapper);
+    <F extends Exception> Result<T, F> mapErr(Function<? super E, ? extends F> mapper);
 }
