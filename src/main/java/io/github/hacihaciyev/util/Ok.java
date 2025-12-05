@@ -71,4 +71,9 @@ public record Ok<T, E extends Exception>(T value) implements Result<T, E> {
         action.accept(value);
         return this;
     }
+
+    @Override
+    public <U> Result<U, E> and(Result<U, E> next) {
+        return next;
+    }
 }

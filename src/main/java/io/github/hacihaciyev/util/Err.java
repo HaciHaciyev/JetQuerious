@@ -86,4 +86,10 @@ public record Err<T, E extends Exception>(E err) implements Result<T, E> {
         action.accept(err);
         return this;
     }
+
+    @Override
+    public boolean guardErr(Runnable action) {
+        action.run();
+        return true;
+    }
 }
