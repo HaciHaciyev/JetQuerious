@@ -1,8 +1,6 @@
 package io.github.hacihaciyev.exceptions;
 
 import io.github.hacihaciyev.util.Err;
-import io.github.hacihaciyev.util.Result;
-
 import java.sql.SQLException;
 
 public class SQLErrorTranslation {
@@ -19,7 +17,7 @@ public class SQLErrorTranslation {
      * @param <T> the type of the result
      * @return a {@code Result<T, Throwable>} containing the appropriate error
      */
-    public static <T> Result<T, Exception> handleSQLException(final SQLException e) {
+    public static <T> Err<T, Exception> handleSQLException(final SQLException e) {
         final String sqlState = e.getSQLState();
 
         final String errorMessage = e.getMessage();
@@ -53,7 +51,7 @@ public class SQLErrorTranslation {
         };
     }
 
-    private static <T> Result<T, Exception> handleCallLevelInterfaceException(String sqlState, String errorMessage) {
+    private static <T> Err<T, Exception> handleCallLevelInterfaceException(String sqlState, String errorMessage) {
         return new Err<>(switch (sqlState) {
             case "HY001" -> new MemoryAllocationException(sqlState, "Memory allocation error: " + errorMessage);
             case "HY008" -> new OperationCanceledException(sqlState, "Operation canceled: " + errorMessage);
@@ -63,14 +61,14 @@ public class SQLErrorTranslation {
         });
     }
 
-    private static <T> Result<T, Exception> handleResourceNotAvailableException(String sqlState, String errorMessage) {
+    private static <T> Err<T, Exception> handleResourceNotAvailableException(String sqlState, String errorMessage) {
         return new Err<>(switch (sqlState) {
             case "57033" -> new DeadlockException(sqlState, "Deadlock detected with another process: " + errorMessage);
             default -> new ResourceNotAvailableException(sqlState, "Resource not available or operator intervention: " + errorMessage);
         });
     }
 
-    private static <T> Result<T, Exception> handleSyntaxOrAccessRuleViolation(String sqlState, String errorMessage) {
+    private static <T> Err<T, Exception> handleSyntaxOrAccessRuleViolation(String sqlState, String errorMessage) {
         return new Err<>(switch (sqlState) {
             case "42501" -> new InsufficientPrivilegeException(sqlState, "Insufficient privilege for the operation: " + errorMessage);
             case "42601" -> new SyntaxException(sqlState, "Syntax error in SQL statement: " + errorMessage);
@@ -83,14 +81,14 @@ public class SQLErrorTranslation {
         });
     }
 
-    private static <T> Result<T, Exception> handleTransactionRollbackException(String sqlState, String errorMessage) {
+    private static <T> Err<T, Exception> handleTransactionRollbackException(String sqlState, String errorMessage) {
         return new Err<>(switch (sqlState) {
             case "40001" -> new DeadlockException(sqlState, "Deadlock detected. Transaction was rolled back: " + errorMessage);
             default -> new TransactionRollbackException(sqlState, "Transaction has been rolled back: " + errorMessage);
         });
     }
 
-    private static <T> Result<T, Exception> handleIntegrityConstraintViolation(String sqlState, String errorMessage) {
+    private static <T> Err<T, Exception> handleIntegrityConstraintViolation(String sqlState, String errorMessage) {
         return new Err<>(switch (sqlState) {
             case "23001" -> new RestrictViolationException(sqlState, "Restrict delete rule has been violated: " + errorMessage);
             case "23502" -> new NullConstraintException(sqlState, "NOT NULL constraint violated: " + errorMessage);

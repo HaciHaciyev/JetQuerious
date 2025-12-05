@@ -123,7 +123,7 @@ public class JetQuerious {
     }
 
     public void stepInTransaction(final Connection connection, final String sql,
-            final @Nullable Object... params) {
+            final @Nullable Object... params) throws TransactionException {
 
         if (connection == null)
             throw new IllegalArgumentException("Connection cannot be null");
