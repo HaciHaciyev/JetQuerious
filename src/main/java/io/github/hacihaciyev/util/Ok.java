@@ -15,9 +15,6 @@ public record Ok<T, E extends Exception>(T value) implements Result<T, E> {
     public boolean isOk() {
         return true;
     }
-    public boolean isErr() {
-        return false;
-    }
 
     @Override
     public T or(T defaultValue) {
@@ -35,18 +32,8 @@ public record Ok<T, E extends Exception>(T value) implements Result<T, E> {
     }
 
     @Override
-    public boolean containsErr(E error) {
-        return false;
-    }
-
-    @Override
     public Optional<T> asOptional() {
         return Optional.of(value);
-    }
-
-    @Override
-    public Optional<E> errOptional() {
-        return Optional.empty();
     }
 
     @Override
@@ -68,5 +55,11 @@ public record Ok<T, E extends Exception>(T value) implements Result<T, E> {
     public void handle(Consumer<? super T> onOk, Consumer<? super E> onErr) {
         onOk.accept(value);
     }
+
+    @Override
+    public T recover(Function<? super E, ? extends T> fallback) {
+        return value;
+    }
+
 
 }

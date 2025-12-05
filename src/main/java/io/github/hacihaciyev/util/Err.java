@@ -12,9 +12,6 @@ public record Err<T, E extends Exception>(E err) implements Result<T, E> {
         requireNonNull("Error can`t be null");
     }
 
-    public boolean isOk() {
-        return false;
-    }
     public boolean isErr() {
         return true;
     }
@@ -30,18 +27,8 @@ public record Err<T, E extends Exception>(E err) implements Result<T, E> {
     }
 
     @Override
-    public boolean contains(T value) {
-        return false;
-    }
-
-    @Override
     public boolean containsErr(E error) {
         return this.err.equals(error);
-    }
-
-    @Override
-    public Optional<T> asOptional() {
-        return Optional.empty();
     }
 
     @Override
@@ -77,5 +64,15 @@ public record Err<T, E extends Exception>(E err) implements Result<T, E> {
     @Override
     public void handle(Consumer<? super T> onOk, Consumer<? super E> onErr) {
         onErr.accept(err);
+    }
+
+    @Override
+    public T recover(Function<? super E, ? extends T> fallback) {
+        return fallback.apply(err);
+    }
+
+    @Override
+    public Result<T, E> recoverWith(Function<? super E, ? extends Result<T, E>> fallback) {
+        return fallback.apply(err);
     }
 }

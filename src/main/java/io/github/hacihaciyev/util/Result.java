@@ -6,17 +6,29 @@ import java.util.function.Function;
 import java.util.function.Supplier;
 
 public sealed interface Result<T, E extends Exception> permits Ok, Err {
-    boolean isOk();
-    boolean isErr();
+    default boolean isOk() {
+        return false;
+    }
+    default boolean isErr() {
+        return false;
+    }
 
     T or(T defaultValue);
     T or(Supplier<T> defaultValue);
 
-    boolean contains(T value);
-    boolean containsErr(E error);
+    default boolean contains(T value) {
+        return false;
+    }
+    default boolean containsErr(E error) {
+        return false;
+    }
 
-    Optional<T> asOptional();
-    Optional<E> errOptional();
+    default Optional<T> asOptional() {
+        return Optional.empty();
+    }
+    default Optional<E> errOptional() {
+        return Optional.empty();
+    }
 
     default void throwErr() throws E {}
     default void throwErr(Supplier<E> error) throws E {}
@@ -26,4 +38,9 @@ public sealed interface Result<T, E extends Exception> permits Ok, Err {
     <U> Result<U, E> flatMap(Function<? super T, ? extends Result<U, E>> mapper);
 
     void handle(Consumer<? super T> onOk, Consumer<? super E> onErr);
+
+    T recover(Function<? super E, ? extends T> fallback);
+    default Result<T, E> recoverWith(Function<? super E, ? extends Result<T, E>> fallback) {
+        return this;
+    }
 }
