@@ -1,7 +1,5 @@
 package io.github.hacihaciyev.exceptions;
 
-import io.github.hacihaciyev.util.Result;
-
 import java.sql.SQLException;
 
 public class SQLErrorTranslation {
