@@ -19,4 +19,6 @@ public sealed interface Result<T, E extends Exception> permits Ok, Err {
 
     <U> Result<U, E> map(Function<? super T, ? extends U> mapper);
     <F extends Exception> Result<T, F> mapErr(Function<? super E, ? extends F> mapper);
+    <U> Result<U, E> flatMap(Function<? super T, ? extends Result<U, E>> mapper);
+
 }

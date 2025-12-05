@@ -58,4 +58,8 @@ public record Err<T, E extends Exception>(E err) implements Result<T, E> {
         return new Err<>(mapper.apply(err));
     }
 
+    @Override
+    public <U> Result<U, E> flatMap(Function<? super T, ? extends Result<U, E>> mapper) {
+        return new Err<>(err);
+    }
 }

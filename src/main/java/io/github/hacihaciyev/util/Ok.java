@@ -48,5 +48,9 @@ public record Ok<T, E extends Exception>(T value) implements Result<T, E> {
         return new Ok<>(value);
     }
 
+    @Override
+    public <U> Result<U, E> flatMap(Function<? super T, ? extends Result<U, E>> mapper) {
+        return mapper.apply(value);
+    }
 
 }
