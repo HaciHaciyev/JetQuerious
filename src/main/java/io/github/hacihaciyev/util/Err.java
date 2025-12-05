@@ -29,6 +29,16 @@ public record Err<T, E extends Exception>(E err) implements Result<T, E> {
     }
 
     @Override
+    public boolean contains(T value) {
+        return false;
+    }
+
+    @Override
+    public boolean containsErr(E error) {
+        return this.err.equals(error);
+    }
+
+    @Override
     public Optional<T> asOptional() {
         return Optional.empty();
     }

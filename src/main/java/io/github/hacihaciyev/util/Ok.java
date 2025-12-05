@@ -29,6 +29,16 @@ public record Ok<T, E extends Exception>(T value) implements Result<T, E> {
     }
 
     @Override
+    public boolean contains(T value) {
+        return this.value.equals(value);
+    }
+
+    @Override
+    public boolean containsErr(E error) {
+        return false;
+    }
+
+    @Override
     public Optional<T> asOptional() {
         return Optional.of(value);
     }
