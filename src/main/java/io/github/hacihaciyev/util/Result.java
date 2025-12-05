@@ -34,4 +34,7 @@ public sealed interface Result<T, E extends Exception> permits Ok, Err {
     default Result<T, E> ifOk(Consumer<? super T> action) { return this; }
     default Result<T, E> ifErr(Consumer<? super E> action) { return this; }
 
+    default <U> Result<U, E> and(Result<U, E> next) {
+        return isOk() ? next : (Result<U, E>) this;
+    }
 }
