@@ -10,9 +10,9 @@ import java.util.*;
  * - Extensible `context` for metadata (e.g., SQL state, query)
  * - Full exception chaining (cause)
  */
-public class RepositoryException extends RuntimeException {
+public class RepositoryException extends Exception {
     private final String sqlErrorCode;
-    private final Map<String, Object> context;
+    private final transient Map<String, Object> context;
 
     public RepositoryException(String sqlErrorCode, String message) {
         super(Objects.requireNonNull(message, "Message cannot be null"));
