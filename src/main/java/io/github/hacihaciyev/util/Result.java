@@ -29,4 +29,8 @@ public sealed interface Result<T, E extends Exception> permits Ok, Err {
 
     T recover(Function<? super E, ? extends T> fallback);
     default Result<T, E> recoverWith(Function<? super E, ? extends Result<T, E>> fallback) { return this; }
+
+    default Result<T, E> ifOk(Consumer<? super T> action) { return this; }
+    default Result<T, E> ifErr(Consumer<? super E> action) { return this; }
+
 }

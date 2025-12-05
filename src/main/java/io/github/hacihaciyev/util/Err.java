@@ -75,4 +75,10 @@ public record Err<T, E extends Exception>(E err) implements Result<T, E> {
     public Result<T, E> recoverWith(Function<? super E, ? extends Result<T, E>> fallback) {
         return fallback.apply(err);
     }
+
+    @Override
+    public Result<T, E> ifErr(Consumer<? super E> action) {
+        action.accept(err);
+        return this;
+    }
 }

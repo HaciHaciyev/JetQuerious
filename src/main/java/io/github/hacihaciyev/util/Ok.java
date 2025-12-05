@@ -61,5 +61,9 @@ public record Ok<T, E extends Exception>(T value) implements Result<T, E> {
         return value;
     }
 
-
+    @Override
+    public Result<T, E> ifOk(Consumer<? super T> action) {
+        action.accept(value);
+        return this;
+    }
 }
