@@ -37,4 +37,12 @@ public sealed interface Result<T, E extends Exception> permits Ok, Err {
     default <U> Result<U, E> and(Result<U, E> next) {
         return isOk() ? next : (Result<U, E>) this;
     }
+
+    default boolean guardErr(Runnable action) {
+        if (isErr()) {
+            action.run();
+            return true;
+        }
+        return false;
+    }
 }
