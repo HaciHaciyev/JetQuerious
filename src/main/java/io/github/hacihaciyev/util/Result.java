@@ -1,6 +1,7 @@
 package io.github.hacihaciyev.util;
 
 import java.util.Optional;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
@@ -24,5 +25,5 @@ public sealed interface Result<T, E extends Exception> permits Ok, Err {
     <F extends Exception> Result<T, F> mapErr(Function<? super E, ? extends F> mapper);
     <U> Result<U, E> flatMap(Function<? super T, ? extends Result<U, E>> mapper);
 
-
+    void handle(Consumer<? super T> onOk, Consumer<? super E> onErr);
 }

@@ -1,6 +1,7 @@
 package io.github.hacihaciyev.util;
 
 import java.util.Optional;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
@@ -61,6 +62,11 @@ public record Ok<T, E extends Exception>(T value) implements Result<T, E> {
     @Override
     public <U> Result<U, E> flatMap(Function<? super T, ? extends Result<U, E>> mapper) {
         return mapper.apply(value);
+    }
+
+    @Override
+    public void handle(Consumer<? super T> onOk, Consumer<? super E> onErr) {
+        onOk.accept(value);
     }
 
 }
