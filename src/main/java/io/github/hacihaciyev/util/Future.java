@@ -26,15 +26,15 @@ public final class Future<T, E extends Exception> implements Result<T, E> {
 
     @Override
     public Result<T, E> await() {
-        Result<T, E> r = ref.get();
-        if (r != null) return r;
-        try {
-            latch.await();
-        } catch (InterruptedException ex) {
-            Thread.currentThread().interrupt();
-            return new Err<>((E) ex);
+        for (;;) {
+            Result<T, E> r = ref.get();
+            if (r != null) return r;
+            try {
+                latch.await();
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
         }
-        return ref.get();
     }
 
     @Override
