@@ -9,7 +9,7 @@ import static java.util.Objects.requireNonNull;
 
 public record Err<T, E extends Exception>(E err) implements Result<T, E> {
     public Err {
-        requireNonNull("Error can`t be null");
+        requireNonNull(err, "Error can`t be null");
     }
 
     public boolean isErr() {
