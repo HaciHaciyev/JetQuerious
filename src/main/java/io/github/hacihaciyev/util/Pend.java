@@ -44,7 +44,7 @@ public final class Pend<T, E extends Exception> {
 
     private void deliverOnce(Result<T,E> res) {
         if (!delivered.compareAndSet(false, true)) return;
-        callback.get().accept(res);
-        callback.set(null);
+        Consumer<Result<T,E>> cb = callback.getAndSet(null);
+        if (cb != null) cb.accept(res);
     }
 }
