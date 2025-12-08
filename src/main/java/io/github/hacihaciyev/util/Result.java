@@ -5,7 +5,7 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
-public sealed interface Result<T, E extends Exception> permits Ok, Err {
+public sealed interface Result<T, E extends Exception> permits Ok, Err, Future {
     default boolean isOk() { return false; }
     default boolean isErr() { return false; }
 
@@ -37,4 +37,6 @@ public sealed interface Result<T, E extends Exception> permits Ok, Err {
     default <U> Result<U, E> and(Result<U, E> next) { return (Result<U, E>) this; }
 
     default boolean guardErr(Runnable action) { return false; }
+
+    default Result<T, E> await() { return this; }
 }
