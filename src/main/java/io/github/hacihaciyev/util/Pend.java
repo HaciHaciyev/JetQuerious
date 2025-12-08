@@ -4,6 +4,8 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 
+import static java.util.Objects.requireNonNull;
+
 public final class Pend<T, E extends Exception> {
     private final AtomicReference<Result<T,E>> result = new AtomicReference<>(null);
     private final AtomicReference<Consumer<Result<T,E>>> callback = new AtomicReference<>(null);
@@ -18,8 +20,9 @@ public final class Pend<T, E extends Exception> {
     }
 
     public void onComplete(Consumer<Result<T,E>> cb) {
-        Result<T,E> r = result.get();
+        requireNonNull(cb, "Callback cannot be null");
 
+        Result<T,E> r = result.get();
         if (r != null) {
             if (!callback.compareAndSet(null, cb))
                 throw new IllegalStateException("Callback already set");
