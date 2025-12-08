@@ -43,7 +43,7 @@ public record Err<T, E extends Exception>(E err) implements Result<T, E> {
 
     @Override
     public void throwErr(Supplier<E> error) throws E {
-        throw err;
+        throw error.get();
     }
 
     @Override
