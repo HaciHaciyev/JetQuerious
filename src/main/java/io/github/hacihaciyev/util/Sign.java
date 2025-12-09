@@ -6,20 +6,20 @@ import java.util.function.Consumer;
 
 import static java.util.Objects.requireNonNull;
 
-public final class Pend<T, E extends Exception> {
+public final class Sign<T, E extends Exception> {
     private final AtomicReference<Result<T,E>> result = new AtomicReference<>(null);
     private final AtomicReference<Consumer<Result<T,E>>> callback = new AtomicReference<>(null);
     private final AtomicBoolean delivered = new AtomicBoolean(false);
 
-    public void completeOk(T value) {
+    public void ok(T value) {
         complete(new Ok<>(value));
     }
 
-    public void completeErr(E error) {
+    public void err(E error) {
         complete(new Err<>(error));
     }
 
-    public void onComplete(Consumer<Result<T,E>> cb) {
+    public void on(Consumer<Result<T,E>> cb) {
         requireNonNull(cb, "Callback cannot be null");
 
         Result<T,E> r = result.get();
