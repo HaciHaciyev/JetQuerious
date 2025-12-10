@@ -2,6 +2,7 @@ package io.github.hacihaciyev.util;
 
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.locks.LockSupport;
 import java.util.function.Consumer;
 
 import static java.util.Objects.requireNonNull;
@@ -36,6 +37,17 @@ public final class Sign<T, E extends Exception> {
 
         r = result.get();
         if (r != null) deliverOnce(r);
+    }
+
+    public Result<T,E> recv() {
+        Result<T,E> r = result.get();
+        if (r != null) return r;
+
+        Thread current = Thread.currentThread();
+        this.on(res -> LockSupport.unpark(current));
+
+        LockSupport.park();
+        return result.get();
     }
 
     private void complete(Result<T,E> res) {
