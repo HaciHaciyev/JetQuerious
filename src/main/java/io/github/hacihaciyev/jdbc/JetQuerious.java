@@ -1,27 +1,7 @@
 package io.github.hacihaciyev.jdbc;
 
-import io.github.hacihaciyev.exceptions.NotFoundException;
-import io.github.hacihaciyev.asynch.BatchErrorHandler;
-import io.github.hacihaciyev.asynch.JetQExecutor;
-import io.github.hacihaciyev.exceptions.InvalidArgumentTypeException;
-import io.github.hacihaciyev.exceptions.TransactionException;
-import io.github.hacihaciyev.util.Err;
-import io.github.hacihaciyev.util.Nullable;
-import io.github.hacihaciyev.util.Ok;
-import io.github.hacihaciyev.util.Result;
-
-import javax.sql.DataSource;
-import java.sql.*;
-import java.util.*;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
-import java.util.concurrent.TimeUnit;
-import java.util.logging.Level;
-import java.util.logging.Logger;
-
-import static io.github.hacihaciyev.exceptions.SQLErrorTranslation.handleSQLException;
-
 public class JetQuerious {
+    /*
     private DataSource dataSource;
     private JetQExecutor executor;
     private static JetQuerious instance;
@@ -738,7 +718,7 @@ public class JetQuerious {
     private Result<Void, InvalidArgumentTypeException> validateArgumentsTypes(final @Nullable Object... params) {
         for (int i = 0; i < params.length; i++) {
             Object param = params[i];
-            /* TODO if (!LegacyTypeRegistry.isSupportedType(param)) {
+             TODO if (!LegacyTypeRegistry.isSupportedType(param)) {
                 String className = param.getClass().getName();
                 String simpleName = param.getClass().getSimpleName();
                 String packageName = param.getClass().getPackage() != null ? param.getClass().getPackage().getName()
@@ -767,9 +747,10 @@ public class JetQuerious {
                                 4. For collections, flatten them into individual parameters or use batch processing
                                 """,
                                 i, className, simpleName, packageName)));
-            }*/
+            }
         }
 
         return new Ok<>(null);
     }
+    */
 }
