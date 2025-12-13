@@ -1,5 +1,6 @@
 package io.github.hacihaciyev.asynch;
 
+import io.github.hacihaciyev.util.MPSC;
 import org.junit.jupiter.api.Test;
 
 import java.util.Map;
@@ -10,7 +11,7 @@ import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-class JetMPSCCorrectnessTest {
+class MPSCCorrectnessTest {
 
     @Test
     void shouldPreservePerProducerOrder() throws Exception {
@@ -25,7 +26,7 @@ class JetMPSCCorrectnessTest {
 
         final int PRODUCERS = 4;
         final int ITEMS_PER_PRODUCER = 1_000;
-        JetMPSC<Item> queue = new JetMPSC<>(1 << 8);
+        MPSC<Item> queue = new MPSC<>(1 << 8);
 
         Map<Integer, Integer> lastSeqPerProducer = new ConcurrentHashMap<>();
         Thread consumer = new Thread(() -> {

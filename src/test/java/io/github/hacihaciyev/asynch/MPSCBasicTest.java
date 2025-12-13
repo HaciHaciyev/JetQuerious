@@ -1,13 +1,14 @@
 package io.github.hacihaciyev.asynch;
 
+import io.github.hacihaciyev.util.MPSC;
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 
-class JetMPSCBasicTest {
+class MPSCBasicTest {
     
     @Test
     void shouldOfferAndPollSingleElement() {
-        JetMPSC<String> queue = new JetMPSC<>(16);
+        MPSC<String> queue = new MPSC<>(16);
         assertTrue(queue.offer("test"));
         assertEquals("test", queue.poll());
         assertNull(queue.poll());
@@ -15,7 +16,7 @@ class JetMPSCBasicTest {
     
     @Test
     void shouldHandleFullQueue() {
-        JetMPSC<Integer> queue = new JetMPSC<>(2);
+        MPSC<Integer> queue = new MPSC<>(2);
         assertTrue(queue.offer(1));
         assertTrue(queue.offer(2));
         assertFalse(queue.offer(3));
@@ -25,7 +26,7 @@ class JetMPSCBasicTest {
     
     @Test
     void shouldPollBatch() {
-        JetMPSC<Integer> queue = new JetMPSC<>(8);
+        MPSC<Integer> queue = new MPSC<>(8);
         for (int i = 0; i < 5; i++) {
             queue.offer(i);
         }
@@ -40,7 +41,7 @@ class JetMPSCBasicTest {
     
     @Test
     void shouldMaintainCorrectSize() {
-        JetMPSC<String> queue = new JetMPSC<>(4);
+        MPSC<String> queue = new MPSC<>(4);
         assertEquals(0, queue.size());
         
         queue.offer("a");
@@ -53,7 +54,7 @@ class JetMPSCBasicTest {
 
     @Test
     void shouldDetectNullElementsInBatch() {
-        JetMPSC<Integer> queue = new JetMPSC<>(8);
+        MPSC<Integer> queue = new MPSC<>(8);
         for (int i = 0; i < 3; i++) {
             queue.offer(i);
         }
@@ -75,7 +76,7 @@ class JetMPSCBasicTest {
 
     @Test
     void shouldPollBatchFromEmptyQueue() {
-        JetMPSC<Integer> queue = new JetMPSC<>(8);
+        MPSC<Integer> queue = new MPSC<>(8);
         Integer[] batch = new Integer[3];
         int polled = queue.pollBatch(batch, 3);
 
@@ -85,7 +86,7 @@ class JetMPSCBasicTest {
 
     @Test
     void shouldPollBatchSmallerThanAvailable() {
-        JetMPSC<Integer> queue = new JetMPSC<>(8);
+        MPSC<Integer> queue = new MPSC<>(8);
         for (int i = 0; i < 5; i++) {
             queue.offer(i);
         }
@@ -103,7 +104,7 @@ class JetMPSCBasicTest {
 
     @Test
     void shouldPollBatchLargerThanAvailable() {
-        JetMPSC<Integer> queue = new JetMPSC<>(8);
+        MPSC<Integer> queue = new MPSC<>(8);
         for (int i = 0; i < 2; i++) {
             queue.offer(i);
         }
@@ -117,7 +118,7 @@ class JetMPSCBasicTest {
 
     @Test
     void shouldPollBatchMultipleTimes() {
-        JetMPSC<Integer> queue = new JetMPSC<>(8);
+        MPSC<Integer> queue = new MPSC<>(8);
         for (int i = 0; i < 6; i++) {
             queue.offer(i);
         }
@@ -140,7 +141,7 @@ class JetMPSCBasicTest {
 
     @Test
     void shouldPollBatchWithExactSize() {
-        JetMPSC<Integer> queue = new JetMPSC<>(8);
+        MPSC<Integer> queue = new MPSC<>(8);
         for (int i = 0; i < 4; i++) {
             queue.offer(i);
         }
@@ -155,7 +156,7 @@ class JetMPSCBasicTest {
 
     @Test
     void shouldPollBatchAndVerifyArrayContents() {
-        JetMPSC<String> queue = new JetMPSC<>(8);
+        MPSC<String> queue = new MPSC<>(8);
         queue.offer("first");
         queue.offer("second");
         queue.offer("third");

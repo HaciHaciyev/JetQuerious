@@ -1,5 +1,6 @@
 package io.github.hacihaciyev.asynch;
 
+import io.github.hacihaciyev.util.MPSC;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.RepeatedTest;
@@ -9,9 +10,9 @@ import java.util.concurrent.atomic.*;
 import static org.junit.jupiter.api.Assertions.*;
 
 @Disabled("For separate run")
-class JetMPSConcurrentTest {
+class MPSConcurrentTest {
 
-    private static final JetMPSC<Integer> QUEUE = new JetMPSC<>(1 << 20);
+    private static final MPSC<Integer> QUEUE = new MPSC<>(1 << 20);
 
     @AfterEach
     void clearQueue() {

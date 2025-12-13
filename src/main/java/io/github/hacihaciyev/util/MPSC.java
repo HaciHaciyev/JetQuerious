@@ -1,11 +1,11 @@
-package io.github.hacihaciyev.asynch;
+package io.github.hacihaciyev.util;
 
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.locks.LockSupport;
 
-public final class JetMPSC<T> {
+public final class MPSC<T> {
 
   @SuppressWarnings("unused") private final long p00, p01, p02, p03, p04, p05, p06;
   private long head = 0;
@@ -37,7 +37,7 @@ public final class JetMPSC<T> {
   private static final VarHandle VH_SEQ;
   static {
     try {
-      VH_TAIL = MethodHandles.lookup().findVarHandle(JetMPSC.class, "tail", long.class);
+      VH_TAIL = MethodHandles.lookup().findVarHandle(MPSC.class, "tail", long.class);
       VH_SEQ = MethodHandles.lookup().findVarHandle(Cell.class, "seq", long.class);
     } catch (Exception e) {
       throw new RuntimeException(e);
@@ -45,7 +45,7 @@ public final class JetMPSC<T> {
   }
 
   @SuppressWarnings("unchecked")
-  public JetMPSC(int capacityPowerOfTwo) {
+  public MPSC(int capacityPowerOfTwo) {
     if (Integer.bitCount(capacityPowerOfTwo) != 1)
       throw new IllegalArgumentException("Capacity must be a power of 2");
 

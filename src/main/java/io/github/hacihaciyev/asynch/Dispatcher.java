@@ -1,5 +1,6 @@
 package io.github.hacihaciyev.asynch;
 
+import io.github.hacihaciyev.util.MPSC;
 import io.github.hacihaciyev.util.Sign;
 
 import java.util.concurrent.TimeUnit;
@@ -10,21 +11,21 @@ import java.util.logging.Logger;
 
 import static java.util.Objects.requireNonNull;
 
-public final class JetDispatcher {
+public final class Dispatcher {
   private static final long IDLE_NANOS = 1_000L;
   private static final int DEFAULT_QUEUE_CAPACITY = 1 << 18;
-  private static final Logger log = Logger.getLogger(JetDispatcher.class.getName());
+  private static final Logger log = Logger.getLogger(Dispatcher.class.getName());
 
-  private final JetMPSC<TaskWrapper<?>> queue;
+  private final MPSC<TaskWrapper<?>> queue;
   private volatile boolean shutdown = false;
   private volatile boolean shutdownGracefully = false;
 
-  public JetDispatcher() {
+  public Dispatcher() {
     this(DEFAULT_QUEUE_CAPACITY);
   }
 
-  public JetDispatcher(int queueCapacity) {
-    this.queue = new JetMPSC<>(queueCapacity);
+  public Dispatcher(int queueCapacity) {
+    this.queue = new MPSC<>(queueCapacity);
     startConsumer();
   }
 
