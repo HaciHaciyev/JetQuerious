@@ -3,6 +3,7 @@ package io.github.hacihaciyev.util;
 import java.util.Optional;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.function.Supplier;
 
 public sealed interface Result<T, E extends Exception> permits Ok, Err {
@@ -24,6 +25,7 @@ public sealed interface Result<T, E extends Exception> permits Ok, Err {
     <U> Result<U, E> map(Function<? super T, ? extends U> mapper);
     <F extends Exception> Result<T, F> mapErr(Function<? super E, ? extends F> mapper);
     <U> Result<U, E> flatMap(Function<? super T, ? extends Result<U, E>> mapper);
+    default Result<T, E> filter(Predicate<? super T> predicate, Supplier<? extends E> error) { return this; }
 
     void handle(Consumer<? super T> onOk, Consumer<? super E> onErr);
     <U> U fold(Function<? super T, ? extends U> okMapper, Function<? super E, ? extends U> errMapper);

@@ -3,6 +3,7 @@ package io.github.hacihaciyev.util;
 import java.util.Optional;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.function.Supplier;
 
 import static java.util.Objects.requireNonNull;
@@ -50,6 +51,11 @@ public record Ok<T, E extends Exception>(T value) implements Result<T, E> {
     @Override
     public <U> Result<U, E> flatMap(Function<? super T, ? extends Result<U, E>> mapper) {
         return mapper.apply(value);
+    }
+
+    @Override
+    public Result<T, E> filter(Predicate<? super T> predicate, Supplier<? extends E> error) {
+        return predicate.test(value) ? this : new Err<>(error.get());
     }
 
     @Override
