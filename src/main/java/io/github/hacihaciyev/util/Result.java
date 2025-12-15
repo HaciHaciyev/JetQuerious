@@ -7,6 +7,16 @@ import java.util.function.Predicate;
 import java.util.function.Supplier;
 
 public sealed interface Result<T, E extends Exception> permits Ok, Err {
+
+    static <T, E extends Exception> Result<T, E> of(CheckedSupplier<? extends T, ? extends E> supplier) {
+        try {
+            return new Ok<>(supplier.get());
+        } catch (Exception e) {
+            @SuppressWarnings("unchecked") E err = (E) e;
+            return new Err<>(err);
+        }
+    }
+
     default boolean isOk() { return false; }
     default boolean isErr() { return false; }
 
