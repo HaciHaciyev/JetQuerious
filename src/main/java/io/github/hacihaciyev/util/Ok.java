@@ -12,6 +12,7 @@ public record Ok<T, E extends Exception>(T value) implements Result<T, E> {
         requireNonNull(value, "Value can`t be null");
     }
 
+    @Override
     public boolean isOk() {
         return true;
     }
