@@ -12,6 +12,7 @@ public record Err<T, E extends Exception>(E err) implements Result<T, E> {
         requireNonNull(err, "Error can`t be null");
     }
 
+    @Override
     public boolean isErr() {
         return true;
     }
