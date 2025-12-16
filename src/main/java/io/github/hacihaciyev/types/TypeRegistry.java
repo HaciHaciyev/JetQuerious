@@ -22,7 +22,7 @@ public final class TypeRegistry {
 
     private static final MethodHandles.Lookup LOOKUP = MethodHandles.lookup();
 
-    static final ClassValue<TypeInfo> REGISTRY = new ClassValue<>() {
+    private static final ClassValue<TypeInfo> REGISTRY = new ClassValue<>() {
         @Override
         protected TypeInfo computeValue(Class<?> type) {
             return computeTypeInfo(type);
@@ -30,24 +30,6 @@ public final class TypeRegistry {
     };
 
     private TypeRegistry() {}
-
-    public static boolean setParameter(final PreparedStatement stmt, final Object param, final int idx) throws SQLException {
-        if (isNull(param)) {
-            stmt.setNull(idx, Types.NULL);
-            return true;
-        }
-
-        TypeInfo typeInfo = REGISTRY.get(param.getClass());
-        switch (typeInfo) {
-            case TypeInfo.Ok typeSetter -> {
-                typeSetter.setter().set(stmt, param, idx);
-                return true;
-            }
-            case TypeInfo.None ignored -> {
-                return false;
-            }
-        }
-    }
 
     public static TypeInfo get(Class<?> type) {
         if (isNull(type)) return new TypeInfo.None();
