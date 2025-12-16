@@ -1,7 +1,5 @@
 package io.github.hacihaciyev.types;
 
-import io.github.hacihaciyev.util.Nullable;
-
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
@@ -51,7 +49,7 @@ public final class TypeRegistry {
         }
     }
 
-    public static @Nullable TypeInfo get(Class<?> type) {
+    public static TypeInfo get(Class<?> type) {
         if (isNull(type)) return new TypeInfo.None();
         return REGISTRY.get(type);
     }
