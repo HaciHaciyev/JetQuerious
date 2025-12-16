@@ -344,7 +344,7 @@ public final class TypeRegistry {
                     SQLType.NULL, SQLType.CURSOR, SQLType.TABLE_TYPE
             );
 
-        return typeSetter(type);
+        return singleValueRecord(type);
     }
 
     private static TypeInfo info(Setter setter, SQLType... sqlTypes) {
@@ -399,21 +399,22 @@ public final class TypeRegistry {
             typeSetter.setter().set(stmt, value, idx);
     }
 
-    private static TypeInfo typeSetter(Class<?> type) {
+    private static TypeInfo singleValueRecord(Class<?> type) {
         if (!type.isRecord()) return new TypeInfo.None();
 
         var components = type.getRecordComponents();
         if (components.length != 1) return new TypeInfo.None();
 
         var component = components[0];
-        Class<?> componentType = component.getType();
-        TypeInfo componentInfo = REGISTRY.get(componentType);
+        var componentType = component.getType();
+        var componentName = component.getAccessor().getName();
+        var componentInfo = REGISTRY.get(componentType);
 
         return switch (componentInfo) {
             case TypeInfo.Ok ok -> {
                 try {
                     MethodHandle accessor = LOOKUP
-                            .findVirtual(type, component.getAccessor().getName(), MethodType.methodType(componentType))
+                            .findVirtual(type, componentName, MethodType.methodType(componentType))
                             .asType(MethodType.methodType(Object.class, Object.class));
 
                     yield recordInfo(accessor, ok);
@@ -431,6 +432,8 @@ public final class TypeRegistry {
                     try {
                         Object value = accessor.invokeExact(p);
                         componentTypeInfo.setter().set(stmt, value, i);
+                    } catch (SQLException e) {
+                        throw e;
                     } catch (Throwable t) {
                         throw new IllegalArgumentException(
                                 "Unable to provide mapping for this record; provide a custom mapping instead.", t
