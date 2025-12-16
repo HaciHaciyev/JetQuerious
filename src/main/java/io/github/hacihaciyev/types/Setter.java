@@ -5,5 +5,5 @@ import java.sql.SQLException;
 
 @FunctionalInterface
 public interface Setter {
-    void set(PreparedStatement stmt, Object param, int idx) throws SQLException;
+    void set(PreparedStatement stmt, Object param, int idx) throws SQLException, TypeInlineException;
 }

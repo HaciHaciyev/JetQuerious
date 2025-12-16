@@ -3,6 +3,7 @@ package io.github.hacihaciyev.types;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
+import java.lang.reflect.RecordComponent;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.net.URI;
@@ -360,7 +361,7 @@ public final class TypeRegistry {
         };
     }
 
-    private static void setUUID(PreparedStatement stmt, Object param, int idx) throws SQLException {
+    private static void setUUID(PreparedStatement stmt, Object param, int idx) throws SQLException, TypeInlineException {
         UUIDStrategy strategy = (UUIDStrategy) param;
 
         var value = switch (strategy) {
@@ -417,7 +418,7 @@ public final class TypeRegistry {
                             .findVirtual(type, componentName, MethodType.methodType(componentType))
                             .asType(MethodType.methodType(Object.class, Object.class));
 
-                    yield recordInfo(accessor, ok);
+                    yield recordInfo(type, component, accessor, ok);
                 } catch (Throwable t) {
                     yield new TypeInfo.None();
                 }
@@ -426,7 +427,10 @@ public final class TypeRegistry {
         };
     }
 
-    private static TypeInfo recordInfo(MethodHandle accessor, TypeInfo.Ok componentTypeInfo) {
+    private static TypeInfo recordInfo(
+            Class<?> recordType, RecordComponent recordComponent,
+            MethodHandle accessor, TypeInfo.Ok componentTypeInfo) {
+
         return info(
                 (stmt, p, i) -> {
                     try {
@@ -435,9 +439,7 @@ public final class TypeRegistry {
                     } catch (SQLException e) {
                         throw e;
                     } catch (Throwable t) {
-                        throw new IllegalArgumentException(
-                                "Unable to provide mapping for this record; provide a custom mapping instead.", t
-                        );
+                        throw new TypeInlineException(recordType, recordComponent, t);
                     }
                 },
                 componentTypeInfo.sqlTypes().toArray(SQLType[]::new)
