@@ -6,6 +6,8 @@ public enum ArrayDefinition {
     INT,
     INTEGER,
     BIGINT,
+    DECIMAL,
+    NUMERIC,
     BOOLEAN,
     UUID,
     DATE,
