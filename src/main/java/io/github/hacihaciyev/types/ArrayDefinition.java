@@ -9,5 +9,6 @@ public enum ArrayDefinition {
     BOOLEAN,
     UUID,
     DATE,
+    TIME,
     TIMESTAMP
 }
