@@ -51,12 +51,12 @@ public final class TypeRegistry {
 
         if (type == AsObject.class)
             return info(
-                    (stmt, p, idx) -> stmt.setObject(idx, p)
+                    (stmt, p, idx) -> stmt.setObject(idx, ((AsObject) p).value())
             );
 
         if (type == AsString.class)
             return info(
-                    (stmt, p, idx) -> stmt.setString(idx, String.valueOf(p))
+                    (stmt, p, idx) -> stmt.setString(idx, String.valueOf(((AsString)p).value()))
             );
 
         if (UUIDStrategy.class.isAssignableFrom(type))
@@ -67,7 +67,8 @@ public final class TypeRegistry {
 
         if (Enum.class.isAssignableFrom(type))
             return info(
-                    (stmt, p, idx) -> stmt.setString(idx, ((Enum<?>) p).name())
+                    (stmt, p, idx) -> stmt.setString(idx, ((Enum<?>) p).name()),
+                    charseqtypes()
             );
 
         if (type == String.class)
