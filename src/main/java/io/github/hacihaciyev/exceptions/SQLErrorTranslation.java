@@ -3,7 +3,7 @@ package io.github.hacihaciyev.exceptions;
 import io.github.hacihaciyev.util.Err;
 import java.sql.SQLException;
 
-public class SQLErrorTranslation {
+public final class SQLErrorTranslation {
 
     public static final String STATUS_CODE_FOR_COMMON_SITUATIONS = "HY000";
 
