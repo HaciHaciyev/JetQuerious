@@ -38,8 +38,8 @@ public final class TypeRegistry {
     }
 
     public sealed interface TypeInfo {
-        record Ok(Setter setter, Set<SQLType> sqlTypes) implements TypeInfo {
-            public Ok {
+        record Some(Setter setter, Set<SQLType> sqlTypes) implements TypeInfo {
+            public Some {
                 sqlTypes = Set.copyOf(sqlTypes);
             }
         }
@@ -350,7 +350,7 @@ public final class TypeRegistry {
     }
 
     private static TypeInfo info(Setter setter, SQLType... sqlTypes) {
-        return new TypeInfo.Ok(setter, Set.of(sqlTypes));
+        return new TypeInfo.Some(setter, Set.of(sqlTypes));
     }
 
     private static SQLType[] charseqtypes() {
@@ -397,7 +397,7 @@ public final class TypeRegistry {
         };
 
         TypeInfo typeInfo = REGISTRY.get(value.getClass());
-        if (typeInfo instanceof TypeInfo.Ok typeSetter)
+        if (typeInfo instanceof TypeInfo.Some typeSetter)
             typeSetter.setter().set(stmt, value, idx);
     }
 
@@ -413,13 +413,13 @@ public final class TypeRegistry {
         var componentInfo = REGISTRY.get(componentType);
 
         return switch (componentInfo) {
-            case TypeInfo.Ok ok -> {
+            case TypeInfo.Some some -> {
                 try {
                     MethodHandle accessor = LOOKUP
                             .findVirtual(type, componentName, MethodType.methodType(componentType))
                             .asType(MethodType.methodType(Object.class, Object.class));
 
-                    yield recordInfo(type, component, accessor, ok);
+                    yield recordInfo(type, component, accessor, some);
                 } catch (Throwable t) {
                     yield new TypeInfo.None();
                 }
@@ -430,7 +430,7 @@ public final class TypeRegistry {
 
     private static TypeInfo recordInfo(
             Class<?> recordType, RecordComponent recordComponent,
-            MethodHandle accessor, TypeInfo.Ok componentTypeInfo) {
+            MethodHandle accessor, TypeInfo.Some componentTypeInfo) {
 
         return info(
                 (stmt, p, i) -> {
