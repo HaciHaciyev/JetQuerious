@@ -32,7 +32,7 @@ public final class TypeRegistry {
 
     private TypeRegistry() {}
 
-    public static TypeInfo get(Class<?> type) {
+    public static TypeInfo info(Class<?> type) {
         if (isNull(type)) return new TypeInfo.None();
         return REGISTRY.get(type);
     }
