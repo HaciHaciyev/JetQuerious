@@ -17,8 +17,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
-import static java.util.Objects.isNull;
-
 public final class TypeRegistry {
 
     private static final MethodHandles.Lookup LOOKUP = MethodHandles.lookup();
@@ -33,7 +31,7 @@ public final class TypeRegistry {
     private TypeRegistry() {}
 
     public static TypeInfo info(Class<?> type) {
-        if (isNull(type)) return new TypeInfo.None();
+        if (type == null) return new TypeInfo.None();
         return REGISTRY.get(type);
     }
 
