@@ -46,7 +46,13 @@ public final class TypeRegistry {
     }
 
     private static TypeInfo computeTypeInfo(Class<?> type) {
+        TypeInfo info = standardTypes(type);
+        if (info instanceof TypeInfo.Some) return info;
 
+        return singleValueRecord(type);
+    }
+
+    private static TypeInfo standardTypes(Class<?> type) {
         if (type == AsObject.class)
             return info(
                     (stmt, p, idx) -> stmt.setObject(idx, ((AsObject) p).value())
@@ -54,7 +60,7 @@ public final class TypeRegistry {
 
         if (type == AsString.class)
             return info(
-                    (stmt, p, idx) -> stmt.setString(idx, String.valueOf(((AsString)p).value()))
+                    (stmt, p, idx) -> stmt.setString(idx, String.valueOf(((AsString) p).value()))
             );
 
         if (UUIDStrategy.class.isAssignableFrom(type))
@@ -344,7 +350,7 @@ public final class TypeRegistry {
                     SQLType.NULL, SQLType.CURSOR, SQLType.TABLE_TYPE
             );
 
-        return singleValueRecord(type);
+        return new TypeInfo.None();
     }
 
     private static TypeInfo info(Setter setter, SQLType... sqlTypes) {
@@ -408,7 +414,7 @@ public final class TypeRegistry {
         var component = components[0];
         var componentType = component.getType();
         var componentName = component.getAccessor().getName();
-        var componentInfo = REGISTRY.get(componentType);
+        var componentInfo = standardTypes(componentType);
 
         return switch (componentInfo) {
             case TypeInfo.Some some -> {
