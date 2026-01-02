@@ -23,6 +23,37 @@ public record Table(String name, Column[] columns) {
         return Optional.empty();
     }
 
+    public Optional<Column> column(String alias, String name) {
+        requireNonNull(alias, "Column alias cannot be null");
+        requireNonNull(name, "Column name cannot be null");
+
+        for (Column c : columns) {
+            if (isMatchAliasCol(alias, name, c)) return Optional.of(c);
+        }
+
+        return Optional.empty();
+    }
+
+
+    public boolean hasColumn(String name) {
+        requireNonNull(name, "Column name cannot be null");
+
+        for (Column c : columns) {
+            if (c.name().equals(name)) return true;
+        }
+        return false;
+    }
+
+    public boolean hasColumn(String alias, String name) {
+        requireNonNull(alias, "Column alias cannot be null");
+        requireNonNull(name, "Column name cannot be null");
+
+        for (Column c : columns) {
+            if (isMatchAliasCol(alias, name, c)) return true;
+        }
+        return false;
+    }
+
     public List<Column> byAlias(String alias) {
         requireNonNull(alias, "Alias cannot be null");
         List<Column> result = new ArrayList<>();
@@ -38,16 +69,15 @@ public record Table(String name, Column[] columns) {
         return Collections.unmodifiableList(result);
     }
 
-    public boolean hasColumn(String name) {
-        requireNonNull(name, "Column name cannot be null");
-
-        for (Column c : columns) {
-            if (c.name().equals(name)) return true;
-        }
-        return false;
-    }
-
     public Column[] columns() {
         return columns.clone();
+    }
+
+    private static boolean isMatchAliasCol(String alias, String name, Column c) {
+        return switch (c) {
+            case KnownAlias ka when ka.alias().equals(alias) && ka.name().equals(name) -> true;
+            case UnknownAlias ua when ua.alias().equals(alias) && ua.name().equals(name) -> true;
+            default -> false;
+        };
     }
 }
