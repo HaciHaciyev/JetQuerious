@@ -75,8 +75,8 @@ public record Table(String name, Column[] columns) {
 
     private static boolean isMatchAliasCol(String alias, String name, Column c) {
         return switch (c) {
-            case KnownAlias ka when ka.alias().equals(alias) && ka.name().equals(name) -> true;
-            case UnknownAlias ua when ua.alias().equals(alias) && ua.name().equals(name) -> true;
+            case KnownAlias ka -> ka.alias().equals(alias) && ka.name().equals(name);
+            case UnknownAlias ua -> ua.alias().equals(alias) && ua.name().equals(name);
             default -> false;
         };
     }
