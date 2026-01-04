@@ -9,10 +9,17 @@ public record KnownAlias(String alias, String name, SQLType type, boolean nullab
         requireNonNull(alias, "Alias cannot be null");
         requireNonNull(name, "Column name cannot be null");
         requireNonNull(type, "Type cannot be null");
+        alias = alias.trim();
+        name = name.trim();
     }
 
     @Override
     public boolean known() {
         return true;
+    }
+
+    @Override
+    public String toString() {
+        return alias + "." + name;
     }
 }

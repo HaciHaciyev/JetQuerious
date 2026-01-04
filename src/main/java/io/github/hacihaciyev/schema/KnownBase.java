@@ -8,10 +8,16 @@ public record KnownBase(String name, SQLType type, boolean nullable) implements 
     public KnownBase {
         requireNonNull(name, "Column name cannot be null");
         requireNonNull(type, "Type cannot be null");
+        name = name.trim();
     }
 
     @Override
     public boolean known() {
         return true;
+    }
+
+    @Override
+    public String toString() {
+        return name;
     }
 }
