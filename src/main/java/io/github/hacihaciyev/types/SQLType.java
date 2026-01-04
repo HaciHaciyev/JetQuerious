@@ -1,5 +1,9 @@
 package io.github.hacihaciyev.types;
 
+import java.util.Arrays;
+import java.util.Set;
+import java.util.stream.Collectors;
+
 public enum SQLType {
     NULL,
 
@@ -81,4 +85,12 @@ public enum SQLType {
 
     ENUM,
     SET_TYPE;
+
+    private static final Set<String> NAMES = Arrays.stream(SQLType.values())
+            .map(type -> type.name())
+            .collect(Collectors.toSet());
+
+    public static boolean containsIgnoreCase(String name) {
+        return NAMES.contains(name.trim().toUpperCase());
+    }
 }
