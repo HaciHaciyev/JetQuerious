@@ -1,9 +1,5 @@
 package io.github.hacihaciyev.types;
 
-import java.lang.invoke.MethodHandle;
-import java.lang.invoke.MethodHandles;
-import java.lang.invoke.MethodType;
-import java.lang.reflect.RecordComponent;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.net.URI;
@@ -17,9 +13,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
-public final class TypeRegistry {
+import static io.github.hacihaciyev.types.MetaRegistry.TypeMeta;
 
-    private static final MethodHandles.Lookup LOOKUP = MethodHandles.lookup();
+public final class TypeRegistry {
 
     private static final ClassValue<TypeInfo> REGISTRY = new ClassValue<>() {
         @Override
@@ -31,11 +27,13 @@ public final class TypeRegistry {
     private TypeRegistry() {}
 
     public static TypeInfo info(Class<?> type) {
-        if (type == null) return new TypeInfo.None();
+        if (type == null) return TypeInfo.NONE;
         return REGISTRY.get(type);
     }
 
     public sealed interface TypeInfo {
+        None NONE = new None();
+
         record Some(Setter setter, Set<SQLType> sqlTypes) implements TypeInfo {
             public Some {
                 sqlTypes = Set.copyOf(sqlTypes);
@@ -49,7 +47,7 @@ public final class TypeRegistry {
         TypeInfo info = standardTypes(type);
         if (info instanceof TypeInfo.Some) return info;
 
-        return singleValueRecord(type);
+        return tryMeta(type);
     }
 
     private static TypeInfo standardTypes(Class<?> type) {
@@ -350,7 +348,7 @@ public final class TypeRegistry {
                     SQLType.NULL, SQLType.CURSOR, SQLType.TABLE_TYPE
             );
 
-        return new TypeInfo.None();
+        return TypeInfo.NONE;
     }
 
     private static TypeInfo info(Setter setter, SQLType... sqlTypes) {
@@ -405,49 +403,16 @@ public final class TypeRegistry {
             typeSetter.setter().set(stmt, value, idx);
     }
 
-    private static TypeInfo singleValueRecord(Class<?> type) {
-        if (!type.isRecord()) return new TypeInfo.None();
-
-        var components = type.getRecordComponents();
-        if (components.length != 1) return new TypeInfo.None();
-
-        var component = components[0];
-        var componentType = component.getType();
-        var componentName = component.getAccessor().getName();
-        var componentInfo = standardTypes(componentType);
-
-        return switch (componentInfo) {
-            case TypeInfo.Some some -> {
-                try {
-                    MethodHandle accessor = LOOKUP
-                            .findVirtual(type, componentName, MethodType.methodType(componentType))
-                            .asType(MethodType.methodType(Object.class, Object.class));
-
-                    yield recordInfo(type, component, accessor, some);
-                } catch (Throwable t) {
-                    yield new TypeInfo.None();
-                }
-            }
-            case TypeInfo.None none -> none;
+    private static TypeInfo tryMeta(Class<?> type) {
+        return switch (MetaRegistry.meta(type)) {
+            case TypeMeta.Record<?> rec -> singleValueRecord(rec);
+            case TypeMeta.None _ -> TypeInfo.NONE;
         };
     }
 
-    private static TypeInfo recordInfo(
-            Class<?> recordType, RecordComponent recordComponent,
-            MethodHandle accessor, TypeInfo.Some componentTypeInfo) {
-
-        return info(
-                (stmt, p, i) -> {
-                    try {
-                        Object value = accessor.invokeExact(p);
-                        componentTypeInfo.setter().set(stmt, value, i);
-                    } catch (SQLException e) {
-                        throw e;
-                    } catch (Throwable t) {
-                        throw new TypeInlineException(recordType, recordComponent, t);
-                    }
-                },
-                componentTypeInfo.sqlTypes().toArray(SQLType[]::new)
-        );
+    private static TypeInfo singleValueRecord(TypeMeta.Record<?> rec) {
+        if (rec.fields().length != 1) return TypeInfo.NONE;
+        Class<?> fieldType = rec.fields()[0].type();
+        return standardTypes(fieldType);
     }
 }
