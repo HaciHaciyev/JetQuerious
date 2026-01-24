@@ -6,8 +6,17 @@ import static java.lang.constant.ConstantDescs.CD_String;
 import static java.lang.constant.ConstantDescs.CD_void;
 
 static final String INVALID_PACKAGE_DEF = "JetQuerious. Property: jetquerious.packages. Invalid package definition";
+
+static final Path META_REGISTRY_PATH = Path.of("target/classes/io/github/hacihaciyev/types/MetaRegistry.class");
+
+static final ClassDesc RECORD_DESC = ClassDesc.of("io.github.hacihaciyev.types.MetaRegistry$TypeMeta$Record");
+
+static final ClassDesc META_REGISTRY_DESC = ClassDesc.of("io.github.hacihaciyev.types.MetaRegistry");
+
 static final ClassDesc TYPE_META_DESC = ClassDesc.of("io.github.hacihaciyev.types.MetaRegistry$TypeMeta");
+
 static final ClassDesc FIELD_DESC = ClassDesc.of("io.github.hacihaciyev.types.MetaRegistry$Field");
+
 static final MethodTypeDesc FIELD_CONSTRUCTOR_DESC = MethodTypeDesc.of(CD_void, CD_String, CD_Class, ClassDesc.of("java.util.function.Function"));
 
 void main() {
@@ -28,7 +37,7 @@ void metaGen(byte[] type) {
     var components = attribute.get().components();
 
     var method = buildMethod(classFile, classDesc, components);
-    addToMetaRegistry(classFile, method);
+    addToMetaRegistry(classFile, method, classDesc);
 }
 
 MethodModel buildMethod(ClassFile cf, ClassDesc cd, List<RecordComponentInfo> components) {
@@ -134,8 +143,52 @@ MethodModel buildMethod(ClassFile cf, ClassDesc cd, List<RecordComponentInfo> co
             .orElseThrow();
 }
 
-void addToMetaRegistry(ClassFile cf, MethodModel method) {
+void addToMetaRegistry(ClassFile cf, MethodModel newMethod, ClassDesc recordClass)  {
+    try {
+        var registryBytes = Files.readAllBytes(META_REGISTRY_PATH);
+        var metaMethodName = newMethod.methodName().stringValue();
 
+        var updated = cf.transformClass(
+                cf.parse(registryBytes),
+                (clb, element) -> {
+                    if (element instanceof MethodModel mm && mm.methodName().stringValue().equals("meta")) {
+                        transformMetaMethod(recordClass, clb, mm, metaMethodName);
+                        return;
+                    }
+
+                    clb.accept(element);
+                }
+        );
+
+        updated = cf.transformClass(cf.parse(updated), ClassTransform.endHandler(clb -> clb.accept(newMethod)));
+        Files.write(META_REGISTRY_PATH, updated);
+    } catch (IOException e) {
+        throw new IllegalArgumentException(INVALID_PACKAGE_DEF, e);
+    }
+}
+
+void transformMetaMethod(ClassDesc recordClass, ClassBuilder clb, MethodModel mm, String metaMethodName) {
+    clb.transformMethod(mm, (mb, methodElement) -> {
+        if (methodElement instanceof CodeModel cm) {
+            mb.withCode(cob -> {
+                cob.aload(0);
+                cob.ldc(recordClass);
+
+                var labelNotEqual = cob.newLabel();
+                cob.if_acmpne(labelNotEqual);
+
+                cob.invokestatic(META_REGISTRY_DESC, metaMethodName, MethodTypeDesc.of(TYPE_META_DESC));
+                cob.areturn();
+
+                cob.labelBinding(labelNotEqual);
+
+                for (var el : cm) cob.with(el);
+            });
+            return;
+        }
+
+        mb.accept(methodElement);
+    });
 }
 
 Optional<RecordAttribute> recordAttribute(ClassModel classModel) {
@@ -228,5 +281,3 @@ Path pathOf(URL url) {
 String sanitized(String pkg) {
     return pkg.replace('.', '/');
 }
-
-static final ClassDesc RECORD_DESC = ClassDesc.of("io.github.hacihaciyev.types.MetaRegistry$TypeMeta$Record");
