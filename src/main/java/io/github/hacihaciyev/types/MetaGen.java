@@ -1,6 +1,14 @@
 import io.github.hacihaciyev.util.Result;
 
+import static java.lang.constant.ConstantDescs.CD_Class;
+import static java.lang.constant.ConstantDescs.CD_Object;
+import static java.lang.constant.ConstantDescs.CD_String;
+import static java.lang.constant.ConstantDescs.CD_void;
+
 static final String INVALID_PACKAGE_DEF = "JetQuerious. Property: jetquerious.packages. Invalid package definition";
+static final ClassDesc TYPE_META_DESC = ClassDesc.of("io.github.hacihaciyev.types.MetaRegistry$TypeMeta");
+static final ClassDesc FIELD_DESC = ClassDesc.of("io.github.hacihaciyev.types.MetaRegistry$Field");
+static final MethodTypeDesc FIELD_CONSTRUCTOR_DESC = MethodTypeDesc.of(CD_void, CD_String, CD_Class, ClassDesc.of("java.util.function.Function"));
 
 void main() {
     var packages = userSpec();
@@ -23,44 +31,110 @@ void metaGen(byte[] type) {
     addToMetaRegistry(classFile, method);
 }
 
-MethodModel buildMethod(ClassFile classFile, ClassDesc classDesc, List<RecordComponentInfo> components) {
-    var methodName = "_meta_" + classDesc.displayName().replace(".", "_");
+MethodModel buildMethod(ClassFile cf, ClassDesc cd, List<RecordComponentInfo> components) {
+    var name = "_meta_" + cd.displayName().replace(".", "_");
+    var returnType = MethodTypeDesc.of(TYPE_META_DESC);
+    var modifiers  = ClassFile.ACC_PRIVATE | ClassFile.ACC_STATIC;
 
-    var classBytes = classFile.build(ConstantDescs.CD_Object, clb -> {
-        clb.withMethod(
-                methodName,
-                MethodTypeDesc.of(ClassDesc.of("io.github.hacihaciyev.types.MetaRegistry$TypeMeta")),
-                ClassFile.ACC_PRIVATE | ClassFile.ACC_STATIC,
-                body -> body.withCode(cob -> {
-                    cob.loadConstant(components.size());
-                    cob.anewarray(ClassDesc.of("io.github.hacihaciyev.types.MetaRegistry$Field"));
+    var bytes = cf.build(CD_Object, clb -> clb.withMethod(name, returnType, modifiers, b -> b.withCode(cob -> {
+        cob.loadConstant(components.size());
+        cob.anewarray(FIELD_DESC);
 
-                    for (int i = 0; i < components.size(); i++) {
-                        var component = components.get(i);
+        for (int i = 0; i < components.size(); i++) {
+            var component = components.get(i);
+            var fieldName = component.name().stringValue();
+            var fieldDesc = component.descriptor();
+            var fieldType = ClassDesc.ofDescriptor(fieldDesc.stringValue());
 
-                        cob.dup();
-                        cob.loadConstant(i);
+            cob.dup();
+            cob.loadConstant(i);
 
-                        // TODO
+            cob.new_(FIELD_DESC);
+            cob.dup();
 
-                        cob.aastore();
-                    }
+            cob.ldc(fieldName);
 
-                    cob.aconst_null();
-                    cob.areturn();
-                })
-        );
-    });
+            var descriptor = fieldType.descriptorString();
+            var firstChar = descriptor.charAt(0);
+            var isPrimitive = firstChar != 'L' && firstChar != '[';
 
-    var classModel = classFile.parse(classBytes);
+            if (isPrimitive) {
+                var wrapper = switch (firstChar) {
+                    case 'I' -> "java.lang.Integer";
+                    case 'J' -> "java.lang.Long";
+                    case 'D' -> "java.lang.Double";
+                    case 'F' -> "java.lang.Float";
+                    case 'Z' -> "java.lang.Boolean";
+                    case 'B' -> "java.lang.Byte";
+                    case 'C' -> "java.lang.Character";
+                    case 'S' -> "java.lang.Short";
+                    default -> throw new IllegalStateException();
+                };
+                cob.getstatic(ClassDesc.of(wrapper), "TYPE", CD_Class);
+            } else {
+                cob.ldc(fieldType);
+            }
 
-    return classModel.methods().stream()
-            .filter(m -> m.methodName().stringValue().equals(methodName))
+            var boxedType = isPrimitive ? ClassDesc.of(switch (firstChar) {
+                case 'I' -> "java.lang.Integer";
+                case 'J' -> "java.lang.Long";
+                case 'D' -> "java.lang.Double";
+                case 'F' -> "java.lang.Float";
+                case 'Z' -> "java.lang.Boolean";
+                case 'B' -> "java.lang.Byte";
+                case 'C' -> "java.lang.Character";
+                case 'S' -> "java.lang.Short";
+                default -> throw new IllegalStateException();
+            }) : fieldType;
+
+            cob.invokedynamic(DynamicCallSiteDesc.of(
+                    MethodHandleDesc.ofMethod(
+                            DirectMethodHandleDesc.Kind.STATIC,
+                            ClassDesc.of("java.lang.invoke.LambdaMetafactory"), "metafactory",
+                            MethodTypeDesc.of(
+                                    ClassDesc.of("java.lang.invoke.CallSite"),
+                                    ClassDesc.of("java.lang.invoke.MethodHandles$Lookup"),
+                                    CD_String,
+                                    ClassDesc.of("java.lang.invoke.MethodType"),
+                                    ClassDesc.of("java.lang.invoke.MethodType"),
+                                    ClassDesc.of("java.lang.invoke.MethodHandle"),
+                                    ClassDesc.of("java.lang.invoke.MethodType")
+                            )),
+                    "apply",
+                    MethodTypeDesc.of(ClassDesc.of("java.util.function.Function")),
+                    MethodTypeDesc.of(CD_Object, CD_Object),
+                    MethodHandleDesc.ofMethod(
+                            DirectMethodHandleDesc.Kind.VIRTUAL,
+                            cd,
+                            fieldName,
+                            MethodTypeDesc.of(fieldType)
+                    ),
+                    MethodTypeDesc.of(boxedType, cd)
+            ));
+
+            cob.invokespecial(FIELD_DESC, "<init>", FIELD_CONSTRUCTOR_DESC);
+            cob.aastore();
+        }
+
+        cob.new_(RECORD_DESC);
+        cob.dup_x1();
+        cob.swap();
+
+        cob.ldc(cd);
+        cob.swap();
+
+        cob.invokespecial(RECORD_DESC, "<init>", MethodTypeDesc.of(CD_void, CD_Class, CD_Object.arrayType()));
+        cob.areturn();
+    })));
+
+    return cf.parse(bytes)
+            .methods().stream()
+            .filter(m -> m.methodName().stringValue().equals(name))
             .findFirst()
             .orElseThrow();
 }
 
-void addToMetaRegistry(ClassFile classFile, Object method) {
+void addToMetaRegistry(ClassFile cf, MethodModel method) {
 
 }
 
@@ -69,6 +143,12 @@ Optional<RecordAttribute> recordAttribute(ClassModel classModel) {
         if (attribute instanceof RecordAttribute) return Optional.of((RecordAttribute) attribute);
     }
     return Optional.empty();
+}
+
+String[] userSpec() {
+    var pkgs = System.getProperty("jetquerious.packages");
+    if (pkgs != null && !pkgs.isBlank()) return pkgs.split(";");
+    return new String[0];
 }
 
 List<byte[]> readPackage(String resourcePath) {
@@ -149,8 +229,4 @@ String sanitized(String pkg) {
     return pkg.replace('.', '/');
 }
 
-String[] userSpec() {
-    var pkgs = System.getProperty("jetquerious.packages");
-    if (pkgs != null && !pkgs.isBlank()) return pkgs.split(";");
-    return new String[0];
-}
+static final ClassDesc RECORD_DESC = ClassDesc.of("io.github.hacihaciyev.types.MetaRegistry$TypeMeta$Record");
