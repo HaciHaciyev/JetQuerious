@@ -20,6 +20,7 @@ import java.net.JarURLConnection;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -33,6 +34,8 @@ import static java.lang.constant.ConstantDescs.CD_String;
 import static java.lang.constant.ConstantDescs.CD_void;
 
 public final class MetaGen {
+
+    static final Path META_REGISTRY_BACKUP = Path.of("target/classes/io/github/hacihaciyev/types/MetaRegistry.class.backup");
 
     static final String INVALID_PACKAGE_DEF = "JetQuerious. Property: jetquerious.packages. Invalid package definition";
 
@@ -51,6 +54,8 @@ public final class MetaGen {
     private MetaGen() {}
 
     static void main() {
+        resetMetaRegistry();
+
         var packages = userSpec();
         for (var pkg : packages) {
             var classes = readPackage(sanitized(pkg));
@@ -70,6 +75,19 @@ public final class MetaGen {
 
         var method = buildMethod(classFile, classDesc, components);
         addToMetaRegistry(classFile, method, classDesc);
+    }
+
+    private static void resetMetaRegistry() {
+        try {
+            if (!Files.exists(META_REGISTRY_BACKUP)) {
+                Files.copy(META_REGISTRY_PATH, META_REGISTRY_BACKUP);
+                return;
+            }
+
+            Files.copy(META_REGISTRY_BACKUP, META_REGISTRY_PATH, StandardCopyOption.REPLACE_EXISTING);
+        } catch (Exception e) {
+            throw new IllegalArgumentException("JetQuerious. Failed to reset MetaRegistry. You need to manually clean the bytecode", e);
+        }
     }
 
     private static MethodModel buildMethod(ClassFile cf, ClassDesc cd, List<RecordComponentInfo> components) {
