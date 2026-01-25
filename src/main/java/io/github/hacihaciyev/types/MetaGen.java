@@ -53,7 +53,8 @@ public final class MetaGen {
     static void main() {
         var packages = userSpec();
         for (var pkg : packages) {
-            for (var type : readPackage(sanitized(pkg))) metaGen(type);
+            var classes = readPackage(sanitized(pkg));
+            for (var type : classes) metaGen(type);
         }
     }
 
@@ -72,7 +73,7 @@ public final class MetaGen {
     }
 
     private static MethodModel buildMethod(ClassFile cf, ClassDesc cd, List<RecordComponentInfo> components) {
-        var name = "_meta_" + cd.displayName().replace(".", "_");
+        var name = "_meta_" + cd.descriptorString().replace("/", "_").replace(";", "");
         var returnType = MethodTypeDesc.of(TYPE_META_DESC);
         var modifiers  = ClassFile.ACC_PRIVATE | ClassFile.ACC_STATIC;
 
