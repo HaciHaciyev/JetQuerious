@@ -76,7 +76,7 @@ public final class MetaGen {
         var returnType = MethodTypeDesc.of(TYPE_META_DESC);
         var modifiers  = ClassFile.ACC_PRIVATE | ClassFile.ACC_STATIC;
 
-        var bytes = cf.build(CD_Object, clb -> clb.withMethod(name, returnType, modifiers, b -> b.withCode(cob -> {
+        var bytes = cf.build(CD_Object, clb -> clb.withMethodBody(name, returnType, modifiers, cob -> {
             cob.loadConstant(components.size());
             cob.anewarray(FIELD_DESC);
 
@@ -165,7 +165,7 @@ public final class MetaGen {
 
             cob.invokespecial(RECORD_DESC, "<init>", MethodTypeDesc.of(CD_void, CD_Class, CD_Object.arrayType()));
             cob.areturn();
-        })));
+        }));
 
         return cf.parse(bytes)
                 .methods().stream()
