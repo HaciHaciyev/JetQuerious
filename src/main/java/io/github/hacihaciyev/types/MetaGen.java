@@ -164,7 +164,7 @@ public final class MetaGen {
             cob.ldc(cd);
             cob.swap();
 
-            cob.invokespecial(RECORD_DESC, "<init>", MethodTypeDesc.of(CD_void, CD_Class, CD_Object.arrayType()));
+            cob.invokespecial(RECORD_DESC, "<init>", MethodTypeDesc.of(CD_void, CD_Class, FIELD_DESC.arrayType()));
             cob.areturn();
         }));
 
