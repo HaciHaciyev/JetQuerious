@@ -398,7 +398,7 @@ public final class TypeRegistry {
             }
         };
 
-        TypeInfo typeInfo = REGISTRY.get(value.getClass());
+        var typeInfo = REGISTRY.get(value.getClass());
         if (typeInfo instanceof TypeInfo.Some typeSetter)
             typeSetter.setter().set(stmt, value, idx);
     }
@@ -410,9 +410,24 @@ public final class TypeRegistry {
         };
     }
 
-    private static TypeInfo singleValueRecord(TypeMeta.Record<?> rec) {
+    private static <T> TypeInfo singleValueRecord(TypeMeta.Record<T> rec) {
         if (rec.fields().length != 1) return TypeInfo.NONE;
-        Class<?> fieldType = rec.fields()[0].type();
-        return standardTypes(fieldType);
+
+        MetaRegistry.Field<T, ?> field = rec.fields()[0];
+        Class<?> fieldType = field.type();
+
+        TypeInfo fieldInfo = standardTypes(fieldType);
+        if (!(fieldInfo instanceof TypeInfo.Some(Setter setter, Set<SQLType> sqlTypes))) return TypeInfo.NONE;
+
+        Setter recordSetter = (stmt, p, idx) -> {
+            try {
+                Object fieldValue = field.accessor().apply((T) p);
+                setter.set(stmt, fieldValue, idx);
+            } catch (Throwable e) {
+                throw new TypeInlineException(rec.type(), e);
+            }
+        };
+
+        return new TypeInfo.Some(recordSetter, sqlTypes);
     }
 }
