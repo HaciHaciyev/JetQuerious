@@ -10,7 +10,6 @@ import java.math.BigInteger;
 import java.net.URI;
 import java.net.URL;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.sql.*;
 import java.sql.Date;
 import java.time.*;
@@ -160,6 +159,83 @@ class TypeRegistryTest {
         info.setter().set(stmt, TestEnum.ACTIVE, 1);
         
         verify(stmt).setString(1, "ACTIVE");
+    }
+
+    @Test
+    void shouldHandleZonedDateTimeWithBakuZone() throws Exception {
+        var stmt = mock(PreparedStatement.class);
+        var zdt = ZonedDateTime.of(
+                2024, 1, 1, 12, 0, 0, 0,
+                ZoneId.of("Asia/Baku")
+        );
+
+        var info = (Some) TypeRegistry.info(ZonedDateTime.class);
+        info.setter().set(stmt, zdt, 1);
+
+        verify(stmt).setObject(
+                eq(1),
+                eq(zdt.toOffsetDateTime()),
+                eq(JDBCType.TIMESTAMP_WITH_TIMEZONE)
+        );
+    }
+
+    @Test
+    void shouldHandleUUIDStrategyNative() throws Exception {
+        var stmt = mock(PreparedStatement.class);
+        var uuid = UUID.randomUUID();
+        var strategy = new UUIDStrategy.Native(uuid);
+
+        var info = (Some) TypeRegistry.info(strategy.getClass());
+        info.setter().set(stmt, strategy, 1);
+
+        verify(stmt).setObject(1, uuid);
+    }
+
+    @Test
+    void shouldHandleUUIDStrategyCharseq() throws Exception {
+        var stmt = mock(PreparedStatement.class);
+        var uuid = UUID.randomUUID();
+        var strategy = new UUIDStrategy.Charseq(uuid);
+
+        var info = (Some) TypeRegistry.info(strategy.getClass());
+        info.setter().set(stmt, strategy, 1);
+
+        verify(stmt).setString(1, uuid.toString());
+    }
+
+    @Test
+    void shouldHandleUUIDStrategyBinary() throws Exception {
+        var stmt = mock(PreparedStatement.class);
+        var uuid = UUID.randomUUID();
+        var strategy = new UUIDStrategy.Binary(uuid);
+
+        var info = (Some) TypeRegistry.info(strategy.getClass());
+        info.setter().set(stmt, strategy, 1);
+
+        verify(stmt).setBytes(eq(1), argThat(bytes -> bytes.length == 16));
+    }
+
+    @Test
+    void shouldHandleAsObject() throws Exception {
+        var stmt = mock(PreparedStatement.class);
+        var value = 123;
+        var asObject = new AsObject(value);
+
+        var info = (Some) TypeRegistry.info(AsObject.class);
+        info.setter().set(stmt, asObject, 1);
+
+        verify(stmt).setObject(1, value);
+    }
+
+    @Test
+    void shouldHandleAsString() throws Exception {
+        var stmt = mock(PreparedStatement.class);
+        var asString = new AsString(42);
+
+        var info = (Some) TypeRegistry.info(AsString.class);
+        info.setter().set(stmt, asString, 1);
+
+        verify(stmt).setString(1, "42");
     }
 
     record UserId(UUID id) {}
