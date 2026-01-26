@@ -16,7 +16,6 @@ import java.lang.constant.DirectMethodHandleDesc;
 import java.lang.constant.DynamicCallSiteDesc;
 import java.lang.constant.MethodHandleDesc;
 import java.lang.constant.MethodTypeDesc;
-import java.net.JarURLConnection;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -25,8 +24,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Function;
-import java.util.jar.JarEntry;
-import java.util.jar.JarFile;
 
 import static java.lang.constant.ConstantDescs.CD_Class;
 import static java.lang.constant.ConstantDescs.CD_Object;
@@ -79,11 +76,6 @@ public final class MetaGen {
 
     private static void resetMetaRegistry() {
         try {
-            if (!Files.exists(META_REGISTRY_BACKUP)) {
-                Files.copy(META_REGISTRY_PATH, META_REGISTRY_BACKUP);
-                return;
-            }
-
             Files.copy(META_REGISTRY_BACKUP, META_REGISTRY_PATH, StandardCopyOption.REPLACE_EXISTING);
         } catch (Exception e) {
             throw new IllegalArgumentException("JetQuerious. Failed to reset MetaRegistry. You need to manually clean the bytecode", e);
@@ -263,7 +255,6 @@ public final class MetaGen {
                 .forEach(url -> {
                     switch (url.getProtocol()) {
                         case "file" -> fromDir(url, result);
-                        case "jar"  -> fromJar(url, resourcePath, result);
                         default -> throw new IllegalArgumentException(INVALID_PACKAGE_DEF + ": unsupported protocol " + url);
                     }
                 });
@@ -281,21 +272,6 @@ public final class MetaGen {
         }
     }
 
-    private static void fromJar(URL url, String packagePath, List<byte[]> out) {
-        try {
-            var conn = (JarURLConnection) url.openConnection();
-            try (var jar = conn.getJarFile()) {
-                jar.stream()
-                        .filter(e -> !e.isDirectory())
-                        .filter(e -> e.getName().startsWith(packagePath + "/"))
-                        .filter(f -> isClass(f))
-                        .forEach(e -> fill(jar, e, out));
-            }
-        } catch (IOException e) {
-            throw new IllegalArgumentException(INVALID_PACKAGE_DEF + ": " + url, e);
-        }
-    }
-
     private static void fill(Path path, List<byte[]> out) {
         Result.of(() -> Files.readAllBytes(path)).fold(
                 out::add,
@@ -304,20 +280,8 @@ public final class MetaGen {
                 });
     }
 
-    private static void fill(JarFile jar, JarEntry entry, List<byte[]> out) {
-        try (var is = jar.getInputStream(entry)) {
-            out.add(is.readAllBytes());
-        } catch (IOException e) {
-            throw new IllegalArgumentException(INVALID_PACKAGE_DEF, e);
-        }
-    }
-
     private static boolean isClass(Path path) {
         return path.getFileName().toString().endsWith(".class");
-    }
-
-    private static boolean isClass(JarEntry entry) {
-        return entry.getName().endsWith(".class");
     }
 
     private static Path pathOf(URL url) {
