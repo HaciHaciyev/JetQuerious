@@ -30,6 +30,8 @@ import static java.lang.constant.ConstantDescs.CD_void;
 
 public final class MetaGen {
 
+    static final String FAILED_RESET = "JetQuerious. Failed to reset MetaRegistry. You need to manually clean the bytecode";
+
     static final String INVALID_PACKAGE_DEF = "JetQuerious. Property: jetquerious.packages. Invalid package definition";
 
     static final Path META_REGISTRY_BACKUP = Path.of("target/classes/io/github/hacihaciyev/types/MetaRegistry.class.backup");
@@ -38,13 +40,15 @@ public final class MetaGen {
 
     static final ClassDesc META_REGISTRY_DESC = ClassDesc.of("io.github.hacihaciyev.types.MetaRegistry");
 
-    static final ClassDesc TYPE_META_DESC = ClassDesc.of("io.github.hacihaciyev.types.MetaRegistry$TypeMeta");
+    static final MethodTypeDesc TYPE_META_DESC = MethodTypeDesc.of(ClassDesc.of("io.github.hacihaciyev.types.MetaRegistry$TypeMeta"));
 
     static final ClassDesc RECORD_DESC = ClassDesc.of("io.github.hacihaciyev.types.MetaRegistry$TypeMeta$Record");
 
     static final ClassDesc FIELD_DESC = ClassDesc.of("io.github.hacihaciyev.types.MetaRegistry$Field");
 
-    static final MethodTypeDesc FIELD_CONSTRUCTOR_DESC = MethodTypeDesc.of(CD_void, CD_String, CD_Class, ClassDesc.of("java.util.function.Function"));
+    static final ClassDesc JAVA_FUNCTION_DESC = ClassDesc.of("java.util.function.Function");
+
+    static final MethodTypeDesc FIELD_CONSTRUCTOR_DESC = MethodTypeDesc.of(CD_void, CD_String, CD_Class, JAVA_FUNCTION_DESC);
 
     static final ClassDesc FACTORY_DESC = ClassDesc.of("io.github.hacihaciyev.types.MetaRegistry$RecordFactory");
 
@@ -62,6 +66,19 @@ public final class MetaGen {
         }
     }
 
+    private static void resetMetaRegistry() {
+        try {
+            if (!Files.exists(META_REGISTRY_BACKUP)) {
+                Files.copy(META_REGISTRY_PATH, META_REGISTRY_BACKUP);
+                return;
+            }
+
+            Files.copy(META_REGISTRY_BACKUP, META_REGISTRY_PATH, StandardCopyOption.REPLACE_EXISTING);
+        } catch (Exception e) {
+            throw new IllegalArgumentException("JetQuerious. Failed to reset MetaRegistry. You need to manually clean the bytecode", e);
+        }
+    }
+
     private static void metaGen(byte[] type) {
         var classFile = ClassFile.of();
         var classModel = classFile.parse(type);
@@ -72,24 +89,20 @@ public final class MetaGen {
         var classDesc = classModel.thisClass().asSymbol();
         var components = attribute.get().components();
 
-        var method = buildMethod(classFile, classDesc, components);
+        var method = genMetaMethod(classFile, classDesc, components);
         addToMetaRegistry(classFile, method, classDesc);
     }
 
-    private static void resetMetaRegistry() {
-        try {
-            Files.copy(META_REGISTRY_BACKUP, META_REGISTRY_PATH, StandardCopyOption.REPLACE_EXISTING);
-        } catch (Exception e) {
-            throw new IllegalArgumentException("JetQuerious. Failed to reset MetaRegistry. You need to manually clean the bytecode", e);
+    private static Optional<RecordAttribute> recordAttribute(ClassModel classModel) {
+        for (var attribute : classModel.attributes()) {
+            if (attribute instanceof RecordAttribute ra) return Optional.of(ra);
         }
+        return Optional.empty();
     }
 
-    private static MethodModel buildMethod(ClassFile cf, ClassDesc cd, List<RecordComponentInfo> components) {
-        var name = "_meta_" + cd.descriptorString().replace("/", "_").replace(";", "");
-        var returnType = MethodTypeDesc.of(TYPE_META_DESC);
-        var modifiers  = ClassFile.ACC_PRIVATE | ClassFile.ACC_STATIC;
-
-        var bytes = cf.build(CD_Object, clb -> clb.withMethodBody(name, returnType, modifiers, cob -> {
+    private static MethodModel genMetaMethod(ClassFile cf, ClassDesc cd, List<RecordComponentInfo> components) {
+        var name = defMethodName(cd);
+        var bytes = cf.build(CD_Object, clb -> clb.withMethodBody(name, TYPE_META_DESC, defMethodModifiers(), cob -> {
             cob.loadConstant(components.size());
             cob.anewarray(FIELD_DESC);
 
@@ -187,6 +200,14 @@ public final class MetaGen {
                 .orElseThrow();
     }
 
+    private static String defMethodName(ClassDesc cd) {
+        return "_meta_" + cd.descriptorString().replace("/", "_").replace(";", "");
+    }
+
+    private static int defMethodModifiers() {
+        return ClassFile.ACC_PRIVATE | ClassFile.ACC_STATIC;
+    }
+
     private static void addToMetaRegistry(ClassFile cf, MethodModel newMethod, ClassDesc recordClass)  {
         try {
             var registryBytes = Files.readAllBytes(META_REGISTRY_PATH);
@@ -221,7 +242,7 @@ public final class MetaGen {
                     var labelNotEqual = cob.newLabel();
                     cob.if_acmpne(labelNotEqual);
 
-                    cob.invokestatic(META_REGISTRY_DESC, metaMethodName, MethodTypeDesc.of(TYPE_META_DESC));
+                    cob.invokestatic(META_REGISTRY_DESC, metaMethodName, TYPE_META_DESC);
                     cob.areturn();
 
                     cob.labelBinding(labelNotEqual);
@@ -233,13 +254,6 @@ public final class MetaGen {
 
             mb.accept(methodElement);
         });
-    }
-
-    private static Optional<RecordAttribute> recordAttribute(ClassModel classModel) {
-        for (var attribute : classModel.attributes()) {
-            if (attribute instanceof RecordAttribute ra) return Optional.of(ra);
-        }
-        return Optional.empty();
     }
 
     private static class PkgScan {
