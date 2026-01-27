@@ -1,6 +1,8 @@
 package io.github.hacihaciyev.types;
 
 import org.junit.jupiter.api.*;
+import org.junit.jupiter.api.extension.ExtendWith;
+
 import static org.junit.jupiter.api.Assertions.*;
 
 import java.lang.classfile.ClassFile;
@@ -9,6 +11,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 
+@ExtendWith(MetaGenExtension.class)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 class MetaRegistryTest {
 
@@ -17,12 +20,6 @@ class MetaRegistryTest {
     record AllPrimitives(int i, long l, double d, float f, boolean z, byte b, char c, short s) {}
     record Mixed(String str, int num, List<String> list, int[] array) {}
     record Nested(Person person, String extra) {}
-
-    @BeforeAll
-    static void setup() {
-        System.setProperty("jetquerious.packages", "io.github.hacihaciyev.types");
-        MetaGen.main();
-    }
 
     @Test
     @Order(1)
