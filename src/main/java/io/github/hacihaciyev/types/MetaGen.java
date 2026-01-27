@@ -75,7 +75,7 @@ public final class MetaGen {
 
             Files.copy(META_REGISTRY_BACKUP, META_REGISTRY_PATH, StandardCopyOption.REPLACE_EXISTING);
         } catch (Exception e) {
-            throw new IllegalArgumentException("JetQuerious. Failed to reset MetaRegistry. You need to manually clean the bytecode", e);
+            throw new IllegalArgumentException(FAILED_RESET, e);
         }
     }
 
