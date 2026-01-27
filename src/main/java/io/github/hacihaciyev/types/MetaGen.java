@@ -109,8 +109,8 @@ public final class MetaGen {
             for (int i = 0; i < components.size(); i++) {
                 var component = components.get(i);
                 var fieldName = component.name().stringValue();
-                var fieldDesc = component.descriptor();
-                var fieldType = ClassDesc.ofDescriptor(fieldDesc.stringValue());
+                var fieldEntry = component.descriptor();
+                var fieldDesc = ClassDesc.ofDescriptor(fieldEntry.stringValue());
 
                 cob.dup();
                 cob.loadConstant(i);
@@ -120,38 +120,8 @@ public final class MetaGen {
 
                 cob.ldc(fieldName);
 
-                var descriptor = fieldType.descriptorString();
-                var firstChar = descriptor.charAt(0);
-                var isPrimitive = firstChar != 'L' && firstChar != '[';
-
-                if (isPrimitive) {
-                    var wrapper = switch (firstChar) {
-                        case 'I' -> "java.lang.Integer";
-                        case 'J' -> "java.lang.Long";
-                        case 'D' -> "java.lang.Double";
-                        case 'F' -> "java.lang.Float";
-                        case 'Z' -> "java.lang.Boolean";
-                        case 'B' -> "java.lang.Byte";
-                        case 'C' -> "java.lang.Character";
-                        case 'S' -> "java.lang.Short";
-                        default -> throw new IllegalStateException();
-                    };
-                    cob.getstatic(ClassDesc.of(wrapper), "TYPE", CD_Class);
-                } else {
-                    cob.ldc(fieldType);
-                }
-
-                var boxedType = isPrimitive ? ClassDesc.of(switch (firstChar) {
-                    case 'I' -> "java.lang.Integer";
-                    case 'J' -> "java.lang.Long";
-                    case 'D' -> "java.lang.Double";
-                    case 'F' -> "java.lang.Float";
-                    case 'Z' -> "java.lang.Boolean";
-                    case 'B' -> "java.lang.Byte";
-                    case 'C' -> "java.lang.Character";
-                    case 'S' -> "java.lang.Short";
-                    default -> throw new IllegalStateException();
-                }) : fieldType;
+                if (fieldDesc.isPrimitive()) cob.getstatic(wrap(fieldDesc), "TYPE", CD_Class);
+                else cob.ldc(fieldDesc);
 
                 cob.invokedynamic(DynamicCallSiteDesc.of(
                         MethodHandleDesc.ofMethod(
@@ -173,9 +143,9 @@ public final class MetaGen {
                                 DirectMethodHandleDesc.Kind.VIRTUAL,
                                 cd,
                                 fieldName,
-                                MethodTypeDesc.of(fieldType)
+                                MethodTypeDesc.of(fieldDesc)
                         ),
-                        MethodTypeDesc.of(boxedType, cd)
+                        MethodTypeDesc.of(wrap(fieldDesc), cd)
                 ));
 
                 cob.invokespecial(FIELD_DESC, "<init>", FIELD_CONSTRUCTOR_DESC);
@@ -206,6 +176,20 @@ public final class MetaGen {
 
     private static int defMethodModifiers() {
         return ClassFile.ACC_PRIVATE | ClassFile.ACC_STATIC;
+    }
+
+    private static ClassDesc wrap(ClassDesc cd) {
+        return switch (cd.displayName()) {
+            case "int" -> ClassDesc.of("java.lang.Integer");
+            case "long" -> ClassDesc.of("java.lang.Long");
+            case "double" -> ClassDesc.of("java.lang.Double");
+            case "float" -> ClassDesc.of("java.lang.Float");
+            case "boolean" -> ClassDesc.of("java.lang.Boolean");
+            case "byte" -> ClassDesc.of("java.lang.Byte");
+            case "char" -> ClassDesc.of("java.lang.Character");
+            case "short" -> ClassDesc.of("java.lang.Short");
+            default -> cd;
+        };
     }
 
     private static void addToMetaRegistry(ClassFile cf, MethodModel newMethod, ClassDesc recordClass)  {
