@@ -10,7 +10,6 @@ import java.lang.classfile.CodeBuilder;
 import java.lang.classfile.CodeModel;
 import java.lang.classfile.MethodModel;
 import java.lang.classfile.attribute.RecordAttribute;
-import java.lang.classfile.attribute.RecordComponentInfo;
 import java.lang.constant.ClassDesc;
 import java.lang.constant.ConstantDesc;
 import java.lang.constant.DirectMethodHandleDesc;
@@ -77,9 +76,8 @@ public final class MetaGen {
         if (attribute.isEmpty()) return;
 
         var classDesc = classModel.thisClass().asSymbol();
-        var components = attribute.get().components();
 
-        var method = genMetaMethod(classFile, classDesc, components);
+        var method = genMetaMethod(classFile, classDesc, attribute.get());
         MetaRegistryAlter.addMethod(classFile, method, classDesc);
     }
 
@@ -90,7 +88,8 @@ public final class MetaGen {
         return Optional.empty();
     }
 
-    private static MethodModel genMetaMethod(ClassFile cf, ClassDesc cd, List<RecordComponentInfo> components) {
+    private static MethodModel genMetaMethod(ClassFile cf, ClassDesc cd, RecordAttribute ra) {
+        var components = ra.components();
         var name = defMethodName(cd);
         var bytes = cf.build(CD_Object, clb -> clb.withMethodBody(name, TYPE_META_DESC, defMethodModifiers(), cob -> {
             cob.loadConstant(components.size());
