@@ -2,9 +2,11 @@ package io.github.hacihaciyev.types;
 
 import java.io.IOException;
 import java.lang.classfile.ClassBuilder;
+import java.lang.classfile.ClassElement;
 import java.lang.classfile.ClassFile;
 import java.lang.classfile.ClassModel;
 import java.lang.classfile.ClassTransform;
+import java.lang.classfile.CodeBuilder;
 import java.lang.classfile.CodeModel;
 import java.lang.classfile.MethodModel;
 import java.lang.classfile.attribute.RecordAttribute;
@@ -58,25 +60,12 @@ public final class MetaGen {
     private MetaGen() {}
 
     static void main() {
-        resetMetaRegistry();
+        MetaRegistryAlter.resetMetaRegistry();
 
         var packages = PkgScan.userSpec();
         for (var pkg : packages) {
             var classes = PkgScan.read(pkg);
             for (var type : classes) metaGen(type);
-        }
-    }
-
-    private static void resetMetaRegistry() {
-        try {
-            if (!Files.exists(META_REGISTRY_BACKUP)) {
-                Files.copy(META_REGISTRY_PATH, META_REGISTRY_BACKUP);
-                return;
-            }
-
-            Files.copy(META_REGISTRY_BACKUP, META_REGISTRY_PATH, StandardCopyOption.REPLACE_EXISTING);
-        } catch (Exception e) {
-            throw new IllegalArgumentException(FAILED_RESET, e);
         }
     }
 
@@ -91,7 +80,7 @@ public final class MetaGen {
         var components = attribute.get().components();
 
         var method = genMetaMethod(classFile, classDesc, components);
-        addToMetaRegistry(classFile, method, classDesc);
+        MetaRegistryAlter.addMethod(classFile, method, classDesc);
     }
 
     private static Optional<RecordAttribute> recordAttribute(ClassModel classModel) {
@@ -223,52 +212,88 @@ public final class MetaGen {
         return MethodTypeDesc.of(wrap(fieldDesc), cd);
     }
 
-    private static void addToMetaRegistry(ClassFile cf, MethodModel newMethod, ClassDesc recordClass)  {
-        try {
-            var registryBytes = Files.readAllBytes(META_REGISTRY_PATH);
-            var metaMethodName = newMethod.methodName().stringValue();
+    private static class MetaRegistryAlter {
 
-            var updated = cf.transformClass(
-                    cf.parse(registryBytes),
+        private MetaRegistryAlter() {}
+
+        static void resetMetaRegistry() {
+            try {
+                if (!Files.exists(META_REGISTRY_BACKUP)) {
+                    Files.copy(META_REGISTRY_PATH, META_REGISTRY_BACKUP);
+                    return;
+                }
+
+                Files.copy(META_REGISTRY_BACKUP, META_REGISTRY_PATH, StandardCopyOption.REPLACE_EXISTING);
+            } catch (Exception e) {
+                throw new IllegalArgumentException(FAILED_RESET, e);
+            }
+        }
+
+        static void addMethod(ClassFile cf, MethodModel newMethod, ClassDesc recordClass) {
+            try {
+                var registryBytes = Files.readAllBytes(META_REGISTRY_PATH);
+
+                var withUpdatedMeta = updateMetaMethod(cf, registryBytes, newMethod, recordClass);
+
+                var withNewMethod = appendMethod(cf, withUpdatedMeta, newMethod);
+
+                Files.write(META_REGISTRY_PATH, withNewMethod);
+            } catch (IOException e) {
+                throw new IllegalArgumentException(INVALID_PACKAGE_DEF, e);
+            }
+        }
+
+        static byte[] updateMetaMethod(ClassFile cf, byte[] classBytes,
+                                               MethodModel newMethod, ClassDesc recordClass) {
+            var newMethodName = newMethod.methodName().stringValue();
+
+            return cf.transformClass(
+                    cf.parse(classBytes),
                     (clb, element) -> {
-                        if (element instanceof MethodModel mm && mm.methodName().stringValue().equals("meta")) {
-                            transformMetaMethod(recordClass, clb, mm, metaMethodName);
+                        if (isMetaMethod(element)) {
+                            injectIfStatement(clb, (MethodModel) element, recordClass, newMethodName);
                             return;
                         }
 
                         clb.accept(element);
                     }
             );
-
-            updated = cf.transformClass(cf.parse(updated), ClassTransform.endHandler(clb -> clb.accept(newMethod)));
-            Files.write(META_REGISTRY_PATH, updated);
-        } catch (IOException e) {
-            throw new IllegalArgumentException(INVALID_PACKAGE_DEF, e);
         }
-    }
 
-    private static void transformMetaMethod(ClassDesc recordClass, ClassBuilder clb, MethodModel mm, String metaMethodName) {
-        clb.transformMethod(mm, (mb, methodElement) -> {
-            if (methodElement instanceof CodeModel cm) {
-                mb.withCode(cob -> {
-                    cob.aload(0);
-                    cob.ldc(recordClass);
+        static boolean isMetaMethod(ClassElement element) {
+            return element instanceof MethodModel mm && mm.methodName().stringValue().equals("meta");
+        }
 
-                    var labelNotEqual = cob.newLabel();
-                    cob.if_acmpne(labelNotEqual);
+        static void injectIfStatement(ClassBuilder clb, MethodModel metaMethod,
+                                              ClassDesc recordClass, String newMethodName) {
+            clb.transformMethod(metaMethod, (mb, methodElement) -> {
+                if (methodElement instanceof CodeModel cm) {
+                    mb.withCode(cob -> generateIfStatement(cob, cm, recordClass, newMethodName));
+                    return;
+                }
 
-                    cob.invokestatic(META_REGISTRY_DESC, metaMethodName, TYPE_META_DESC);
-                    cob.areturn();
+                mb.accept(methodElement);
+            });
+        }
 
-                    cob.labelBinding(labelNotEqual);
+        static void generateIfStatement(CodeBuilder cob, CodeModel originalCode,
+                                                ClassDesc recordClass, String metaMethodName) {
+            cob.aload(0);
+            cob.ldc(recordClass);
 
-                    for (var el : cm) cob.with(el);
-                });
-                return;
-            }
+            var notEqual = cob.newLabel();
+            cob.if_acmpne(notEqual);
 
-            mb.accept(methodElement);
-        });
+            cob.invokestatic(META_REGISTRY_DESC, metaMethodName, TYPE_META_DESC);
+            cob.areturn();
+
+            cob.labelBinding(notEqual);
+            for (var element : originalCode) cob.with(element);
+        }
+
+        static byte[] appendMethod(ClassFile cf, byte[] classBytes, MethodModel method) {
+            return cf.transformClass(cf.parse(classBytes), ClassTransform.endHandler(clb -> clb.accept(method)));
+        }
     }
 
     private static class PkgScan {
