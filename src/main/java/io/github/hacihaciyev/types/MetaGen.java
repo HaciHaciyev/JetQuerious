@@ -161,7 +161,7 @@ public final class MetaGen {
         return DynamicCallSiteDesc.of(
                 lambdaMetafactoryHandle(),
                 "apply",
-                accessorLambdaType(),
+                MethodTypeDesc.of(JAVA_FUNCTION_DESC),
                 accessorLambdaConstantDesc(cd, fieldName, fieldDesc)
         );
     }
@@ -180,10 +180,6 @@ public final class MetaGen {
                         ClassDesc.of("java.lang.invoke.MethodType")
                 )
         );
-    }
-
-    private static MethodTypeDesc accessorLambdaType() {
-        return MethodTypeDesc.of(JAVA_FUNCTION_DESC);
     }
 
     private static ConstantDesc[] accessorLambdaConstantDesc(ClassDesc cd, String fieldName, ClassDesc fieldDesc) {
