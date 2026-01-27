@@ -10,6 +10,7 @@ import java.lang.classfile.MethodModel;
 import java.lang.classfile.attribute.RecordAttribute;
 import java.lang.classfile.attribute.RecordComponentInfo;
 import java.lang.constant.ClassDesc;
+import java.lang.constant.ConstantDesc;
 import java.lang.constant.DirectMethodHandleDesc;
 import java.lang.constant.DynamicCallSiteDesc;
 import java.lang.constant.MethodHandleDesc;
@@ -123,31 +124,7 @@ public final class MetaGen {
                 if (fieldDesc.isPrimitive()) cob.getstatic(wrap(fieldDesc), "TYPE", CD_Class);
                 else cob.ldc(fieldDesc);
 
-                cob.invokedynamic(DynamicCallSiteDesc.of(
-                        MethodHandleDesc.ofMethod(
-                                DirectMethodHandleDesc.Kind.STATIC,
-                                ClassDesc.of("java.lang.invoke.LambdaMetafactory"), "metafactory",
-                                MethodTypeDesc.of(
-                                        ClassDesc.of("java.lang.invoke.CallSite"),
-                                        ClassDesc.of("java.lang.invoke.MethodHandles$Lookup"),
-                                        CD_String,
-                                        ClassDesc.of("java.lang.invoke.MethodType"),
-                                        ClassDesc.of("java.lang.invoke.MethodType"),
-                                        ClassDesc.of("java.lang.invoke.MethodHandle"),
-                                        ClassDesc.of("java.lang.invoke.MethodType")
-                                )),
-                        "apply",
-                        MethodTypeDesc.of(ClassDesc.of("java.util.function.Function")),
-                        MethodTypeDesc.of(CD_Object, CD_Object),
-                        MethodHandleDesc.ofMethod(
-                                DirectMethodHandleDesc.Kind.VIRTUAL,
-                                cd,
-                                fieldName,
-                                MethodTypeDesc.of(fieldDesc)
-                        ),
-                        MethodTypeDesc.of(wrap(fieldDesc), cd)
-                ));
-
+                cob.invokedynamic(lambdaForFieldAccessor(cd, fieldName, fieldDesc));
                 cob.invokespecial(FIELD_DESC, "<init>", FIELD_CONSTRUCTOR_DESC);
                 cob.aastore();
             }
@@ -190,6 +167,60 @@ public final class MetaGen {
             case "short" -> ClassDesc.of("java.lang.Short");
             default -> cd;
         };
+    }
+
+    private static DynamicCallSiteDesc lambdaForFieldAccessor(ClassDesc cd, String fieldName, ClassDesc fieldDesc) {
+        return DynamicCallSiteDesc.of(
+                lambdaMetafactoryHandle(),
+                "apply",
+                accessorLambdaType(),
+                accessorLambdaConstantDesc(cd, fieldName, fieldDesc)
+        );
+    }
+
+    private static DirectMethodHandleDesc lambdaMetafactoryHandle() {
+        return MethodHandleDesc.ofMethod(
+                DirectMethodHandleDesc.Kind.STATIC,
+                ClassDesc.of("java.lang.invoke.LambdaMetafactory"), "metafactory",
+                MethodTypeDesc.of(
+                        ClassDesc.of("java.lang.invoke.CallSite"),
+                        ClassDesc.of("java.lang.invoke.MethodHandles$Lookup"),
+                        CD_String,
+                        ClassDesc.of("java.lang.invoke.MethodType"),
+                        ClassDesc.of("java.lang.invoke.MethodType"),
+                        ClassDesc.of("java.lang.invoke.MethodHandle"),
+                        ClassDesc.of("java.lang.invoke.MethodType")
+                )
+        );
+    }
+
+    private static MethodTypeDesc accessorLambdaType() {
+        return MethodTypeDesc.of(JAVA_FUNCTION_DESC);
+    }
+
+    private static ConstantDesc[] accessorLambdaConstantDesc(ClassDesc cd, String fieldName, ClassDesc fieldDesc) {
+        return new ConstantDesc[]{
+                samSignature(),
+                accessorMethodHandle(cd, fieldName, fieldDesc),
+                accessorActualSignature(cd, fieldDesc)
+        };
+    }
+
+    private static MethodTypeDesc samSignature() {
+        return MethodTypeDesc.of(CD_Object, CD_Object);
+    }
+
+    private static DirectMethodHandleDesc accessorMethodHandle(ClassDesc cd, String fieldName, ClassDesc fieldDesc) {
+        return MethodHandleDesc.ofMethod(
+                DirectMethodHandleDesc.Kind.VIRTUAL,
+                cd,
+                fieldName,
+                MethodTypeDesc.of(fieldDesc)
+        );
+    }
+
+    private static MethodTypeDesc accessorActualSignature(ClassDesc cd, ClassDesc fieldDesc) {
+        return MethodTypeDesc.of(wrap(fieldDesc), cd);
     }
 
     private static void addToMetaRegistry(ClassFile cf, MethodModel newMethod, ClassDesc recordClass)  {
