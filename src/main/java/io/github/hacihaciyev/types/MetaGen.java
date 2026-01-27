@@ -1,7 +1,5 @@
 package io.github.hacihaciyev.types;
 
-import io.github.hacihaciyev.util.Result;
-
 import java.io.IOException;
 import java.lang.classfile.ClassBuilder;
 import java.lang.classfile.ClassFile;
@@ -16,6 +14,7 @@ import java.lang.constant.DirectMethodHandleDesc;
 import java.lang.constant.DynamicCallSiteDesc;
 import java.lang.constant.MethodHandleDesc;
 import java.lang.constant.MethodTypeDesc;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -23,7 +22,6 @@ import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-import java.util.function.Function;
 
 import static java.lang.constant.ConstantDescs.CD_Class;
 import static java.lang.constant.ConstantDescs.CD_Object;
@@ -32,30 +30,34 @@ import static java.lang.constant.ConstantDescs.CD_void;
 
 public final class MetaGen {
 
-    static final Path META_REGISTRY_BACKUP = Path.of("target/classes/io/github/hacihaciyev/types/MetaRegistry.class.backup");
-
     static final String INVALID_PACKAGE_DEF = "JetQuerious. Property: jetquerious.packages. Invalid package definition";
 
-    static final Path META_REGISTRY_PATH = Path.of("target/classes/io/github/hacihaciyev/types/MetaRegistry.class");
+    static final Path META_REGISTRY_BACKUP = Path.of("target/classes/io/github/hacihaciyev/types/MetaRegistry.class.backup");
 
-    static final ClassDesc RECORD_DESC = ClassDesc.of("io.github.hacihaciyev.types.MetaRegistry$TypeMeta$Record");
+    static final Path META_REGISTRY_PATH = Path.of("target/classes/io/github/hacihaciyev/types/MetaRegistry.class");
 
     static final ClassDesc META_REGISTRY_DESC = ClassDesc.of("io.github.hacihaciyev.types.MetaRegistry");
 
     static final ClassDesc TYPE_META_DESC = ClassDesc.of("io.github.hacihaciyev.types.MetaRegistry$TypeMeta");
 
+    static final ClassDesc RECORD_DESC = ClassDesc.of("io.github.hacihaciyev.types.MetaRegistry$TypeMeta$Record");
+
     static final ClassDesc FIELD_DESC = ClassDesc.of("io.github.hacihaciyev.types.MetaRegistry$Field");
 
     static final MethodTypeDesc FIELD_CONSTRUCTOR_DESC = MethodTypeDesc.of(CD_void, CD_String, CD_Class, ClassDesc.of("java.util.function.Function"));
+
+    static final ClassDesc FACTORY_DESC = ClassDesc.of("io.github.hacihaciyev.types.MetaRegistry$RecordFactory");
+
+    static final MethodTypeDesc RECORD_CONSTRUCTOR_DESC = MethodTypeDesc.of(CD_void, CD_Class, FIELD_DESC.arrayType(), FACTORY_DESC);
 
     private MetaGen() {}
 
     static void main() {
         resetMetaRegistry();
 
-        var packages = userSpec();
+        var packages = PkgScan.userSpec();
         for (var pkg : packages) {
-            var classes = readPackage(sanitized(pkg));
+            var classes = PkgScan.read(pkg);
             for (var type : classes) metaGen(type);
         }
     }
@@ -240,59 +242,65 @@ public final class MetaGen {
         return Optional.empty();
     }
 
-    private static String[] userSpec() {
-        var pkgs = System.getProperty("jetquerious.packages");
-        if (pkgs != null && !pkgs.isBlank()) return pkgs.split(";");
-        return new String[0];
-    }
+    private static class PkgScan {
 
-    private static List<byte[]> readPackage(String resourcePath) {
-        var result = new ArrayList<byte[]>();
+        private PkgScan() {}
 
-        Thread.currentThread()
-                .getContextClassLoader()
-                .resources(resourcePath)
-                .forEach(url -> {
-                    switch (url.getProtocol()) {
-                        case "file" -> fromDir(url, result);
-                        default -> throw new IllegalArgumentException(INVALID_PACKAGE_DEF + ": unsupported protocol " + url);
-                    }
-                });
-
-        return result;
-    }
-
-    private static void fromDir(URL url, List<byte[]> out) {
-        try (var stream = Files.walk(pathOf(url))) {
-            stream.filter(Files::isRegularFile)
-                    .filter(f -> isClass(f))
-                    .forEach(p -> fill(p, out));
-        } catch (IOException e) {
-            throw new IllegalArgumentException(INVALID_PACKAGE_DEF + ": " + url, e);
+        static String[] userSpec() {
+            var pkgs = System.getProperty("jetquerious.packages");
+            if (pkgs != null && !pkgs.isBlank()) return pkgs.split(";");
+            return new String[0];
         }
-    }
 
-    private static void fill(Path path, List<byte[]> out) {
-        Result.of(() -> Files.readAllBytes(path)).fold(
-                out::add,
-                e -> {
-                    throw new IllegalArgumentException(INVALID_PACKAGE_DEF, e);
-                });
-    }
+        static List<byte[]> read(String pkgPath) {
+            pkgPath = asResPath(pkgPath);
+            var result = new ArrayList<byte[]>();
 
-    private static boolean isClass(Path path) {
-        return path.getFileName().toString().endsWith(".class");
-    }
+            Thread.currentThread()
+                    .getContextClassLoader()
+                    .resources(pkgPath)
+                    .forEach(url -> readRes(url, result));
 
-    private static Path pathOf(URL url) {
-        return Result.of(() -> Path.of(url.toURI())).fold(
-                Function.identity(),
-                e -> {
-                    throw new IllegalArgumentException(INVALID_PACKAGE_DEF + ": " + url, e);
-                });
-    }
+            return result;
+        }
 
-    private static String sanitized(String pkg) {
-        return pkg.replace('.', '/');
+        static void readRes(URL url, List<byte[]> out) {
+            switch (url.getProtocol()) {
+                case "file" -> fromDir(url, out);
+                default -> throw invalid("unsupported protocol: " + url);
+            }
+        }
+
+        static void fromDir(URL url, List<byte[]> out) {
+            try (var stream = Files.walk(Path.of(url.toURI()))) {
+                stream.filter(PkgScan::isClass).forEach(p -> fill(p, out));
+            } catch (IOException | URISyntaxException e) {
+                throw invalid(url.toString(), e);
+            }
+        }
+
+        static boolean isClass(Path path) {
+            return Files.isRegularFile(path) && path.getFileName().toString().endsWith(".class");
+        }
+
+        static void fill(Path path, List<byte[]> out) {
+            try {
+                out.add(Files.readAllBytes(path));
+            } catch (IOException e) {
+                throw invalid(path.toString(), e);
+            }
+        }
+
+        static String asResPath(String pkg) {
+            return pkg.replace('.', '/');
+        }
+
+        static IllegalArgumentException invalid(String msg) {
+            return new IllegalArgumentException(INVALID_PACKAGE_DEF + ": " + msg);
+        }
+
+        static IllegalArgumentException invalid(String msg, Exception e) {
+            return new IllegalArgumentException(INVALID_PACKAGE_DEF + ": " + msg, e);
+        }
     }
 }
