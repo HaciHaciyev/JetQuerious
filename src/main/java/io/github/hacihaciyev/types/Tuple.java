@@ -1,13 +1,13 @@
 package io.github.hacihaciyev.types;
 
+import java.util.Arrays;
+
 import static io.github.hacihaciyev.types.MetaRegistry.meta;
 import static io.github.hacihaciyev.types.MetaRegistry.TypeMeta;
+import static io.github.hacihaciyev.types.TypeRegistry.UNSUPPORTED_RECORD;
 import static java.util.Objects.requireNonNull;
 
 public sealed interface Tuple {
-
-    String UNSUPPORTED_RECORD =
-            "Unsupported record type {%s}. If you want to use this record specify it`s package for build time meta data generation.";
 
     String RECORD_INVALID_LENGTH =
             "Provided record type {%s} doesn`t contains sufficient fields for defined tuple.";
@@ -190,10 +190,10 @@ public sealed interface Tuple {
 
     private static Object[] extract(Record value, int requiredLength) {
         return switch (meta(value.getClass())) {
-            case TypeMeta.Record(_, var fields) -> {
+            case TypeMeta.Record(_, var fields, _) -> {
                 if (fields.length < requiredLength)
                     throw new IllegalArgumentException(RECORD_INVALID_LENGTH.formatted(value.getClass().getName()));
-                yield fields;
+                yield Arrays.stream(fields).map(f -> f.accessor().apply(value)).toArray();
             }
             case TypeMeta.None _ -> throw new IllegalArgumentException(UNSUPPORTED_RECORD.formatted(value.getClass().getName()));
         };

@@ -17,6 +17,9 @@ import static io.github.hacihaciyev.types.MetaRegistry.TypeMeta;
 
 public final class TypeRegistry {
 
+    public static final String UNSUPPORTED_RECORD =
+            "Unsupported record type {%s}. If you want to use this record specify it`s package for build time meta data generation.";
+
     private static final ClassValue<TypeInfo> REGISTRY = new ClassValue<>() {
         @Override
         protected TypeInfo computeValue(Class<?> type) {
