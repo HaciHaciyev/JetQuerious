@@ -10,6 +10,7 @@ import java.lang.classfile.CodeBuilder;
 import java.lang.classfile.CodeModel;
 import java.lang.classfile.MethodModel;
 import java.lang.classfile.attribute.RecordAttribute;
+import java.lang.classfile.attribute.RecordComponentInfo;
 import java.lang.constant.ClassDesc;
 import java.lang.constant.ConstantDesc;
 import java.lang.constant.DirectMethodHandleDesc;
@@ -52,11 +53,13 @@ public final class MetaGen {
 
     static final MethodTypeDesc FIELD_CONSTRUCTOR_DESC = MethodTypeDesc.of(CD_void, CD_String, CD_Class, JAVA_FUNCTION_DESC);
 
-    static final ClassDesc FACTORY_DESC = ClassDesc.of("io.github.hacihaciyev.types.MetaRegistry$RecordFactory");
+    static final ClassDesc FACTORY_DESC = ClassDesc.of("io.github.hacihaciyev.types.RecordFactory");
 
     static final MethodTypeDesc RECORD_CONSTRUCTOR_DESC = MethodTypeDesc.of(CD_void, CD_Class, FIELD_DESC.arrayType(), FACTORY_DESC);
 
     private MetaGen() {}
+
+    private record MethodPair(MethodModel metaMethod, MethodModel factoryMethod) {}
 
     static void main() {
         MetaRegistryAlter.resetMetaRegistry();
@@ -77,8 +80,8 @@ public final class MetaGen {
 
         var classDesc = classModel.thisClass().asSymbol();
 
-        var method = genMetaMethod(classFile, classDesc, attribute.get());
-        MetaRegistryAlter.addMethod(classFile, method, classDesc);
+        var methodPair = genMetaMethod(classFile, classDesc, attribute.get());
+        MetaRegistryAlter.addMethodPair(classFile, methodPair, classDesc);
     }
 
     private static Optional<RecordAttribute> recordAttribute(ClassModel classModel) {
@@ -88,9 +91,12 @@ public final class MetaGen {
         return Optional.empty();
     }
 
-    private static MethodModel genMetaMethod(ClassFile cf, ClassDesc cd, RecordAttribute ra) {
+    private static MethodPair genMetaMethod(ClassFile cf, ClassDesc cd, RecordAttribute ra) {
         var components = ra.components();
         var name = defMethodName(cd);
+        var factoryName = defFactoryMethodName(cd);
+        var factoryMethod = genFactoryMethod(cf, cd, components, factoryName);
+
         var bytes = cf.build(CD_Object, clb -> clb.withMethodBody(name, TYPE_META_DESC, defMethodModifiers(), cob -> {
             cob.loadConstant(components.size());
             cob.anewarray(FIELD_DESC);
@@ -124,19 +130,40 @@ public final class MetaGen {
             cob.ldc(cd);
             cob.swap();
 
-            cob.invokespecial(RECORD_DESC, "<init>", MethodTypeDesc.of(CD_void, CD_Class, FIELD_DESC.arrayType()));
+            cob.invokedynamic(lambdaForRecordFactory(cd, factoryName));
+            cob.invokespecial(RECORD_DESC, "<init>", RECORD_CONSTRUCTOR_DESC);
             cob.areturn();
         }));
 
-        return cf.parse(bytes)
+        var metaMethod = cf.parse(bytes)
                 .methods().stream()
                 .filter(m -> m.methodName().stringValue().equals(name))
                 .findFirst()
                 .orElseThrow();
+
+        return new MethodPair(metaMethod, factoryMethod);
     }
 
     private static String defMethodName(ClassDesc cd) {
         return "_meta_" + cd.descriptorString().replace("/", "_").replace(";", "");
+    }
+
+    private static String defFactoryMethodName(ClassDesc cd) {
+        return "_factory_" + cd.descriptorString().replace("/", "_").replace(";", "");
+    }
+
+    private static MethodModel genFactoryMethod(ClassFile cf, ClassDesc cd, List<RecordComponentInfo> components, String factoryName) {
+        var methodDescriptor = MethodTypeDesc.of(cd, CD_Object.arrayType());
+
+        var bytes = cf.build(CD_Object, clb -> clb.withMethodBody(factoryName, methodDescriptor, defMethodModifiers(), cob -> {
+            // TODO
+        }));
+
+        return cf.parse(bytes)
+                .methods().stream()
+                .filter(m -> m.methodName().stringValue().equals(factoryName))
+                .findFirst()
+                .orElseThrow();
     }
 
     private static int defMethodModifiers() {
@@ -207,6 +234,11 @@ public final class MetaGen {
         return MethodTypeDesc.of(wrap(fieldDesc), cd);
     }
 
+    private static DynamicCallSiteDesc lambdaForRecordFactory(ClassDesc cd, String factoryName) {
+        // TODO
+        return null;
+    }
+
     private static class MetaRegistryAlter {
 
         private MetaRegistryAlter() {}
@@ -224,22 +256,22 @@ public final class MetaGen {
             }
         }
 
-        static void addMethod(ClassFile cf, MethodModel newMethod, ClassDesc recordClass) {
+        static void addMethodPair(ClassFile cf, MethodPair pair, ClassDesc recordClass) {
             try {
                 var registryBytes = Files.readAllBytes(META_REGISTRY_PATH);
 
-                var withUpdatedMeta = updateMetaMethod(cf, registryBytes, newMethod, recordClass);
+                var withFactory = appendMethod(cf, registryBytes, pair.factoryMethod());
+                var withUpdatedMeta = updateMetaMethod(cf, withFactory, pair.metaMethod(), recordClass);
+                var withBothMethods = appendMethod(cf, withUpdatedMeta, pair.metaMethod());
 
-                var withNewMethod = appendMethod(cf, withUpdatedMeta, newMethod);
-
-                Files.write(META_REGISTRY_PATH, withNewMethod);
+                Files.write(META_REGISTRY_PATH, withBothMethods);
             } catch (IOException e) {
                 throw new IllegalArgumentException(INVALID_PACKAGE_DEF, e);
             }
         }
 
         static byte[] updateMetaMethod(ClassFile cf, byte[] classBytes,
-                                               MethodModel newMethod, ClassDesc recordClass) {
+                                       MethodModel newMethod, ClassDesc recordClass) {
             var newMethodName = newMethod.methodName().stringValue();
 
             return cf.transformClass(
@@ -272,7 +304,7 @@ public final class MetaGen {
         }
 
         static void generateIfStatement(CodeBuilder cob, CodeModel originalCode,
-                                                ClassDesc recordClass, String metaMethodName) {
+                                        ClassDesc recordClass, String metaMethodName) {
             cob.aload(0);
             cob.ldc(recordClass);
 

@@ -9,7 +9,7 @@ public final class MetaRegistry {
     public sealed interface TypeMeta {
         None NONE = new None();
 
-        record Record<T>(Class<T> type, Field<T, ?>[] fields) implements TypeMeta {}
+        record Record<T>(Class<T> type, Field<T, ?>[] fields, RecordFactory<T> factory) implements TypeMeta {}
 
         record None() implements TypeMeta {}
     }
