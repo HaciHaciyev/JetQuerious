@@ -15,6 +15,7 @@ import java.lang.classfile.attribute.RecordAttribute;
 import java.lang.classfile.attribute.RecordComponentInfo;
 import java.lang.constant.ClassDesc;
 import java.lang.constant.ConstantDesc;
+import java.lang.constant.ConstantDescs;
 import java.lang.constant.DirectMethodHandleDesc;
 import java.lang.constant.DynamicCallSiteDesc;
 import java.lang.constant.MethodHandleDesc;
@@ -58,6 +59,10 @@ public final class MetaGen {
     static final ClassDesc FACTORY_DESC = ClassDesc.of("io.github.hacihaciyev.types.RecordFactory");
 
     static final MethodTypeDesc RECORD_CONSTRUCTOR_DESC = MethodTypeDesc.of(CD_void, CD_Class, FIELD_DESC.arrayType(), FACTORY_DESC);
+
+    static final ClassDesc TYPE_INSTANTIATION_EXP_DESC = ClassDesc.of("io.github.hacihaciyev.types.TypeInstantiationException");
+
+    public static final MethodTypeDesc TYPE_INSTANTIATION_EXP_CONSTRUCTOR = MethodTypeDesc.of(ConstantDescs.CD_void, ConstantDescs.CD_Class, ClassDesc.of("java.lang.Throwable"));
 
     private MetaGen() {}
 
@@ -158,7 +163,49 @@ public final class MetaGen {
         var methodDescriptor = MethodTypeDesc.of(cd, CD_Object.arrayType());
 
         var bytes = cf.build(CD_Object, clb -> clb.withMethodBody(factoryName, methodDescriptor, defMethodModifiers(), cob -> {
-            // TODO
+            var tryStart = cob.newLabel();
+            var tryEnd = cob.newLabel();
+            var catchHandler = cob.newLabel();
+
+            cob.exceptionCatch(tryStart, tryEnd, catchHandler, ClassDesc.of("java.lang.Exception"));
+            cob.labelBinding(tryStart);
+
+            cob.new_(cd);
+            cob.dup();
+
+            for (int i = 0; i < components.size(); i++) {
+                var fieldDesc = ClassDesc.ofDescriptor(components.get(i).descriptor().stringValue());
+
+                cob.aload(0);
+                cob.loadConstant(i);
+                cob.aaload();
+
+                if (fieldDesc.isPrimitive()) {
+                    cob.checkcast(wrap(fieldDesc));
+                    cob.invokevirtual(wrap(fieldDesc), unboxMethodName(fieldDesc), MethodTypeDesc.of(fieldDesc));
+                    continue;
+                }
+
+                cob.checkcast(fieldDesc);
+            }
+
+            var constructorDesc = MethodTypeDesc.of(CD_void,
+                    components.stream().map(c -> ClassDesc.ofDescriptor(c.descriptor().stringValue())).toArray(ClassDesc[]::new));
+
+            cob.invokespecial(cd, "<init>", constructorDesc);
+
+            cob.labelBinding(tryEnd);
+            cob.areturn();
+
+            cob.labelBinding(catchHandler);
+
+            cob.new_(TYPE_INSTANTIATION_EXP_DESC);
+            cob.dup_x1();
+            cob.swap();
+            cob.ldc(cd);
+            cob.swap();
+            cob.invokespecial(TYPE_INSTANTIATION_EXP_DESC, "<init>", TYPE_INSTANTIATION_EXP_CONSTRUCTOR);
+            cob.athrow();
         }));
 
         return cf.parse(bytes)
@@ -183,6 +230,20 @@ public final class MetaGen {
             case "char" -> ClassDesc.of("java.lang.Character");
             case "short" -> ClassDesc.of("java.lang.Short");
             default -> cd;
+        };
+    }
+
+    private static String unboxMethodName(ClassDesc cd) {
+        return switch (cd.displayName()) {
+            case "int"     -> "intValue";
+            case "long"    -> "longValue";
+            case "double"  -> "doubleValue";
+            case "float"   -> "floatValue";
+            case "boolean" -> "booleanValue";
+            case "byte"    -> "byteValue";
+            case "char"    -> "charValue";
+            case "short"   -> "shortValue";
+            default -> throw new IllegalArgumentException("Not a primitive: " + cd);
         };
     }
 
