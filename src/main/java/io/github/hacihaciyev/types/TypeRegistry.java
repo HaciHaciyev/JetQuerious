@@ -1,5 +1,7 @@
 package io.github.hacihaciyev.types;
 
+import io.github.hacihaciyev.config.Conf;
+
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.net.URI;
@@ -67,6 +69,12 @@ public final class TypeRegistry {
         if (UUIDStrategy.class.isAssignableFrom(type))
             return info(
                     TypeRegistry::setUUID,
+                    SQLType.UUID, SQLType.UNIQUEIDENTIFIER, SQLType.BINARY, SQLType.VARCHAR, SQLType.CHAR, SQLType.CHARACTER
+            );
+
+        if (type == UUID.class)
+            return info(
+                    (stmt, p, i) -> setUUID(stmt, Conf.INSTANCE.uuidStrategy().create((UUID) p), i),
                     SQLType.UUID, SQLType.UNIQUEIDENTIFIER, SQLType.BINARY, SQLType.VARCHAR, SQLType.CHAR, SQLType.CHARACTER
             );
 
@@ -231,12 +239,6 @@ public final class TypeRegistry {
             return info(
                     (stmt, p, i) -> stmt.setBoolean(i, ((AtomicBoolean) p).get()),
                     SQLType.BOOLEAN, SQLType.BIT
-            );
-
-        if (type == UUID.class)
-            return info(
-                    (stmt, p, i) -> stmt.setObject(i, p),
-                    SQLType.UUID, SQLType.UNIQUEIDENTIFIER
             );
 
         if (type == byte[].class)
