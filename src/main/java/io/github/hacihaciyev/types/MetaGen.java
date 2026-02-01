@@ -1,5 +1,7 @@
 package io.github.hacihaciyev.types;
 
+import io.github.hacihaciyev.config.Conf;
+
 import java.io.IOException;
 import java.lang.classfile.ClassBuilder;
 import java.lang.classfile.ClassElement;
@@ -64,7 +66,7 @@ public final class MetaGen {
     static void main() {
         MetaRegistryAlter.resetMetaRegistry();
 
-        var packages = PkgScan.userSpec();
+        var packages = Conf.INSTANCE.packages();
         for (var pkg : packages) {
             var classes = PkgScan.read(pkg);
             for (var type : classes) metaGen(type);
@@ -326,12 +328,6 @@ public final class MetaGen {
     private static class PkgScan {
 
         private PkgScan() {}
-
-        static String[] userSpec() {
-            var pkgs = System.getProperty("jetquerious.packages");
-            if (pkgs != null && !pkgs.isBlank()) return pkgs.split(";");
-            return new String[0];
-        }
 
         static List<byte[]> read(String pkgPath) {
             pkgPath = asResPath(pkgPath);
