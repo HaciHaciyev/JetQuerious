@@ -298,8 +298,37 @@ public final class MetaGen {
     }
 
     private static DynamicCallSiteDesc lambdaForRecordFactory(ClassDesc cd, String factoryName) {
-        // TODO
-        return null;
+        return DynamicCallSiteDesc.of(
+                lambdaMetafactoryHandle(),
+                "create",
+                MethodTypeDesc.of(FACTORY_DESC),
+                factoryLambdaConstantDesc(cd, factoryName)
+        );
+    }
+
+    private static ConstantDesc[] factoryLambdaConstantDesc(ClassDesc cd, String factoryName) {
+        return new ConstantDesc[]{
+                factorySamSignature(),
+                factoryMethodHandle(cd, factoryName),
+                factoryActualSignature(cd)
+        };
+    }
+
+    private static MethodTypeDesc factorySamSignature() {
+        return MethodTypeDesc.of(CD_Object, CD_Object.arrayType());
+    }
+
+    private static DirectMethodHandleDesc factoryMethodHandle(ClassDesc cd, String factoryName) {
+        return MethodHandleDesc.ofMethod(
+                DirectMethodHandleDesc.Kind.STATIC,
+                META_REGISTRY_DESC,
+                factoryName,
+                MethodTypeDesc.of(cd, CD_Object.arrayType())
+        );
+    }
+
+    private static MethodTypeDesc factoryActualSignature(ClassDesc cd) {
+        return MethodTypeDesc.of(cd, CD_Object.arrayType());
     }
 
     private static class MetaRegistryAlter {
