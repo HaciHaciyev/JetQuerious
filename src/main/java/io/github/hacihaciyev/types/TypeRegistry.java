@@ -372,12 +372,17 @@ public final class TypeRegistry {
     private static void setUUID(PreparedStatement stmt, Object param, int idx) throws SQLException, TypeInlineException {
         UUIDStrategy strategy = (UUIDStrategy) param;
 
-        var value = switch (strategy) {
-            case UUIDStrategy.Native n -> n.value();
-            case UUIDStrategy.Charseq c -> c.value().toString();
-            case UUIDStrategy.Binary b -> {
+        switch (strategy) {
+            case UUIDStrategy.Native(var uuid) -> stmt.setObject(idx, uuid);
+            case UUIDStrategy.Charseq(var uuid) -> {
+                String charseq = uuid.toString();
+
+                var typeInfo = REGISTRY.get(charseq.getClass());
+                if (typeInfo instanceof TypeInfo.Some typeSetter)
+                    typeSetter.setter().set(stmt, charseq, idx);
+            }
+            case UUIDStrategy.Binary(var uuid) -> {
                 byte[] bytes = new byte[16];
-                UUID uuid = b.value();
                 long msb = uuid.getMostSignificantBits();
                 long lsb = uuid.getLeastSignificantBits();
 
@@ -399,13 +404,11 @@ public final class TypeRegistry {
                 bytes[14] = (byte) (lsb >>> 8);
                 bytes[15] = (byte) (lsb);
 
-                yield bytes;
+                var typeInfo = REGISTRY.get(bytes.getClass());
+                if (typeInfo instanceof TypeInfo.Some typeSetter)
+                    typeSetter.setter().set(stmt, bytes, idx);
             }
-        };
-
-        var typeInfo = REGISTRY.get(value.getClass());
-        if (typeInfo instanceof TypeInfo.Some typeSetter)
-            typeSetter.setter().set(stmt, value, idx);
+        }
     }
 
     private static TypeInfo tryMeta(Class<?> type) {
