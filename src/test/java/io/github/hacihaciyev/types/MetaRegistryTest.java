@@ -2,6 +2,9 @@ package io.github.hacihaciyev.types;
 
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -9,7 +12,10 @@ import java.lang.classfile.ClassFile;
 import java.lang.classfile.ClassModel;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Arrays;
 import java.util.List;
+import java.util.function.Supplier;
+import java.util.stream.Stream;
 
 @ExtendWith(MetaGenExtension.class)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
@@ -29,10 +35,15 @@ class MetaRegistryTest {
         var registry = cf.parse(Files.readAllBytes(registryPath));
         
         assertTrue(hasMethod(registry, "_meta_Lio_github_hacihaciyev_types_MetaRegistryTest$Person"));
+        assertTrue(hasMethod(registry, "_factory_Lio_github_hacihaciyev_types_MetaRegistryTest$Person"));
         assertTrue(hasMethod(registry, "_meta_Lio_github_hacihaciyev_types_MetaRegistryTest$Empty"));
+        assertTrue(hasMethod(registry, "_factory_Lio_github_hacihaciyev_types_MetaRegistryTest$Empty"));
         assertTrue(hasMethod(registry, "_meta_Lio_github_hacihaciyev_types_MetaRegistryTest$AllPrimitives"));
+        assertTrue(hasMethod(registry, "_factory_Lio_github_hacihaciyev_types_MetaRegistryTest$AllPrimitives"));
         assertTrue(hasMethod(registry, "_meta_Lio_github_hacihaciyev_types_MetaRegistryTest$Mixed"));
+        assertTrue(hasMethod(registry, "_factory_Lio_github_hacihaciyev_types_MetaRegistryTest$Mixed"));
         assertTrue(hasMethod(registry, "_meta_Lio_github_hacihaciyev_types_MetaRegistryTest$Nested"));
+        assertTrue(hasMethod(registry, "_factory_Lio_github_hacihaciyev_types_MetaRegistryTest$Nested"));
     }
 
     @Test
@@ -111,6 +122,52 @@ class MetaRegistryTest {
         assertEquals(MetaRegistry.TypeMeta.NONE, MetaRegistry.meta(String.class));
         assertEquals(MetaRegistry.TypeMeta.NONE, MetaRegistry.meta(Object.class));
         assertEquals(MetaRegistry.TypeMeta.NONE, MetaRegistry.meta(Integer.class));
+    }
+
+    @ParameterizedTest
+    @MethodSource("recordFactoryCases")
+    @Order(9)
+    <T> void testFactoryFromAccessorsGeneric(Class<T> type, Supplier<T> instanceSupplier) throws TypeInstantiationException {
+        var meta = (MetaRegistry.TypeMeta.Record<T>) MetaRegistry.meta(type);
+
+        var original = instanceSupplier.get();
+
+        Object[] args = Arrays.stream(meta.fields())
+                .map(f -> f.accessor().apply(original))
+                .toArray();
+
+        var copy = meta.factory().create(args);
+
+        assertEquals(original, copy);
+        assertNotSame(original, copy);
+    }
+
+    static Stream<Arguments> recordFactoryCases() {
+        return Stream.of(
+                Arguments.of(
+                        Person.class,
+                        (Supplier<Person>) () -> new Person("Alice", 30)
+                ),
+                Arguments.of(
+                        Empty.class,
+                        (Supplier<Empty>) Empty::new
+                ),
+                Arguments.of(
+                        AllPrimitives.class,
+                        (Supplier<AllPrimitives>) () ->
+                                new AllPrimitives(1, 2L, 3.0, 4.0f, true, (byte) 5, 'c', (short) 6)
+                ),
+                Arguments.of(
+                        Mixed.class,
+                        (Supplier<Mixed>) () ->
+                                new Mixed("str", 42, List.of("a", "b"), new int[]{1, 2, 3})
+                ),
+                Arguments.of(
+                        Nested.class,
+                        (Supplier<Nested>) () ->
+                                new Nested(new Person("Bob", 25), "test")
+                )
+        );
     }
 
     static boolean hasMethod(ClassModel model, String methodName) {
