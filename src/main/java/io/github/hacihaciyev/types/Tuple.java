@@ -193,7 +193,13 @@ public sealed interface Tuple {
             case TypeMeta.Record(_, var fields, _) -> {
                 if (fields.length < requiredLength)
                     throw new IllegalArgumentException(RECORD_INVALID_LENGTH.formatted(value.getClass().getName()));
-                yield Arrays.stream(fields).map(f -> f.accessor().apply(value)).toArray();
+
+                @SuppressWarnings("unchecked")
+                var rec = (MetaRegistry.TypeMeta.Record<Record>) meta(value.getClass());
+
+                yield Arrays.stream(rec.fields())
+                        .map(f -> f.accessor().apply(value))
+                        .toArray();
             }
             case TypeMeta.None _ -> throw new IllegalArgumentException(UNSUPPORTED_RECORD.formatted(value.getClass().getName()));
         };
