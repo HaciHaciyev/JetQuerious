@@ -62,7 +62,21 @@ public final class MetaGen {
 
     static final ClassDesc TYPE_INSTANTIATION_EXP_DESC = ClassDesc.of("io.github.hacihaciyev.types.TypeInstantiationException");
 
-    public static final MethodTypeDesc TYPE_INSTANTIATION_EXP_CONSTRUCTOR = MethodTypeDesc.of(ConstantDescs.CD_void, ConstantDescs.CD_Class, ClassDesc.of("java.lang.Throwable"));
+    static final MethodTypeDesc TYPE_INSTANTIATION_EXP_CONSTRUCTOR = MethodTypeDesc.of(ConstantDescs.CD_void, ConstantDescs.CD_Class, ClassDesc.of("java.lang.Throwable"));
+
+    static final DirectMethodHandleDesc LAMBDA_METAFACTORY_HANDLE = MethodHandleDesc.ofMethod(
+            DirectMethodHandleDesc.Kind.STATIC,
+            ClassDesc.of("java.lang.invoke.LambdaMetafactory"), "metafactory",
+            MethodTypeDesc.of(
+                    ClassDesc.of("java.lang.invoke.CallSite"),
+                    ClassDesc.of("java.lang.invoke.MethodHandles$Lookup"),
+                    ConstantDescs.CD_String,
+                    ClassDesc.of("java.lang.invoke.MethodType"),
+                    ClassDesc.of("java.lang.invoke.MethodType"),
+                    ClassDesc.of("java.lang.invoke.MethodHandle"),
+                    ClassDesc.of("java.lang.invoke.MethodType")
+            )
+    );
 
     private MetaGen() {}
 
@@ -249,26 +263,10 @@ public final class MetaGen {
 
     private static DynamicCallSiteDesc lambdaForFieldAccessor(ClassDesc cd, String fieldName, ClassDesc fieldDesc) {
         return DynamicCallSiteDesc.of(
-                lambdaMetafactoryHandle(),
+                LAMBDA_METAFACTORY_HANDLE,
                 "apply",
                 MethodTypeDesc.of(JAVA_FUNCTION_DESC),
                 accessorLambdaConstantDesc(cd, fieldName, fieldDesc)
-        );
-    }
-
-    private static DirectMethodHandleDesc lambdaMetafactoryHandle() {
-        return MethodHandleDesc.ofMethod(
-                DirectMethodHandleDesc.Kind.STATIC,
-                ClassDesc.of("java.lang.invoke.LambdaMetafactory"), "metafactory",
-                MethodTypeDesc.of(
-                        ClassDesc.of("java.lang.invoke.CallSite"),
-                        ClassDesc.of("java.lang.invoke.MethodHandles$Lookup"),
-                        CD_String,
-                        ClassDesc.of("java.lang.invoke.MethodType"),
-                        ClassDesc.of("java.lang.invoke.MethodType"),
-                        ClassDesc.of("java.lang.invoke.MethodHandle"),
-                        ClassDesc.of("java.lang.invoke.MethodType")
-                )
         );
     }
 
@@ -299,7 +297,7 @@ public final class MetaGen {
 
     private static DynamicCallSiteDesc lambdaForRecordFactory(ClassDesc cd, String factoryName) {
         return DynamicCallSiteDesc.of(
-                lambdaMetafactoryHandle(),
+                LAMBDA_METAFACTORY_HANDLE,
                 "create",
                 MethodTypeDesc.of(FACTORY_DESC),
                 factoryLambdaConstantDesc(cd, factoryName)
