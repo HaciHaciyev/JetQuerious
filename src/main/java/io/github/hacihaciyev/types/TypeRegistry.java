@@ -36,12 +36,29 @@ public final class TypeRegistry {
         return REGISTRY.get(type);
     }
 
+    public sealed interface TypeInfoOk permits TypeInfo.Some, TypeInfo.WithFactory {
+        Setter setter();
+        Set<SQLType> sqlTypes();
+    }
+
     public sealed interface TypeInfo {
         None NONE = new None();
 
-        record Some(Setter setter, Set<SQLType> sqlTypes) implements TypeInfo {
+        record Some(Setter setter, Set<SQLType> sqlTypes) implements TypeInfo, TypeInfoOk {
             public Some {
                 sqlTypes = Set.copyOf(sqlTypes);
+            }
+        }
+
+        record WithFactory<T>(Setter setter, Set<SQLType> sqlTypes,
+                              Field<T, ?>[] fields, RecordFactory<T> factory) implements TypeInfo, TypeInfoOk {
+
+            public WithFactory {
+                sqlTypes = Set.copyOf(sqlTypes);
+            }
+
+            public Object[] objects(T t) {
+                return Arrays.stream(fields).map(f -> f.accessor().apply(t)).toArray();
             }
         }
 
@@ -370,19 +387,17 @@ public final class TypeRegistry {
     }
 
     private static void setUUID(PreparedStatement stmt, Object param, int idx) throws SQLException, TypeInlineException {
-        UUIDStrategy strategy = (UUIDStrategy) param;
-
-        switch (strategy) {
+        switch ((UUIDStrategy) param) {
             case UUIDStrategy.Native(var uuid) -> stmt.setObject(idx, uuid);
             case UUIDStrategy.Charseq(var uuid) -> {
-                String charseq = uuid.toString();
+                var charseq = uuid.toString();
 
                 var typeInfo = REGISTRY.get(charseq.getClass());
                 if (typeInfo instanceof TypeInfo.Some typeSetter)
                     typeSetter.setter().set(stmt, charseq, idx);
             }
             case UUIDStrategy.Binary(var uuid) -> {
-                byte[] bytes = new byte[16];
+                var bytes = new byte[16];
                 long msb = uuid.getMostSignificantBits();
                 long lsb = uuid.getLeastSignificantBits();
 
@@ -421,21 +436,21 @@ public final class TypeRegistry {
     private static <T> TypeInfo singleValueRecord(TypeMeta.Record<T> rec) {
         if (rec.fields().length != 1) return TypeInfo.NONE;
 
-        MetaRegistry.Field<T, ?> field = rec.fields()[0];
-        Class<?> fieldType = field.type();
+        var field = rec.fields()[0];
 
-        TypeInfo fieldInfo = standardTypes(fieldType);
-        if (!(fieldInfo instanceof TypeInfo.Some(Setter setter, Set<SQLType> sqlTypes))) return TypeInfo.NONE;
+        var fieldInfo = standardTypes(field.type());
+        if (!(fieldInfo instanceof TypeInfo.Some(Setter setter, Set<SQLType> sqlTypes)))
+            return TypeInfo.NONE;
 
         Setter recordSetter = (stmt, p, idx) -> {
             try {
-                Object fieldValue = field.accessor().apply((T) p);
+                var fieldValue = field.accessor().apply((T) p);
                 setter.set(stmt, fieldValue, idx);
             } catch (Throwable e) {
                 throw new TypeInlineException(rec.type(), e);
             }
         };
 
-        return new TypeInfo.Some(recordSetter, sqlTypes);
+        return new TypeInfo.WithFactory<>(recordSetter, sqlTypes, rec.fields(), rec.factory());
     }
 }

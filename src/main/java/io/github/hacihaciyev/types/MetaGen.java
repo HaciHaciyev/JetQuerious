@@ -50,7 +50,7 @@ public final class MetaGen {
 
     static final ClassDesc RECORD_DESC = ClassDesc.of("io.github.hacihaciyev.types.MetaRegistry$TypeMeta$Record");
 
-    static final ClassDesc FIELD_DESC = ClassDesc.of("io.github.hacihaciyev.types.MetaRegistry$Field");
+    static final ClassDesc FIELD_DESC = ClassDesc.of("io.github.hacihaciyev.types.Field");
 
     static final ClassDesc JAVA_FUNCTION_DESC = ClassDesc.of("java.util.function.Function");
 

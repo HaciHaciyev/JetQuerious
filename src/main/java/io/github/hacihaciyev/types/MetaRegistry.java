@@ -1,7 +1,5 @@
 package io.github.hacihaciyev.types;
 
-import java.util.function.Function;
-
 public final class MetaRegistry {
 
     private MetaRegistry() {}
@@ -13,8 +11,6 @@ public final class MetaRegistry {
 
         record None() implements TypeMeta {}
     }
-
-    public record Field<T, V>(String name, Class<V> type, Function<T, V> accessor) {}
 
     public static TypeMeta meta(Class<?> type) {
 

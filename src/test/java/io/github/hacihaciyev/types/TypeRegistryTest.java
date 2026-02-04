@@ -22,6 +22,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.*;
 import static io.github.hacihaciyev.types.TypeRegistry.TypeInfo.None;
 import static io.github.hacihaciyev.types.TypeRegistry.TypeInfo.Some;
+import static io.github.hacihaciyev.types.TypeRegistry.TypeInfo.WithFactory;
+import static io.github.hacihaciyev.types.TypeRegistry.TypeInfoOk;
 
 @ExtendWith(MetaGenExtension.class)
 class TypeRegistryTest {
@@ -250,7 +252,7 @@ class TypeRegistryTest {
         var uuid = UUID.randomUUID();
         var userId = new UserId(uuid);
         
-        var info = (Some) TypeRegistry.info(UserId.class);
+        var info = (TypeInfoOk) TypeRegistry.info(UserId.class);
         info.setter().set(stmt, userId, 1);
         
         verify(stmt).setObject(1, uuid);
@@ -258,10 +260,18 @@ class TypeRegistryTest {
 
     @Test
     void shouldInheritSQLTypesFromComponent() {
-        var recordInfo = (Some) TypeRegistry.info(UserId.class);
-        var uuidInfo = (Some) TypeRegistry.info(UUID.class);
+        var recordInfo = (TypeInfoOk) TypeRegistry.info(UserId.class);
+        var uuidInfo = (TypeInfoOk) TypeRegistry.info(UUID.class);
         
         assertThat(recordInfo.sqlTypes()).isEqualTo(uuidInfo.sqlTypes());
+    }
+
+    @Test
+    void shouldSuccessfullyUseFactory() throws TypeInstantiationException {
+        var userId = new UserId(UUID.randomUUID());
+        var userIdInfo = (WithFactory<UserId>) TypeRegistry.info(UserId.class);
+
+        userIdInfo.factory().create(userIdInfo.objects(userId));
     }
 
     @Test
