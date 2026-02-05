@@ -20,10 +20,9 @@ import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.*;
-import static io.github.hacihaciyev.types.TypeRegistry.TypeInfo.None;
-import static io.github.hacihaciyev.types.TypeRegistry.TypeInfo.Some;
-import static io.github.hacihaciyev.types.TypeRegistry.TypeInfo.WithFactory;
-import static io.github.hacihaciyev.types.TypeRegistry.TypeInfoOk;
+import static io.github.hacihaciyev.types.TypeInfo.None;
+import static io.github.hacihaciyev.types.TypeInfo.Some;
+import static io.github.hacihaciyev.types.TypeInfo.WithFactory;
 
 @ExtendWith(MetaGenExtension.class)
 class TypeRegistryTest {
