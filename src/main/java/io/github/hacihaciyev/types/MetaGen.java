@@ -46,9 +46,9 @@ public final class MetaGen {
 
     static final ClassDesc META_REGISTRY_DESC = ClassDesc.of("io.github.hacihaciyev.types.MetaRegistry");
 
-    static final MethodTypeDesc TYPE_META_DESC = MethodTypeDesc.of(ClassDesc.of("io.github.hacihaciyev.types.MetaRegistry$TypeMeta"));
+    static final MethodTypeDesc TYPE_META_DESC = MethodTypeDesc.of(ClassDesc.of("io.github.hacihaciyev.types.TypeMeta"));
 
-    static final ClassDesc RECORD_DESC = ClassDesc.of("io.github.hacihaciyev.types.MetaRegistry$TypeMeta$Record");
+    static final ClassDesc RECORD_DESC = ClassDesc.of("io.github.hacihaciyev.types.TypeMeta$Record");
 
     static final ClassDesc FIELD_DESC = ClassDesc.of("io.github.hacihaciyev.types.Field");
 

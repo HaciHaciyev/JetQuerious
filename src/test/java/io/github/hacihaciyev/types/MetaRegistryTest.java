@@ -49,7 +49,7 @@ class MetaRegistryTest {
     @Test
     @Order(2)
     void testPersonMeta() {
-        var meta = (MetaRegistry.TypeMeta.Record<?>) MetaRegistry.meta(Person.class);
+        var meta = (TypeMeta.Record<?>) MetaRegistry.meta(Person.class);
         
         assertEquals(Person.class, meta.type());
         assertEquals(2, meta.fields().length);
@@ -64,7 +64,7 @@ class MetaRegistryTest {
     @Test
     @Order(3)
     void testAccessors() {
-        var meta = (MetaRegistry.TypeMeta.Record<Person>) MetaRegistry.meta(Person.class);
+        var meta = (TypeMeta.Record<Person>) MetaRegistry.meta(Person.class);
         var person = new Person("Alice", 30);
         
         assertEquals("Alice", meta.fields()[0].accessor().apply(person));
@@ -74,14 +74,14 @@ class MetaRegistryTest {
     @Test
     @Order(4)
     void testEmptyRecord() {
-        var meta = (MetaRegistry.TypeMeta.Record<?>) MetaRegistry.meta(Empty.class);
+        var meta = (TypeMeta.Record<?>) MetaRegistry.meta(Empty.class);
         assertEquals(0, meta.fields().length);
     }
 
     @Test
     @Order(5)
     void testAllPrimitives() {
-        var meta = (MetaRegistry.TypeMeta.Record<?>) MetaRegistry.meta(AllPrimitives.class);
+        var meta = (TypeMeta.Record<?>) MetaRegistry.meta(AllPrimitives.class);
         
         assertEquals(8, meta.fields().length);
         assertEquals(int.class, meta.fields()[0].type());
@@ -97,7 +97,7 @@ class MetaRegistryTest {
     @Test
     @Order(6)
     void testMixedTypes() {
-        var meta = (MetaRegistry.TypeMeta.Record<?>) MetaRegistry.meta(Mixed.class);
+        var meta = (TypeMeta.Record<?>) MetaRegistry.meta(Mixed.class);
         
         assertEquals(4, meta.fields().length);
         assertEquals(String.class, meta.fields()[0].type());
@@ -109,7 +109,7 @@ class MetaRegistryTest {
     @Test
     @Order(7)
     void testNestedRecord() {
-        var meta = (MetaRegistry.TypeMeta.Record<Nested>) MetaRegistry.meta(Nested.class);
+        var meta = (TypeMeta.Record<Nested>) MetaRegistry.meta(Nested.class);
         var nested = new Nested(new Person("Bob", 25), "test");
         
         assertEquals(new Person("Bob", 25), meta.fields()[0].accessor().apply(nested));
@@ -119,16 +119,16 @@ class MetaRegistryTest {
     @Test
     @Order(8)
     void testNonRecordReturnsNone() {
-        assertEquals(MetaRegistry.TypeMeta.NONE, MetaRegistry.meta(String.class));
-        assertEquals(MetaRegistry.TypeMeta.NONE, MetaRegistry.meta(Object.class));
-        assertEquals(MetaRegistry.TypeMeta.NONE, MetaRegistry.meta(Integer.class));
+        assertEquals(TypeMeta.NONE, MetaRegistry.meta(String.class));
+        assertEquals(TypeMeta.NONE, MetaRegistry.meta(Object.class));
+        assertEquals(TypeMeta.NONE, MetaRegistry.meta(Integer.class));
     }
 
     @ParameterizedTest
     @MethodSource("recordFactoryCases")
     @Order(9)
     <T> void testFactoryFromAccessorsGeneric(Class<T> type, Supplier<T> instanceSupplier) throws TypeInstantiationException {
-        var meta = (MetaRegistry.TypeMeta.Record<T>) MetaRegistry.meta(type);
+        var meta = (TypeMeta.Record<T>) MetaRegistry.meta(type);
 
         var original = instanceSupplier.get();
 

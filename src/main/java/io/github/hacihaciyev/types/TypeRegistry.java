@@ -15,8 +15,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
-import static io.github.hacihaciyev.types.MetaRegistry.TypeMeta;
-
 public final class TypeRegistry {
 
     public static final String UNSUPPORTED_RECORD =
