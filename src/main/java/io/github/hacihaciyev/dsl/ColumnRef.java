@@ -3,11 +3,12 @@ package io.github.hacihaciyev.dsl;
 import static java.util.Objects.requireNonNull;
 
 public sealed interface ColumnRef {
+
     String name();
 
     record Base(String name) implements ColumnRef {
         public Base {
-            name = requireNonNull(name, "Column reference cannot be null").trim();
+            name = validate(name, "column");
         }
 
         @Override
@@ -18,8 +19,8 @@ public sealed interface ColumnRef {
 
     record Alias(String name, String alias) implements ColumnRef {
         public Alias {
-            name = requireNonNull(name, "Column reference cannot be null").trim();
-            alias = requireNonNull(alias, "Column alias cannot be null").trim();
+            name = validate(name, "column");
+            alias = validate(alias, "alias");
         }
 
         @Override
@@ -30,8 +31,8 @@ public sealed interface ColumnRef {
 
     record VariableBase(String variable, String name) implements ColumnRef {
         public VariableBase {
-            variable = requireNonNull(variable, "Column variable cannot be null").trim();
-            name = requireNonNull(name, "Column reference cannot be null").trim();
+            variable = validate(variable, "variable");
+            name = validate(name, "column");
         }
 
         @Override
@@ -42,14 +43,20 @@ public sealed interface ColumnRef {
 
     record VariableAlias(String variable, String name, String alias) implements ColumnRef {
         public VariableAlias {
-            variable = requireNonNull(variable, "Column variable cannot be null").trim();
-            name = requireNonNull(name, "Column alias cannot be null").trim();
-            alias = requireNonNull(alias, "Column alias cannot be null").trim();
+            variable = validate(variable, "variable");
+            name = validate(name, "column");
+            alias = validate(alias, "alias");
         }
 
         @Override
         public String toString() {
             return variable + "." + name + " AS " + alias;
         }
+    }
+
+    private static String validate(String value, String label) {
+        String res = requireNonNull(value, label + " cannot be null").trim();
+        if (res.isEmpty()) throw new IllegalArgumentException(label + " cannot be empty");
+        return res;
     }
 }
