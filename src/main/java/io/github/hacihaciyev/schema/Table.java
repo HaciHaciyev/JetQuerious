@@ -8,6 +8,13 @@ import java.util.Optional;
 import static java.util.Objects.requireNonNull;
 
 public record Table(Catalog catalog, Schema schema, String name, Column[] columns) {
+    public Table {
+        requireNonNull(catalog, "Catalog cannot be null");
+        requireNonNull(schema, "Schema cannot be null");
+        requireNonNull(name, "Table name cannot be null");
+        requireNonNull(columns, "Columns cannot be null");
+        if (columns.length == 0) throw new IllegalArgumentException("Table cannot have zero columns");
+    }
 
     public sealed interface Catalog {
         record Known(String name) implements Catalog {
