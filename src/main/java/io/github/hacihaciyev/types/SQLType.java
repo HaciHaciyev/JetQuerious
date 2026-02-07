@@ -1,7 +1,8 @@
 package io.github.hacihaciyev.types;
 
 import java.util.Arrays;
-import java.util.Set;
+import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 public enum SQLType {
@@ -86,11 +87,24 @@ public enum SQLType {
     ENUM,
     SET_TYPE;
 
-    private static final Set<String> NAMES = Arrays.stream(SQLType.values())
-            .map(type -> type.name())
-            .collect(Collectors.toSet());
+    private static final Map<String, SQLType> LOOKUP = Arrays.stream(SQLType.values())
+            .collect(Collectors.toMap(
+                    type -> type.name(),
+                    type -> type
+            ));
 
-    public static boolean containsIgnoreCase(String name) {
-        return NAMES.contains(name.trim().toUpperCase());
+    public static Optional<SQLType> parse(String name) {
+        if (name == null) return Optional.empty();
+        return Optional.ofNullable(LOOKUP.get(normalize(name)));
+    }
+
+    public static boolean contains(String name) {
+        return name != null && LOOKUP.containsKey(normalize(name));
+    }
+
+    private static String normalize(String name) {
+        return name.trim()
+                .toUpperCase()
+                .replace(" ", "_");
     }
 }
