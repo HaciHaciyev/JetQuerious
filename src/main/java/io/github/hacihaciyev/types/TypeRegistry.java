@@ -415,6 +415,8 @@ public final class TypeRegistry {
             try {
                 var fieldValue = field.accessor().apply((T) p);
                 setter.set(stmt, fieldValue, idx);
+            } catch (SQLException e) {
+                throw e;
             } catch (Throwable e) {
                 throw new TypeInlineException(rec.type(), e);
             }
