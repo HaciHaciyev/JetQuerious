@@ -8,6 +8,7 @@ public final class Conf {
     private final String[] packages;
     private final UUIDStrategy.Type uuidStrategy;
     private final Duration schemaTTLInSeconds;
+    private final int schemaCacheSize;
 
     public static final Conf INSTANCE = new Conf();
 
@@ -15,6 +16,7 @@ public final class Conf {
         this.packages = defPackages();
         this.uuidStrategy = defUUIDStrategy();
         this.schemaTTLInSeconds = defSchemaCacheTTL();
+        this.schemaCacheSize = defSchemaCacheSize();
     }
 
     public String[] packages() {
@@ -50,6 +52,15 @@ public final class Conf {
             return Duration.parse(ttl);
         } catch (Exception _) {
             return Duration.ofSeconds(5);
+        }
+    }
+
+    private int defSchemaCacheSize() {
+        try {
+            int cacheSize = Integer.parseInt(System.getProperty("jetquerious.schema.cache.size"));
+            return Math.max(cacheSize, 0);
+        } catch (Exception _) {
+            return 128;
         }
     }
 }
