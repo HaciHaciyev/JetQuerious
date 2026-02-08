@@ -31,6 +31,10 @@ public final class Conf {
         return schemaTTLInSeconds;
     }
 
+    public int schemaCacheSize() {
+        return schemaCacheSize;
+    }
+
     private UUIDStrategy.Type defUUIDStrategy() {
         try {
             return UUIDStrategy.Type.valueOf(System.getProperty("jetquerious.uuid_strategy"));
