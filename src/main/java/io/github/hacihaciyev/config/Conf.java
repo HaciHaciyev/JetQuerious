@@ -61,8 +61,9 @@ public final class Conf {
 
     private int defSchemaCacheSize() {
         try {
-            int cacheSize = Integer.parseInt(System.getProperty("jetquerious.schema.cache.size"));
-            return Math.max(cacheSize, 0);
+            var cacheSize = Integer.parseInt(System.getProperty("jetquerious.schema.cache.size"));
+            if (cacheSize <= 0) return 128;
+            return Integer.highestOneBit(cacheSize - 1) << 1;
         } catch (Exception _) {
             return 128;
         }
