@@ -27,6 +27,8 @@ public class SchemaResolver {
 
     static final String TABLE_NOT_FOUND = "Table not found: catalog{%s}, schema{%s}, table{%s}";
 
+    private static final String[] SCHEM_TYPES = new String[]{"TABLE", "VIEW"};
+
     private static final int CACHE_SIZE = Conf.INSTANCE.schemaCacheSize();
 
     private static final long TTL_NANOS = Conf.INSTANCE.schemaTTLInSeconds().toNanos();
@@ -100,10 +102,9 @@ public class SchemaResolver {
             CACHE.compareAndSet(index, cache, null);
         }
 
-        var types = new String[]{"TABLE", "VIEW"};
         try (Connection conn = dataSource.getConnection()) {
             var meta = conn.getMetaData();
-            var res = table(meta, cat, schema, table, types);
+            var res = table(meta, cat, schema, table);
 
             if (res instanceof Ok(Table value)) {
                 var expiresAt = System.nanoTime() + TTL_NANOS;
@@ -133,9 +134,9 @@ public class SchemaResolver {
     }
 
     private static Result<Table, SchemaVerificationException> table(
-            DatabaseMetaData meta, String cat, String schema, String table, String[] types) throws SQLException {
+            DatabaseMetaData meta, String cat, String schema, String table) throws SQLException {
 
-        try (var tables = meta.getTables(cat, schema, table, types)) {
+        try (var tables = meta.getTables(cat, schema, table, SCHEM_TYPES)) {
             if (!tables.next()) return new Err<>(new SchemaVerificationException(TABLE_NOT_FOUND.formatted(cat, schema, table)));
 
             var actualCat = cat(tables);
