@@ -2,13 +2,18 @@ package io.github.hacihaciyev.config;
 
 import io.github.hacihaciyev.types.UUIDStrategy;
 
+import javax.sql.DataSource;
 import java.time.Duration;
+import java.util.concurrent.atomic.AtomicReference;
+
+import static java.util.Objects.requireNonNull;
 
 public final class Conf {
     private final String[] packages;
     private final UUIDStrategy.Type uuidStrategy;
     private final Duration schemaTTLInSeconds;
     private final int schemaCacheSize;
+    private final AtomicReference<DataSource> dataSourceRef = new AtomicReference<>();
 
     public static final Conf INSTANCE = new Conf();
 
@@ -33,6 +38,11 @@ public final class Conf {
 
     public int schemaCacheSize() {
         return schemaCacheSize;
+    }
+
+    public void defDataSource(DataSource dataSource) {
+        requireNonNull(dataSource, "DataSource cannot be null");
+        dataSourceRef.set(dataSource);
     }
 
     private UUIDStrategy.Type defUUIDStrategy() {
