@@ -40,6 +40,10 @@ public final class Conf {
         return schemaCacheSize;
     }
 
+    public DataSource dataSource() {
+        return dataSourceRef.get();
+    }
+
     public void defDataSource(DataSource dataSource) {
         requireNonNull(dataSource, "DataSource cannot be null");
         dataSourceRef.set(dataSource);
