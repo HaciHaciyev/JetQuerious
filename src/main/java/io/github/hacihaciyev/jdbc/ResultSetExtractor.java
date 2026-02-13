@@ -1,7 +1,7 @@
 package io.github.hacihaciyev.jdbc;
 
 
-import io.github.hacihaciyev.exceptions.RepositoryException;
+import io.github.hacihaciyev.sql_error_translation.RepositoryException;
 import io.github.hacihaciyev.util.Nullable;
 
 import java.sql.ResultSet;
