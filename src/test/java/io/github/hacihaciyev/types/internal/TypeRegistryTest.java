@@ -1,5 +1,10 @@
-package io.github.hacihaciyev.types;
+package io.github.hacihaciyev.types.internal;
 
+import io.github.hacihaciyev.types.AsObject;
+import io.github.hacihaciyev.types.AsString;
+import io.github.hacihaciyev.types.SQLType;
+import io.github.hacihaciyev.types.TypeInstantiationException;
+import io.github.hacihaciyev.types.UUIDStrategy;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -20,9 +25,9 @@ import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.*;
-import static io.github.hacihaciyev.types.TypeInfo.None;
-import static io.github.hacihaciyev.types.TypeInfo.Some;
-import static io.github.hacihaciyev.types.TypeInfo.WithFactory;
+import static io.github.hacihaciyev.types.internal.TypeInfo.None;
+import static io.github.hacihaciyev.types.internal.TypeInfo.Some;
+import static io.github.hacihaciyev.types.internal.TypeInfo.WithFactory;
 
 @ExtendWith(MetaGenExtension.class)
 class TypeRegistryTest {
@@ -122,7 +127,7 @@ class TypeRegistryTest {
 
     @ParameterizedTest
     @MethodSource("sqlTypeMappings")
-    void shouldMapToCorrectSQLTypes(Class<?> type, SQLType... expected) {
+    void shouldMapToCorrectSQLTypes(Class<?> type, io.github.hacihaciyev.types.SQLType... expected) {
         var info = (Some) TypeRegistry.info(type);
         assertThat(info.sqlTypes()).contains(expected);
     }
@@ -140,15 +145,15 @@ class TypeRegistryTest {
 
     static Stream<Arguments> sqlTypeMappings() {
         return Stream.of(
-            mapping(int.class, SQLType.INT, SQLType.INTEGER, SQLType.BIGINT),
-            mapping(long.class, SQLType.BIGINT, SQLType.INT, SQLType.INTEGER),
-            mapping(String.class, SQLType.VARCHAR, SQLType.TEXT, SQLType.CHAR),
-            mapping(boolean.class, SQLType.BOOLEAN, SQLType.BIT),
-            mapping(UUID.class, SQLType.UUID, SQLType.UNIQUEIDENTIFIER),
-            mapping(LocalDate.class, SQLType.DATE),
-            mapping(LocalTime.class, SQLType.TIME),
-            mapping(byte[].class, SQLType.BINARY, SQLType.VARBINARY),
-            mapping(BigDecimal.class, SQLType.DECIMAL, SQLType.NUMERIC)
+            mapping(int.class, io.github.hacihaciyev.types.SQLType.INT, io.github.hacihaciyev.types.SQLType.INTEGER, io.github.hacihaciyev.types.SQLType.BIGINT),
+            mapping(long.class, io.github.hacihaciyev.types.SQLType.BIGINT, io.github.hacihaciyev.types.SQLType.INT, io.github.hacihaciyev.types.SQLType.INTEGER),
+            mapping(String.class, io.github.hacihaciyev.types.SQLType.VARCHAR, io.github.hacihaciyev.types.SQLType.TEXT, io.github.hacihaciyev.types.SQLType.CHAR),
+            mapping(boolean.class, io.github.hacihaciyev.types.SQLType.BOOLEAN, io.github.hacihaciyev.types.SQLType.BIT),
+            mapping(UUID.class, io.github.hacihaciyev.types.SQLType.UUID, io.github.hacihaciyev.types.SQLType.UNIQUEIDENTIFIER),
+            mapping(LocalDate.class, io.github.hacihaciyev.types.SQLType.DATE),
+            mapping(LocalTime.class, io.github.hacihaciyev.types.SQLType.TIME),
+            mapping(byte[].class, io.github.hacihaciyev.types.SQLType.BINARY, io.github.hacihaciyev.types.SQLType.VARBINARY),
+            mapping(BigDecimal.class, io.github.hacihaciyev.types.SQLType.DECIMAL, io.github.hacihaciyev.types.SQLType.NUMERIC)
         );
     }
 

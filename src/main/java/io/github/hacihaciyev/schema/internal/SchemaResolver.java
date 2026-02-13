@@ -1,7 +1,8 @@
-package io.github.hacihaciyev.schema;
+package io.github.hacihaciyev.schema.internal;
 
 import io.github.hacihaciyev.config.Conf;
 import io.github.hacihaciyev.dsl.TableRef;
+import io.github.hacihaciyev.schema.SchemaVerificationException;
 import io.github.hacihaciyev.types.SQLType;
 import io.github.hacihaciyev.util.Err;
 import io.github.hacihaciyev.util.Ok;
@@ -20,8 +21,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReferenceArray;
 
 import static java.util.Objects.requireNonNull;
-import static io.github.hacihaciyev.schema.Table.Catalog;
-import static io.github.hacihaciyev.schema.Table.Schema;
+import static io.github.hacihaciyev.schema.internal.Table.Catalog;
+import static io.github.hacihaciyev.schema.internal.Table.Schema;
 
 public class SchemaResolver {
 

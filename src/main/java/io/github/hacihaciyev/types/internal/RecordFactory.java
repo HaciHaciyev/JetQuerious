@@ -1,4 +1,6 @@
-package io.github.hacihaciyev.types;
+package io.github.hacihaciyev.types.internal;
+
+import io.github.hacihaciyev.types.TypeInstantiationException;
 
 @FunctionalInterface
 public interface RecordFactory<T> {

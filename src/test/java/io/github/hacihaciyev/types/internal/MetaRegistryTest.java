@@ -1,5 +1,6 @@
-package io.github.hacihaciyev.types;
+package io.github.hacihaciyev.types.internal;
 
+import io.github.hacihaciyev.types.TypeInstantiationException;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -31,19 +32,19 @@ class MetaRegistryTest {
     @Order(1)
     void testMethodsCreated() throws Exception {
         var cf = ClassFile.of();
-        var registryPath = Path.of("target/classes/io/github/hacihaciyev/types/MetaRegistry.class");
+        var registryPath = Path.of("target/classes/io/github/hacihaciyev/types/internal/MetaRegistry.class");
         var registry = cf.parse(Files.readAllBytes(registryPath));
         
-        assertTrue(hasMethod(registry, "_meta_Lio_github_hacihaciyev_types_MetaRegistryTest$Person"));
-        assertTrue(hasMethod(registry, "_factory_Lio_github_hacihaciyev_types_MetaRegistryTest$Person"));
-        assertTrue(hasMethod(registry, "_meta_Lio_github_hacihaciyev_types_MetaRegistryTest$Empty"));
-        assertTrue(hasMethod(registry, "_factory_Lio_github_hacihaciyev_types_MetaRegistryTest$Empty"));
-        assertTrue(hasMethod(registry, "_meta_Lio_github_hacihaciyev_types_MetaRegistryTest$AllPrimitives"));
-        assertTrue(hasMethod(registry, "_factory_Lio_github_hacihaciyev_types_MetaRegistryTest$AllPrimitives"));
-        assertTrue(hasMethod(registry, "_meta_Lio_github_hacihaciyev_types_MetaRegistryTest$Mixed"));
-        assertTrue(hasMethod(registry, "_factory_Lio_github_hacihaciyev_types_MetaRegistryTest$Mixed"));
-        assertTrue(hasMethod(registry, "_meta_Lio_github_hacihaciyev_types_MetaRegistryTest$Nested"));
-        assertTrue(hasMethod(registry, "_factory_Lio_github_hacihaciyev_types_MetaRegistryTest$Nested"));
+        assertTrue(hasMethod(registry, "_meta_Lio_github_hacihaciyev_types_internal_MetaRegistryTest$Person"));
+        assertTrue(hasMethod(registry, "_factory_Lio_github_hacihaciyev_types_internal_MetaRegistryTest$Person"));
+        assertTrue(hasMethod(registry, "_meta_Lio_github_hacihaciyev_types_internal_MetaRegistryTest$Empty"));
+        assertTrue(hasMethod(registry, "_factory_Lio_github_hacihaciyev_types_internal_MetaRegistryTest$Empty"));
+        assertTrue(hasMethod(registry, "_meta_Lio_github_hacihaciyev_types_internal_MetaRegistryTest$AllPrimitives"));
+        assertTrue(hasMethod(registry, "_factory_Lio_github_hacihaciyev_types_internal_MetaRegistryTest$AllPrimitives"));
+        assertTrue(hasMethod(registry, "_meta_Lio_github_hacihaciyev_types_internal_MetaRegistryTest$Mixed"));
+        assertTrue(hasMethod(registry, "_factory_Lio_github_hacihaciyev_types_internal_MetaRegistryTest$Mixed"));
+        assertTrue(hasMethod(registry, "_meta_Lio_github_hacihaciyev_types_internal_MetaRegistryTest$Nested"));
+        assertTrue(hasMethod(registry, "_factory_Lio_github_hacihaciyev_types_internal_MetaRegistryTest$Nested"));
     }
 
     @Test

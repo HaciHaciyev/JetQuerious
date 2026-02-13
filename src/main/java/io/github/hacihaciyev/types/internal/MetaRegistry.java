@@ -1,4 +1,4 @@
-package io.github.hacihaciyev.types;
+package io.github.hacihaciyev.types.internal;
 
 public final class MetaRegistry {
 

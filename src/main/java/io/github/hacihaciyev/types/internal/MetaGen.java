@@ -1,4 +1,4 @@
-package io.github.hacihaciyev.types;
+package io.github.hacihaciyev.types.internal;
 
 import io.github.hacihaciyev.config.Conf;
 
@@ -40,23 +40,23 @@ public final class MetaGen {
 
     static final String INVALID_PACKAGE_DEF = "JetQuerious. Property: jetquerious.packages. Invalid package definition";
 
-    static final Path META_REGISTRY_BACKUP = Path.of("target/classes/io/github/hacihaciyev/types/MetaRegistry.class.backup");
+    static final Path META_REGISTRY_BACKUP = Path.of("target/classes/io/github/hacihaciyev/types/internal/MetaRegistry.class.backup");
 
-    static final Path META_REGISTRY_PATH = Path.of("target/classes/io/github/hacihaciyev/types/MetaRegistry.class");
+    static final Path META_REGISTRY_PATH = Path.of("target/classes/io/github/hacihaciyev/types/internal/MetaRegistry.class");
 
-    static final ClassDesc META_REGISTRY_DESC = ClassDesc.of("io.github.hacihaciyev.types.MetaRegistry");
+    static final ClassDesc META_REGISTRY_DESC = ClassDesc.of("io.github.hacihaciyev.types.internal.MetaRegistry");
 
-    static final MethodTypeDesc TYPE_META_DESC = MethodTypeDesc.of(ClassDesc.of("io.github.hacihaciyev.types.TypeMeta"));
+    static final MethodTypeDesc TYPE_META_DESC = MethodTypeDesc.of(ClassDesc.of("io.github.hacihaciyev.types.internal.TypeMeta"));
 
-    static final ClassDesc RECORD_DESC = ClassDesc.of("io.github.hacihaciyev.types.TypeMeta$Record");
+    static final ClassDesc RECORD_DESC = ClassDesc.of("io.github.hacihaciyev.types.internal.TypeMeta$Record");
 
-    static final ClassDesc FIELD_DESC = ClassDesc.of("io.github.hacihaciyev.types.Field");
+    static final ClassDesc FIELD_DESC = ClassDesc.of("io.github.hacihaciyev.types.internal.Field");
 
     static final ClassDesc JAVA_FUNCTION_DESC = ClassDesc.of("java.util.function.Function");
 
     static final MethodTypeDesc FIELD_CONSTRUCTOR_DESC = MethodTypeDesc.of(CD_void, CD_String, CD_Class, JAVA_FUNCTION_DESC);
 
-    static final ClassDesc FACTORY_DESC = ClassDesc.of("io.github.hacihaciyev.types.RecordFactory");
+    static final ClassDesc FACTORY_DESC = ClassDesc.of("io.github.hacihaciyev.types.internal.RecordFactory");
 
     static final MethodTypeDesc RECORD_CONSTRUCTOR_DESC = MethodTypeDesc.of(CD_void, CD_Class, FIELD_DESC.arrayType(), FACTORY_DESC);
 

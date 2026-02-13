@@ -1,4 +1,4 @@
-package io.github.hacihaciyev.types;
+package io.github.hacihaciyev.types.internal;
 
 public sealed interface TypeMeta {
     None NONE = new None();

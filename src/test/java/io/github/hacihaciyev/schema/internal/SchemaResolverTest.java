@@ -1,6 +1,7 @@
-package io.github.hacihaciyev.schema;
+package io.github.hacihaciyev.schema.internal;
 
 import io.github.hacihaciyev.dsl.TableRef;
+import io.github.hacihaciyev.schema.SchemaVerificationException;
 import io.github.hacihaciyev.util.Err;
 import io.github.hacihaciyev.util.Ok;
 import org.junit.jupiter.api.BeforeEach;
