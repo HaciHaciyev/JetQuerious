@@ -3,10 +3,8 @@ package io.github.hacihaciyev.types.internal;
 import io.github.hacihaciyev.types.AsObject;
 import io.github.hacihaciyev.types.AsString;
 import io.github.hacihaciyev.types.SQLType;
-import io.github.hacihaciyev.types.TypeInstantiationException;
 import io.github.hacihaciyev.types.UUIDStrategy;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -24,12 +22,12 @@ import java.util.concurrent.atomic.*;
 import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.mockito.Mockito.*;
 import static io.github.hacihaciyev.types.internal.TypeInfo.None;
 import static io.github.hacihaciyev.types.internal.TypeInfo.Some;
 import static io.github.hacihaciyev.types.internal.TypeInfo.WithFactory;
 
-@ExtendWith(MetaGenExtension.class)
 class TypeRegistryTest {
     
     @Test
@@ -271,11 +269,11 @@ class TypeRegistryTest {
     }
 
     @Test
-    void shouldSuccessfullyUseFactory() throws TypeInstantiationException {
+    void shouldSuccessfullyUseFactory() {
         var userId = new UserId(UUID.randomUUID());
         var userIdInfo = (WithFactory<UserId>) TypeRegistry.info(UserId.class);
 
-        userIdInfo.factory().create(userIdInfo.objects(userId));
+        assertDoesNotThrow(() -> userIdInfo.factory().create(userIdInfo.objects(userId)));
     }
 
     @Test

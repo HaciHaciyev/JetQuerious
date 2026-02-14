@@ -2,7 +2,6 @@ package io.github.hacihaciyev.types.internal;
 
 import io.github.hacihaciyev.types.TypeInstantiationException;
 import org.junit.jupiter.api.*;
-import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -18,7 +17,6 @@ import java.util.List;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
 
-@ExtendWith(MetaGenExtension.class)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 class MetaRegistryTest {
 

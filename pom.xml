@@ -165,7 +165,53 @@
         </execution>
       </executions>
     </plugin>
+
+    <plugin>
+      <groupId>org.codehaus.mojo</groupId>
+      <artifactId>exec-maven-plugin</artifactId>
+      <version>3.6.3</version>
+      <executions>
+
+        <execution>
+          <id>generate-main-meta</id>
+          <phase>process-classes</phase>
+          <goals>
+            <goal>java</goal>
+          </goals>
+          <configuration>
+            <mainClass>io.github.hacihaciyev.types.internal.MetaGen</mainClass>
+            <classpathScope>compile</classpathScope>
+            <systemProperties>
+              <systemProperty>
+                <key>jetquerious.packages</key>
+                <value>io.github.hacihaciyev.types</value>
+              </systemProperty>
+            </systemProperties>
+          </configuration>
+        </execution>
+
+        <execution>
+          <id>generate-test-meta</id>
+          <phase>process-test-classes</phase>
+          <goals>
+            <goal>java</goal>
+          </goals>
+          <configuration>
+            <mainClass>io.github.hacihaciyev.types.internal.MetaGen</mainClass>
+            <classpathScope>test</classpathScope>
+            <systemProperties>
+              <systemProperty>
+                <key>jetquerious.packages</key>
+                <value>io.github.hacihaciyev.types</value>
+              </systemProperty>
+            </systemProperties>
+          </configuration>
+        </execution>
+
+      </executions>
+    </plugin>
   </plugins>
+
 </build>
 
 </project>
