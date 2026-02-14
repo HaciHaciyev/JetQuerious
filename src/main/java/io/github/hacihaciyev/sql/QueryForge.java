@@ -15,7 +15,7 @@ public class QueryForge {
         return SelectBuilder.selectDistinct();
     }
 
-    public static SelectBuilder withAndSelect(String table, SQLQuery subQuery) {
+    public static SelectBuilder withAndSelect(String table, JQ subQuery) {
         return SelectBuilder.with(table, subQuery);
     }
 
@@ -23,20 +23,20 @@ public class QueryForge {
         return new InsertBuilder();
     }
 
-    public static String batchOf(SQLQuery... queries) {
+    public static String batchOf(JQ... queries) {
         return Arrays.stream(queries)
-                .map(SQLQuery::sql)
+                .map(JQ::sql)
                 .map(String::trim)
                 .filter(q -> !q.isEmpty())
                 .collect(Collectors.joining("; ")) + ";";
     }
 
-    public static InsertBuilder withAndInsert(String table, SQLQuery subQuery) {
+    public static InsertBuilder withAndInsert(String table, JQ subQuery) {
         return InsertBuilder.with(table, subQuery);
     }
 
     public static UpdateBuilder update(String table) {
-        return UpdateBuilder.update(table);
+        return new UpdateBuilder(table);
     }
 
     public static DeleteBuilder delete() {

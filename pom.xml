@@ -111,20 +111,6 @@
 <build>
   <plugins>
     <plugin>
-      <groupId>org.codehaus.gmavenplus</groupId>
-      <artifactId>gmavenplus-plugin</artifactId>
-      <version>4.1.1</version>
-      <executions>
-        <execution>
-          <goals>
-            <goal>compile</goal>
-            <goal>compileTests</goal>
-          </goals>
-        </execution>
-      </executions>
-    </plugin>
-
-    <plugin>
       <groupId>org.sonatype.central</groupId>
       <artifactId>central-publishing-maven-plugin</artifactId>
       <version>0.7.0</version>

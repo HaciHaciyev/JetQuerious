@@ -1,4 +1,4 @@
-package io.github.hacihaciyev.dsl;
+package io.github.hacihaciyev.sql;
 
 import static java.util.Objects.requireNonNull;
 
