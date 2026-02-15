@@ -6,7 +6,7 @@ public sealed interface Expr {
     
     record Col(ColumnRef col) implements Expr {
         public Col(String col) {
-            this(new ColumnRef.Base(col)));
+            this(new ColumnRef.Base(col));
         }
     }
     

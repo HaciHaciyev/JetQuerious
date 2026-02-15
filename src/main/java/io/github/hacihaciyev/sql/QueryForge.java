@@ -11,14 +11,6 @@ public class QueryForge {
         return new TransactionBuilder();
     }
     
-    public static SelectBuilder selectAll() {
-        return SelectBuilder.select(Expr.ALL);
-    }
-    
-    public static SelectBuilder selectAllDistinct() {
-        return SelectBuilder.selectDistinct(Expr.ALL);
-    }
-    
     public static SelectBuilder select(Expr... exprs) {
         return SelectBuilder.select(exprs);
     }
@@ -35,20 +27,32 @@ public class QueryForge {
         return SelectBuilder.selectDistinct(toExprs(columns));
     }
     
-    public static InsertBuilder insert() {
-        return new InsertBuilder();
+    public static InsertBuilder insertInto(TableRef tableRef) {
+        return new InsertBuilder(tableRef);
+    }
+    
+    public static InsertBuilder insertInto(String table) {
+        return new InsertBuilder(new TableRef.Base(table));
     }
 
+    public static UpdateBuilder update(TableRef tableRef) {
+        return new UpdateBuilder(tableRef);
+    }
+    
     public static UpdateBuilder update(String table) {
-        return new UpdateBuilder(table);
+        return new UpdateBuilder(new TableRef.Base(table));
     }
 
-    public static DeleteBuilder delete() {
-        return new DeleteBuilder();
+    public static DeleteBuilder deleteFrom(TableRef tableRef) {
+        return new DeleteBuilder(tableRef);
     }
-
+    
+    public static DeleteBuilder deleteFrom(String table) {
+        return new DeleteBuilder(new TableRef.Base(table));
+    }
+    
     public static CTEBuilder with(String name, JQ subQuery) {
-        return new CTEBuilder(name, subQuery);
+        return new CTEBuilder(new TableRef.Base(name), subQuery);
     }
   
     public static UnionBuilder union(JQ first, JQ... rest) {
