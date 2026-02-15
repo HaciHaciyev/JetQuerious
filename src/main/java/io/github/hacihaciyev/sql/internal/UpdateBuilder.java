@@ -1,4 +1,4 @@
-package io.github.hacihaciyev.sql;
+package io.github.hacihaciyev.sql.internal;
 
 public class UpdateBuilder {
 
