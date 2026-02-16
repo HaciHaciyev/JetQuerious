@@ -1,4 +1,4 @@
-package io.github.hacihaciyev.schema;
+package io.github.hacihaciyev.sql.internal.schema;
 
 import io.github.hacihaciyev.sql.internal.schema.Column;
 import io.github.hacihaciyev.types.SQLType;

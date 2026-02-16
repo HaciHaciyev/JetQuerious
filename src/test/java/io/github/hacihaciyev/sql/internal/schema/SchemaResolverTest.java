@@ -1,4 +1,4 @@
-package io.github.hacihaciyev.schema;
+package io.github.hacihaciyev.sql.internal.schema;
 
 import io.github.hacihaciyev.sql.SchemaVerificationException;
 import io.github.hacihaciyev.sql.TableRef;
