@@ -1,4 +1,4 @@
-package io.github.hacihaciyev.schema;
+package io.github.hacihaciyev.sql;
 
 /**
  * Exception thrown when schema verification fails during build-time validation.

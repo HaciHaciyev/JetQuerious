@@ -1,7 +1,9 @@
-package io.github.hacihaciyev.schema.internal;
+package io.github.hacihaciyev.schema;
 
 import io.github.hacihaciyev.sql.ColumnRef;
 import io.github.hacihaciyev.sql.TableRef;
+import io.github.hacihaciyev.sql.internal.schema.Column;
+import io.github.hacihaciyev.sql.internal.schema.Table;
 import io.github.hacihaciyev.types.SQLType;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

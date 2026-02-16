@@ -1,34 +1,25 @@
-package io.github.hacihaciyev.schema.internal;
-
-import static java.util.Objects.requireNonNull;
+package io.github.hacihaciyev.sql.internal.schema;
 
 import io.github.hacihaciyev.sql.ColumnRef;
 import io.github.hacihaciyev.sql.TableRef;
+
 import java.util.Optional;
 
-public record Table(
-    Catalog catalog,
-    Schema schema,
-    String name,
-    Column[] columns
-) {
+import static java.util.Objects.requireNonNull;
+
+public record Table(Catalog catalog, Schema schema, String name, Column[] columns) {
     public Table {
         requireNonNull(catalog, "Catalog cannot be null");
         requireNonNull(schema, "Schema cannot be null");
         requireNonNull(name, "Table name cannot be null");
         requireNonNull(columns, "Columns cannot be null");
-        if (columns.length == 0) throw new IllegalArgumentException(
-            "Table cannot have zero columns"
-        );
+        if (columns.length == 0) throw new IllegalArgumentException("Table cannot have zero columns");
     }
 
     public sealed interface Catalog {
         record Known(String name) implements Catalog {
             public Known {
-                name = requireNonNull(
-                    name,
-                    "Catalog name cannot be null"
-                ).trim();
+                name = requireNonNull(name, "Catalog name cannot be null").trim();
             }
 
             @Override
@@ -43,10 +34,7 @@ public record Table(
     public sealed interface Schema {
         record Known(String name) implements Schema {
             public Known {
-                name = requireNonNull(
-                    name,
-                    "Schema name cannot be null"
-                ).trim();
+                name = requireNonNull(name, "Schema name cannot be null").trim();
             }
 
             @Override
@@ -84,20 +72,21 @@ public record Table(
 
     private boolean tableMatch(TableRef table) {
         return switch (table) {
-            case TableRef.Base base -> equalTableName(base.name());
-            case TableRef.WithSchema withSchema -> equalTableName(
-                withSchema.name()
-            ) &&
-            equalSchema(withSchema.schema());
-            case TableRef.WithCatalog withCatalog -> equalTableName(
-                withCatalog.name()
-            ) &&
-            equalCatalog(withCatalog.catalog());
-            case TableRef.WithCatalogAndSchema withCatalogAndSchema -> equalTableName(
-                withCatalogAndSchema.name()
-            ) &&
-            equalCatalog(withCatalogAndSchema.catalog()) &&
-            equalSchema(withCatalogAndSchema.schema());
+            case TableRef.Base base ->
+                    equalTableName(base.name());
+
+            case TableRef.WithSchema withSchema ->
+                    equalTableName(withSchema.name())
+                            && equalSchema(withSchema.schema());
+
+            case TableRef.WithCatalog withCatalog ->
+                    equalTableName(withCatalog.name())
+                            && equalCatalog(withCatalog.catalog());
+
+            case TableRef.WithCatalogAndSchema withCatalogAndSchema ->
+                    equalTableName(withCatalogAndSchema.name())
+                            && equalCatalog(withCatalogAndSchema.catalog())
+                            && equalSchema(withCatalogAndSchema.schema());
         };
     }
 
@@ -106,17 +95,15 @@ public record Table(
     }
 
     private boolean equalSchema(String other) {
-        if (
-            schema instanceof Schema.Known(String known)
-        ) return known.equalsIgnoreCase(other);
+        if (schema instanceof Schema.Known(String known))
+            return known.equalsIgnoreCase(other);
 
         return false;
     }
 
     private boolean equalCatalog(String other) {
-        if (
-            catalog instanceof Catalog.Known(String known)
-        ) return known.equalsIgnoreCase(other);
+        if (catalog instanceof Catalog.Known(String known))
+            return known.equalsIgnoreCase(other);
 
         return false;
     }
