@@ -4,6 +4,7 @@ import io.github.hacihaciyev.types.UUIDStrategy;
 
 import javax.sql.DataSource;
 import java.time.Duration;
+import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static java.util.Objects.requireNonNull;
@@ -40,8 +41,8 @@ public final class Conf {
         return schemaCacheSize;
     }
 
-    public DataSource dataSource() {
-        return dataSourceRef.get();
+    public Optional<DataSource> dataSource() {
+        return Optional.ofNullable(dataSourceRef.get());
     }
 
     public void defDataSource(DataSource dataSource) {

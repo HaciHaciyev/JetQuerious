@@ -2,7 +2,6 @@ package io.github.hacihaciyev.sql.internal.schema;
 
 import io.github.hacihaciyev.sql.SchemaVerificationException;
 import io.github.hacihaciyev.sql.TableRef;
-import io.github.hacihaciyev.sql.internal.schema.Column;
 import io.github.hacihaciyev.sql.internal.schema.SchemaResolver;
 import io.github.hacihaciyev.sql.internal.schema.Table;
 import io.github.hacihaciyev.util.Err;
