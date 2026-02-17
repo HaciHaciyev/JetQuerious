@@ -38,16 +38,6 @@ public record Err<T, E extends Exception>(E err) implements Result<T, E> {
     }
 
     @Override
-    public void throwErr() throws E {
-        throw err;
-    }
-
-    @Override
-    public void throwErr(Supplier<E> error) throws E {
-        throw error.get();
-    }
-
-    @Override
     public <U> Result<U, E> map(Function<? super T, ? extends U> mapper) {
         return new Err<>(err);
     }

@@ -29,9 +29,6 @@ public sealed interface Result<T, E extends Exception> permits Ok, Err {
     default Optional<T> asOptional() { return Optional.empty(); }
     default Optional<E> errOptional() { return Optional.empty(); }
 
-    default void throwErr() throws E {}
-    default void throwErr(Supplier<E> error) throws E {}
-
     <U> Result<U, E> map(Function<? super T, ? extends U> mapper);
     <F extends Exception> Result<T, F> mapErr(Function<? super E, ? extends F> mapper);
     <U> Result<U, E> flatMap(Function<? super T, ? extends Result<U, E>> mapper);
