@@ -1,5 +1,6 @@
 package io.github.hacihaciyev.types.internal;
 
+import io.github.hacihaciyev.build_errors.MetaGenException;
 import io.github.hacihaciyev.config.Conf;
 
 import java.io.IOException;
@@ -257,7 +258,7 @@ public final class MetaGen {
             case "byte"    -> "byteValue";
             case "char"    -> "charValue";
             case "short"   -> "shortValue";
-            default -> throw new IllegalArgumentException("Not a primitive: " + cd);
+            default -> throw new MetaGenException("Not a primitive: " + cd);
         };
     }
 
@@ -342,7 +343,7 @@ public final class MetaGen {
 
                 Files.copy(META_REGISTRY_BACKUP, META_REGISTRY_PATH, StandardCopyOption.REPLACE_EXISTING);
             } catch (Exception e) {
-                throw new IllegalArgumentException(FAILED_RESET, e);
+                throw new MetaGenException(FAILED_RESET, e);
             }
         }
 
@@ -356,7 +357,7 @@ public final class MetaGen {
 
                 Files.write(META_REGISTRY_PATH, withBothMethods);
             } catch (IOException e) {
-                throw new IllegalArgumentException(INVALID_PACKAGE_DEF, e);
+                throw new MetaGenException(INVALID_PACKAGE_DEF, e);
             }
         }
 
@@ -460,12 +461,12 @@ public final class MetaGen {
             return pkg.replace('.', '/');
         }
 
-        static IllegalArgumentException invalid(String msg) {
-            return new IllegalArgumentException(INVALID_PACKAGE_DEF + ": " + msg);
+        static MetaGenException invalid(String msg) {
+            return new MetaGenException(INVALID_PACKAGE_DEF + ": " + msg);
         }
 
-        static IllegalArgumentException invalid(String msg, Exception e) {
-            return new IllegalArgumentException(INVALID_PACKAGE_DEF + ": " + msg, e);
+        static MetaGenException invalid(String msg, Exception e) {
+            return new MetaGenException(INVALID_PACKAGE_DEF + ": " + msg, e);
         }
     }
 }

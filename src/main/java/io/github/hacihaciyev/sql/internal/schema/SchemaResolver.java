@@ -4,8 +4,8 @@ import static io.github.hacihaciyev.sql.internal.schema.Table.Catalog;
 import static io.github.hacihaciyev.sql.internal.schema.Table.Schema;
 import static java.util.Objects.requireNonNull;
 
+import io.github.hacihaciyev.build_errors.SchemaVerificationException;
 import io.github.hacihaciyev.config.Conf;
-import io.github.hacihaciyev.sql.SchemaVerificationException;
 import io.github.hacihaciyev.sql.TableRef;
 import io.github.hacihaciyev.types.SQLType;
 import io.github.hacihaciyev.util.Err;

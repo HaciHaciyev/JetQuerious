@@ -1,9 +1,7 @@
 package io.github.hacihaciyev.sql.internal.schema;
 
-import io.github.hacihaciyev.sql.SchemaVerificationException;
+import io.github.hacihaciyev.build_errors.SchemaVerificationException;
 import io.github.hacihaciyev.sql.TableRef;
-import io.github.hacihaciyev.sql.internal.schema.SchemaResolver;
-import io.github.hacihaciyev.sql.internal.schema.Table;
 import io.github.hacihaciyev.util.Err;
 import io.github.hacihaciyev.util.Ok;
 import org.junit.jupiter.api.BeforeEach;
