@@ -6,10 +6,12 @@ public sealed interface TableRef {
     String name();
 
     sealed interface SchemaRef permits WithSchema, WithCatalogAndSchema {
+        String name();
         String schema();
     }
 
     sealed interface CatalogRef permits WithCatalog, WithCatalogAndSchema {
+        String name();
         String catalog();
     }
 
@@ -58,6 +60,23 @@ public sealed interface TableRef {
         @Override
         public String toString() {
             return catalog + "." + schema + "." + name;
+        }
+    }
+    
+    record AliasedTable(TableRef table, String alias) implements TableRef {
+        public AliasedTable {
+            requireNonNull(table, "Table cannot be null");
+            alias   = requireNonNull(alias, "Alias cannot be null").trim();
+        }
+    
+        @Override
+        public String name() { 
+            return table.name(); 
+        }
+    
+        @Override
+        public String toString() {
+            return table + " AS " + alias;
         }
     }
 }
