@@ -72,39 +72,25 @@ public record Table(Catalog catalog, Schema schema, String name, Column[] column
 
     private boolean tableMatch(TableRef table) {
         return switch (table) {
-            case TableRef.Base base ->
-                    equalTableName(base.name());
-
-            case TableRef.WithSchema withSchema ->
-                    equalTableName(withSchema.name())
-                            && equalSchema(withSchema.schema());
-
-            case TableRef.WithCatalog withCatalog ->
-                    equalTableName(withCatalog.name())
-                            && equalCatalog(withCatalog.catalog());
-
-            case TableRef.WithCatalogAndSchema withCatalogAndSchema ->
-                    equalTableName(withCatalogAndSchema.name())
-                            && equalCatalog(withCatalogAndSchema.catalog())
-                            && equalSchema(withCatalogAndSchema.schema());
+            case TableRef.Base(var name) -> eqTableName(name);
+            case TableRef.WithSchema(var schem, var name) -> eqTableName(name) && eqSchem(schem);
+            case TableRef.WithCatalog(var cat, var name) -> eqTableName(name) && eqCat(cat);
+            case TableRef.WithCatalogAndSchema(var cat, var schem, var name) -> eqTableName(name) && eqCat(cat) && eqSchem(schem);
+            case TableRef.AliasedTable(var at, _) -> tableMatch(at);
         };
     }
 
-    private boolean equalTableName(String other) {
+    private boolean eqTableName(String other) {
         return name.equalsIgnoreCase(other);
     }
 
-    private boolean equalSchema(String other) {
-        if (schema instanceof Schema.Known(String known))
-            return known.equalsIgnoreCase(other);
-
+    private boolean eqSchem(String other) {
+        if (schema instanceof Schema.Known(var known)) return known.equalsIgnoreCase(other);
         return false;
     }
 
-    private boolean equalCatalog(String other) {
-        if (catalog instanceof Catalog.Known(String known))
-            return known.equalsIgnoreCase(other);
-
+    private boolean eqCat(String other) {
+        if (catalog instanceof Catalog.Known(var known)) return known.equalsIgnoreCase(other);
         return false;
     }
 }
