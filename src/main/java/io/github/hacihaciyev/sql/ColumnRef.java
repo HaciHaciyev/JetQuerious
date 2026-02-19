@@ -5,6 +5,10 @@ import static java.util.Objects.requireNonNull;
 public sealed interface ColumnRef {
 
     String name();
+    
+    sealed interface VariableColumn extends ColumnRef permits VariableBase, VariableAlias {
+        String variable();
+    }
 
     record Base(String name) implements ColumnRef {
         public Base {
@@ -29,7 +33,7 @@ public sealed interface ColumnRef {
         }
     }
 
-    record VariableBase(String variable, String name) implements ColumnRef {
+    record VariableBase(String variable, String name) implements VariableColumn {
         public VariableBase {
             variable = validate(variable, "variable");
             name = validate(name, "column");
@@ -41,7 +45,7 @@ public sealed interface ColumnRef {
         }
     }
 
-    record VariableAlias(String variable, String name, String alias) implements ColumnRef {
+    record VariableAlias(String variable, String name, String alias) implements VariableColumn {
         public VariableAlias {
             variable = validate(variable, "variable");
             name = validate(name, "column");

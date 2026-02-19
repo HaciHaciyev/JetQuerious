@@ -51,6 +51,7 @@ public record Table(Catalog catalog, Schema schema, String name, Column[] column
         requireNonNull(table, "Table reference cannot be null");
 
         if (!tableMatch(table)) return Optional.empty();
+        if (!aliasMatch(table, column)) return Optional.empty();
 
         for (Column c : columns) {
             if (c.name().equalsIgnoreCase(column.name())) return Optional.of(c);
@@ -63,6 +64,7 @@ public record Table(Catalog catalog, Schema schema, String name, Column[] column
         requireNonNull(table, "Table reference cannot be null");
 
         if (!tableMatch(table)) return false;
+        if (!aliasMatch(table, column)) return false;
 
         for (Column c : columns) {
             if (c.name().equalsIgnoreCase(column.name())) return true;
@@ -78,6 +80,16 @@ public record Table(Catalog catalog, Schema schema, String name, Column[] column
             case TableRef.WithCatalogAndSchema(var cat, var schem, var name) -> eqTableName(name) && eqCat(cat) && eqSchem(schem);
             case TableRef.AliasedTable(var at, _) -> tableMatch(at);
         };
+    }
+    
+    private boolean aliasMatch(TableRef tref, ColumnRef cref) {
+        if (!(tref instanceof TableRef.AliasedTable(_, var talias))) {
+            if (cref instanceof ColumnRef.VariableColumn vc) return eqTableName(vc.variable());
+            return true;
+        }
+        
+        if (!(cref instanceof ColumnRef.VariableColumn vc)) return false;
+        return talias.equalsIgnoreCase(vc.variable());
     }
 
     private boolean eqTableName(String other) {
