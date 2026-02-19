@@ -197,6 +197,30 @@ class TableTest {
 
         assertInstanceOf(Column.Unknown.class, metaCol);
     }
+    
+    @Test
+    @DisplayName("Should find column with variable matching table name when table is not aliased")
+    void shouldFindColumnWithVariableMatchingTableName() {
+        var table = createSampleTable();
+        var tableRef = new TableRef.Base("users");
+        
+        assertTrue(table.hasColumn(new ColumnRef.VariableBase("users", "id"), tableRef));
+        assertTrue(table.hasColumn(new ColumnRef.VariableBase("USERS", "id"), tableRef));
+        assertFalse(table.hasColumn(new ColumnRef.VariableBase("orders", "id"), tableRef));
+    }
+    
+    @Test
+    @DisplayName("Should match column variable with table alias when table is aliased")
+    void shouldMatchColumnVariableWithTableAlias() {
+        var table = createSampleTable();
+        var aliasedTableRef = new TableRef.AliasedTable(new TableRef.Base("users"), "u");
+        
+        assertTrue(table.hasColumn(new ColumnRef.VariableBase("u", "id"), aliasedTableRef));
+        assertTrue(table.hasColumn(new ColumnRef.VariableAlias("u", "name", "user_name"), aliasedTableRef));
+        
+        assertFalse(table.hasColumn(new ColumnRef.Base("id"), aliasedTableRef));
+        assertFalse(table.hasColumn(new ColumnRef.VariableBase("users", "id"), aliasedTableRef));
+    }
 
     private Table createSampleTable() {
         return new Table(
