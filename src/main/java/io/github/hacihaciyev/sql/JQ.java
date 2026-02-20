@@ -2,12 +2,19 @@ package io.github.hacihaciyev.sql;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 import javax.sql.DataSource;
 
 import io.github.hacihaciyev.build_errors.SchemaVerificationException;
 import io.github.hacihaciyev.config.Conf;
+import io.github.hacihaciyev.sql.internal.schema.Column;
 import io.github.hacihaciyev.sql.internal.schema.Table;
+import io.github.hacihaciyev.types.SQLType;
+import io.github.hacihaciyev.types.internal.TypeInfo;
+import io.github.hacihaciyev.types.internal.TypeRegistry;
 import io.github.hacihaciyev.util.Err;
 import io.github.hacihaciyev.util.Ok;
 
@@ -45,25 +52,62 @@ public sealed interface JQ {
                 case Ok(var table) -> loadedTables.put(tref, table);
             };
         }
-                   
-        var errors = new ArrayList<String>();
         
-        for (var cref : columnRefs) {
+        validateColumns(loadedTables, columnRefs);
+    }
+    
+    private static void validateColumns(Map<TableRef, Table> tables, ColumnRef[] crefs) throws SchemaVerificationException {
+        var errs = new ArrayList<String>();
+        
+        for (var cref : crefs) {
             boolean found = false;
                         
-            for (var e : loadedTables.entrySet()) {
-                if (e.getValue().hasColumn(cref, e.getKey())) {
-                    found = true;
-                    break;
+            for (var e : tables.entrySet()) {
+                var tref = e.getKey();
+                var table = e.getValue();
+                
+                var columnOpt = table.column(cref, tref);
+                if (columnOpt.isEmpty()) continue;
+                found = true;
+                
+                if (cref.type() instanceof ColumnRef.Type.Some(var type)) {
+                    var foundedCol = columnOpt.get();
+                    if (foundedCol instanceof Column.Known(_, var sqlType, _)) validateTypes(cref, type, sqlType, errs);
                 }
+                break;
             }
 
-            if (!found) errors.add("Column '" + cref + "' not found in any of the referenced tables");
+            if (!found) errs.add("Column '" + cref + "' not found in any of the referenced tables");
         }
         
-        if (!errors.isEmpty()) throw new SchemaVerificationException("Schema validation failed:\n  - " + String.join("\n  - ", errors));
+        if (!errs.isEmpty()) throw new SchemaVerificationException("Schema validation failed:\n  - " + String.join("\n  - ", errs));
     }
-         
+    
+    private static void validateTypes(ColumnRef cref, Class<?> type, SQLType sqlType, List<String> errs) {
+        var typeInfo = TypeRegistry.info(type);
+        
+        switch (typeInfo) {
+            case TypeInfo.Some(_, var compatibleSqlTypes) -> {
+                if (!compatibleSqlTypes.contains(sqlType)) errs.add(typeMismatchError(cref, type, sqlType, compatibleSqlTypes));
+            }
+            case TypeInfo.WithFactory(_, var compatibleSqlTypes, _, _) -> {
+                if (!compatibleSqlTypes.contains(sqlType)) errs.add(typeMismatchError(cref, type, sqlType, compatibleSqlTypes));
+            }
+            case TypeInfo.None _ -> errs.add(unsupportedType(cref, type));
+        }
+    }
+    
+    private static String typeMismatchError(ColumnRef cref, Class<?> type, SQLType sqlType, Set<SQLType> compatibleSqlTypes) {
+        return String.format(
+            "Type mismatch for column '%s': Java type '%s' is not compatible with SQL type '%s'. Expected one of: %s",
+            cref, type.getSimpleName(), sqlType, compatibleSqlTypes
+        );
+    }
+    
+    private static String unsupportedType(ColumnRef cref, Class<?> type) {
+        return String.format("Unsupported Java type '%s' for column '%s'", type.getName(), cref);
+    }
+    
     private static DataSource ds() throws SchemaVerificationException {
         return Conf.INSTANCE.dataSource().orElseThrow(() -> new SchemaVerificationException("Cannot obtain a datasource"));
     }
