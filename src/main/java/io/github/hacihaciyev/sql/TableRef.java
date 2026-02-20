@@ -4,6 +4,8 @@ import static java.util.Objects.requireNonNull;
 
 public sealed interface TableRef {
     String name();
+    
+    sealed interface BaseTable extends TableRef permits Base, WithSchema, WithCatalog, WithCatalogAndSchema {}
 
     sealed interface SchemaRef permits WithSchema, WithCatalogAndSchema {
         String name();
@@ -15,7 +17,7 @@ public sealed interface TableRef {
         String catalog();
     }
 
-    record Base(String name) implements TableRef {
+    record Base(String name) implements BaseTable {
         public Base {
             name = requireNonNull(name, "Table name cannot be null").trim();
         }
@@ -26,7 +28,7 @@ public sealed interface TableRef {
         }
     }
 
-    record WithSchema(String schema, String name) implements TableRef, SchemaRef {
+    record WithSchema(String schema, String name) implements BaseTable, SchemaRef {
         public WithSchema {
             schema = requireNonNull(schema, "Schema cannot be null").trim();
             name   = requireNonNull(name, "Table name cannot be null").trim();
@@ -38,7 +40,7 @@ public sealed interface TableRef {
         }
     }
 
-    record WithCatalog(String catalog, String name) implements TableRef, CatalogRef {
+    record WithCatalog(String catalog, String name) implements BaseTable, CatalogRef {
         public WithCatalog {
             catalog = requireNonNull(catalog, "Catalog cannot be null").trim();
             name    = requireNonNull(name, "Table name cannot be null").trim();
@@ -50,7 +52,7 @@ public sealed interface TableRef {
         }
     }
 
-    record WithCatalogAndSchema(String catalog, String schema, String name) implements TableRef, SchemaRef, CatalogRef {
+    record WithCatalogAndSchema(String catalog, String schema, String name) implements BaseTable, SchemaRef, CatalogRef {
         public WithCatalogAndSchema {
             catalog = requireNonNull(catalog, "Catalog cannot be null").trim();
             schema  = requireNonNull(schema, "Schema cannot be null").trim();
@@ -63,7 +65,7 @@ public sealed interface TableRef {
         }
     }
     
-    record AliasedTable(TableRef table, String alias) implements TableRef {
+    record AliasedTable(BaseTable table, String alias) implements TableRef {
         public AliasedTable {
             requireNonNull(table, "Table cannot be null");
             alias   = requireNonNull(alias, "Alias cannot be null").trim();

@@ -1,6 +1,4 @@
 /.idea/
-/docker-compose.yaml
-/infrastructure.env
 /target/
 /.classpath
 /.project
