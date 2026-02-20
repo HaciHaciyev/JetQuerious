@@ -5,6 +5,7 @@ import static java.util.Objects.requireNonNull;
 public sealed interface ColumnRef {
 
     String name();
+    Type type();
     
     sealed interface Type {
         None NONE = new None();
