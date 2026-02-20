@@ -46,7 +46,7 @@ public record Table(Catalog catalog, Schema schema, String name, Column[] column
         record Unknown() implements Schema {}
     }
 
-    public Optional<Column> column(ColumnRef.BaseColumn column, TableRef table) {
+    public Optional<Column> column(ColumnRef column, TableRef table) {
         requireNonNull(column, "Column cannot be null");
         requireNonNull(table, "Table reference cannot be null");
 
