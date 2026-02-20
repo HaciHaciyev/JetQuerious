@@ -8,7 +8,7 @@ import java.util.function.Supplier;
 
 import static java.util.Objects.requireNonNull;
 
-public record Ok<T, E extends Exception>(T value) implements Result<T, E> {
+public record Ok<T, E>(T value) implements Result<T, E> {
     public Ok {
         requireNonNull(value, "Value can`t be null");
     }
