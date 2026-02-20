@@ -65,20 +65,28 @@ public record Table(Catalog catalog, Schema schema, String name, Column[] column
             case TableRef.WithSchema(var schem, var name) -> eqTableName(name) && eqSchem(schem);
             case TableRef.WithCatalog(var cat, var name) -> eqTableName(name) && eqCat(cat);
             case TableRef.WithCatalogAndSchema(var cat, var schem, var name) -> eqTableName(name) && eqCat(cat) && eqSchem(schem);
-            case TableRef.AliasedTable(var at, _) -> tableMatch(at);
+            case TableRef.AliasedBase(var name, _) -> eqTableName(name);
+            case TableRef.AliasedWithSchema(var schem, var name, _) -> eqTableName(name) && eqSchem(schem);
+            case TableRef.AliasedWithCatalog(var cat, var name, _) -> eqTableName(name) && eqCat(cat);
+            case TableRef.AliasedWithCatalogAndSchema(var cat, var schem, var name, _) -> eqTableName(name) && eqCat(cat) && eqSchem(schem);
         };
     }
     
     private boolean aliasMatch(TableRef tref, ColumnRef.BaseColumn cref) {
-        if (!(tref instanceof TableRef.AliasedTable(_, var talias))) {
-            if (cref instanceof ColumnRef.VariableColumn vc) return eqTableName(vc.variable());
-            return true;
-        }
-        
-        if (!(cref instanceof ColumnRef.VariableColumn vc)) return false;
-        return talias.equalsIgnoreCase(vc.variable());
+        return switch (tref) {    
+            case TableRef.AliasedBase(_, var alias) -> eqAlias(cref, alias);
+            case TableRef.AliasedWithSchema(_, _, var alias) -> eqAlias(cref, alias);
+            case TableRef.AliasedWithCatalog(_, _, var alias) -> eqAlias(cref, alias);          
+            case TableRef.AliasedWithCatalogAndSchema(_, _, _, var alias) -> eqAlias(cref, alias);
+            case TableRef.Base _, TableRef.WithSchema _,  TableRef.WithCatalog _, TableRef.WithCatalogAndSchema _ -> 
+                cref instanceof ColumnRef.VariableColumn vc ? eqTableName(vc.variable()) : true;
+        };
     }
-
+    
+    private boolean eqAlias(ColumnRef cref, String alias) {
+         return cref instanceof ColumnRef.VariableColumn vc && alias.equalsIgnoreCase(vc.variable());
+    }
+    
     private boolean eqTableName(String other) {
         return name.equalsIgnoreCase(other);
     }
