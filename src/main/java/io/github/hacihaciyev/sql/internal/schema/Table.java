@@ -72,19 +72,22 @@ public record Table(Catalog catalog, Schema schema, String name, Column[] column
         };
     }
     
-    private boolean aliasMatch(TableRef tref, ColumnRef.BaseColumn cref) {
+    private boolean aliasMatch(TableRef tref, ColumnRef cref) {
         return switch (tref) {    
             case TableRef.AliasedBase(_, var alias) -> eqAlias(cref, alias);
             case TableRef.AliasedWithSchema(_, _, var alias) -> eqAlias(cref, alias);
             case TableRef.AliasedWithCatalog(_, _, var alias) -> eqAlias(cref, alias);          
             case TableRef.AliasedWithCatalogAndSchema(_, _, _, var alias) -> eqAlias(cref, alias);
-            case TableRef.Base _, TableRef.WithSchema _,  TableRef.WithCatalog _, TableRef.WithCatalogAndSchema _ -> 
-                cref instanceof ColumnRef.VariableColumn vc ? eqTableName(vc.variable()) : true;
+            case TableRef.Base _, TableRef.WithSchema _,  TableRef.WithCatalog _, TableRef.WithCatalogAndSchema _ -> eqNonAlias(cref);
         };
     }
     
     private boolean eqAlias(ColumnRef cref, String alias) {
          return cref instanceof ColumnRef.VariableColumn vc && alias.equalsIgnoreCase(vc.variable());
+    }
+    
+    private boolean eqNonAlias(ColumnRef cref) {
+        return cref instanceof ColumnRef.VariableColumn vc ? eqTableName(vc.variable()) : true;
     }
     
     private boolean eqTableName(String other) {
