@@ -6,11 +6,13 @@ public sealed interface ColumnRef {
 
     String name();
     
-    sealed interface VariableColumn extends ColumnRef permits VariableBase, VariableAlias {
+    sealed interface BaseColumn extends ColumnRef permits Base, Alias, VariableColumn {}
+    
+    sealed interface VariableColumn extends BaseColumn permits VariableBase, VariableAlias {
         String variable();
     }
 
-    record Base(String name) implements ColumnRef {
+    record Base(String name) implements BaseColumn {
         public Base {
             name = validate(name, "column");
         }
@@ -21,7 +23,7 @@ public sealed interface ColumnRef {
         }
     }
 
-    record Alias(String name, String alias) implements ColumnRef {
+    record Alias(String name, String alias) implements BaseColumn {
         public Alias {
             name = validate(name, "column");
             alias = validate(alias, "alias");
@@ -55,6 +57,23 @@ public sealed interface ColumnRef {
         @Override
         public String toString() {
             return variable + "." + name + " AS " + alias;
+        }
+    }
+    
+    record Typed(BaseColumn column, Class<?> type) implements ColumnRef {
+        public Typed {
+            requireNonNull(column, "Column cannot be null for ColumnRef.Typed");
+            requireNonNull(type, "Type cannot be null for ColumnRef.Typed");
+        }
+        
+        @Override
+        public String name() {
+            return column.name();
+        }
+        
+        @Override
+        public String toString() {
+            return column.toString();
         }
     }
 
