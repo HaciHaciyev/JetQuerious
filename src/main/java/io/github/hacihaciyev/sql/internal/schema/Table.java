@@ -46,7 +46,7 @@ public record Table(Catalog catalog, Schema schema, String name, Column[] column
         record Unknown() implements Schema {}
     }
 
-    public Optional<Column> column(ColumnRef column, TableRef table) {
+    public Optional<Column> column(ColumnRef.BaseColumn column, TableRef table) {
         requireNonNull(column, "Column cannot be null");
         requireNonNull(table, "Table reference cannot be null");
 
@@ -59,7 +59,7 @@ public record Table(Catalog catalog, Schema schema, String name, Column[] column
         return Optional.empty();
     }
 
-    public boolean hasColumn(ColumnRef column, TableRef table) {
+    public boolean hasColumn(ColumnRef.BaseColumn column, TableRef table) {
         requireNonNull(column, "Column cannot be null");
         requireNonNull(table, "Table reference cannot be null");
 
@@ -82,7 +82,7 @@ public record Table(Catalog catalog, Schema schema, String name, Column[] column
         };
     }
     
-    private boolean aliasMatch(TableRef tref, ColumnRef cref) {
+    private boolean aliasMatch(TableRef tref, ColumnRef.BaseColumn cref) {
         if (!(tref instanceof TableRef.AliasedTable(_, var talias))) {
             if (cref instanceof ColumnRef.VariableColumn vc) return eqTableName(vc.variable());
             return true;
