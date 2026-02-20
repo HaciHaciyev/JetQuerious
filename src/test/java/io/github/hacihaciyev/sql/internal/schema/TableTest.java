@@ -2,8 +2,6 @@ package io.github.hacihaciyev.sql.internal.schema;
 
 import io.github.hacihaciyev.sql.ColumnRef;
 import io.github.hacihaciyev.sql.TableRef;
-import io.github.hacihaciyev.sql.internal.schema.Column;
-import io.github.hacihaciyev.sql.internal.schema.Table;
 import io.github.hacihaciyev.types.SQLType;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -130,47 +128,6 @@ class TableTest {
     }
 
     @Test
-    @DisplayName("Should match table name case-insensitively")
-    void shouldMatchTableNameCaseInsensitively() {
-        var table = new Table(
-                new Table.Catalog.Unknown(),
-                new Table.Schema.Unknown(),
-                "Users",
-                new Column[]{new Column.Known("id", SQLType.INTEGER, false)}
-        );
-
-        assertTrue(table.hasColumn(new ColumnRef.Base("id"), new TableRef.Base("users")));
-        assertTrue(table.hasColumn(new ColumnRef.Base("id"), new TableRef.Base("USERS")));
-    }
-
-    @Test
-    @DisplayName("Should match schema name case-insensitively")
-    void shouldMatchSchemaNameCaseInsensitively() {
-        var table = new Table(
-                new Table.Catalog.Unknown(),
-                new Table.Schema.Known("Public"),
-                "users",
-                new Column[]{new Column.Known("id", SQLType.INTEGER, false)}
-        );
-
-        assertTrue(table.hasColumn(new ColumnRef.Base("id"), new TableRef.WithSchema("public", "users")));
-        assertTrue(table.hasColumn(new ColumnRef.Base("id"), new TableRef.WithSchema("PUBLIC", "users")));
-    }
-
-    @Test
-    @DisplayName("Should not match when table has unknown schema but ref specifies schema")
-    void shouldNotMatchWhenTableHasUnknownSchemaButRefSpecifies() {
-        var table = new Table(
-                new Table.Catalog.Unknown(),
-                new Table.Schema.Unknown(),
-                "users",
-                new Column[]{new Column.Known("id", SQLType.INTEGER, false)}
-        );
-
-        assertFalse(table.hasColumn(new ColumnRef.Base("id"), new TableRef.WithSchema("public", "users")));
-    }
-
-    @Test
     @DisplayName("Should preserve column type and nullable information")
     void shouldPreserveColumnTypeAndNullable() {
         var table = new Table(
@@ -196,30 +153,6 @@ class TableTest {
         assertTrue(nameCol.nullable());
 
         assertInstanceOf(Column.Unknown.class, metaCol);
-    }
-    
-    @Test
-    @DisplayName("Should find column with variable matching table name when table is not aliased")
-    void shouldFindColumnWithVariableMatchingTableName() {
-        var table = createSampleTable();
-        var tableRef = new TableRef.Base("users");
-        
-        assertTrue(table.hasColumn(new ColumnRef.VariableBase("users", "id"), tableRef));
-        assertTrue(table.hasColumn(new ColumnRef.VariableBase("USERS", "id"), tableRef));
-        assertFalse(table.hasColumn(new ColumnRef.VariableBase("orders", "id"), tableRef));
-    }
-    
-    @Test
-    @DisplayName("Should match column variable with table alias when table is aliased")
-    void shouldMatchColumnVariableWithTableAlias() {
-        var table = createSampleTable();
-        var aliasedTableRef = new TableRef.AliasedTable(new TableRef.Base("users"), "u");
-        
-        assertTrue(table.hasColumn(new ColumnRef.VariableBase("u", "id"), aliasedTableRef));
-        assertTrue(table.hasColumn(new ColumnRef.VariableAlias("u", "name", "user_name"), aliasedTableRef));
-        
-        assertFalse(table.hasColumn(new ColumnRef.Base("id"), aliasedTableRef));
-        assertFalse(table.hasColumn(new ColumnRef.VariableBase("users", "id"), aliasedTableRef));
     }
 
     private Table createSampleTable() {

@@ -59,19 +59,6 @@ public record Table(Catalog catalog, Schema schema, String name, Column[] column
         return Optional.empty();
     }
 
-    public boolean hasColumn(ColumnRef.BaseColumn column, TableRef table) {
-        requireNonNull(column, "Column cannot be null");
-        requireNonNull(table, "Table reference cannot be null");
-
-        if (!tableMatch(table)) return false;
-        if (!aliasMatch(table, column)) return false;
-
-        for (Column c : columns) {
-            if (c.name().equalsIgnoreCase(column.name())) return true;
-        }
-        return false;
-    }
-
     private boolean tableMatch(TableRef table) {
         return switch (table) {
             case TableRef.Base(var name) -> eqTableName(name);
