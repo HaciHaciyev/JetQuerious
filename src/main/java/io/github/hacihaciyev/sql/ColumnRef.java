@@ -18,14 +18,12 @@ public sealed interface ColumnRef {
         
         record None() implements Type {}
     }
-    
-    sealed interface BaseColumn permits Base, Alias {}
-    
+        
     sealed interface VariableColumn permits VariableBase, VariableAlias {
         String variable();
     }
 
-    record Base(String name, Type type) implements ColumnRef, BaseColumn {
+    record Base(String name, Type type) implements ColumnRef {
         public Base {
             name = validate(name, "column");
             requireNonNull(type, "Type cannot be null");
@@ -41,7 +39,7 @@ public sealed interface ColumnRef {
         }
     }
 
-    record Alias(String name, String alias, Type type) implements ColumnRef, BaseColumn {
+    record Alias(String name, String alias, Type type) implements ColumnRef {
         public Alias {
             name = validate(name, "column");
             alias = validate(alias, "alias");
