@@ -1,9 +1,11 @@
 package io.github.hacihaciyev.jdbc;
 
-public interface JetQuerious {
+public sealed interface JetQuerious {
 
     public static JetQuerious defaultInstance() {
         // TODO
-        return null;
+        return new Impl();
     }
+    
+    record Impl() implements JetQuerious {}
 }

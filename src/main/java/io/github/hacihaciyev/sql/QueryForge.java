@@ -1,7 +1,6 @@
 package io.github.hacihaciyev.sql;
 
 import io.github.hacihaciyev.sql.internal.*;
-import static io.github.hacihaciyev.sql.internal.UnionBuilder.UnionType;
 
 public class QueryForge {
 

@@ -13,9 +13,7 @@ public final class TransactionBuilder {
     private final List<JQ> operations = new ArrayList<>();
     private final List<Savepoint> savepoints = new ArrayList<>();
     private IsolationLevel isolationLevel = IsolationLevel.DEFAULT;
-    
-    private TransactionBuilder() {}
-        
+            
     public TransactionBuilder add(JQ operation) {
         operations.add(requireNonNull(operation, "Transaction operation cannot be null"));
         return this;

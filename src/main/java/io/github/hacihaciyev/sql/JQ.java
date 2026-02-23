@@ -24,33 +24,46 @@ import static java.util.Objects.requireNonNull;
 
 public sealed interface JQ {
     String sql();
+    TableRef[] tableRefs();
+    ColumnRef[] columnRefs();
     JQ bind(JetQuerious instance);
     
-    record Read(String sql, JetQuerious executor) implements JQ {
-        public Read(String sql, TableRef[] tableRefs, ColumnRef[] columnRefs) throws SchemaVerificationException {
+    record Read(String sql, TableRef[] tableRefs, ColumnRef[] columnRefs, JetQuerious executor) implements JQ {
+        public Read {
+            requireNonNull(sql);
+            requireNonNull(executor);
+        }
+        
+        public Read(String sql, TableRef[] tableRefs, ColumnRef[] columnRefs) throws SchemaVerificationException {   
             Validator.validate(tableRefs, columnRefs);
-            this(sql, JetQuerious.defaultInstance());
+            this(sql, tableRefs, columnRefs, JetQuerious.defaultInstance());
         }
         
         @Override
         public JQ bind(JetQuerious instance) {
-            return new Read(sql, requireNonNull(instance, "JetQuerious instance cannot be null"));
+            return new Read(sql, tableRefs, columnRefs, requireNonNull(instance, "JetQuerious instance cannot be null"));
         }
     }
     
-    record Write(String sql, JetQuerious executor) implements JQ {
+    record Write(String sql, TableRef[] tableRefs, ColumnRef[] columnRefs, JetQuerious executor) implements JQ {
+        public Write {
+            requireNonNull(sql);
+            requireNonNull(executor);
+        }
+        
         public Write(String sql, TableRef[] tableRefs, ColumnRef[] columnRefs) throws SchemaVerificationException {
             Validator.validate(tableRefs, columnRefs);            
-            this(sql, JetQuerious.defaultInstance());
+            this(sql, tableRefs, columnRefs, JetQuerious.defaultInstance());
         }
         
         @Override
         public JQ bind(JetQuerious instance) {
-            return new Read(sql, requireNonNull(instance, "JetQuerious instance cannot be null"));
+            return new Read(sql, tableRefs, columnRefs, requireNonNull(instance, "JetQuerious instance cannot be null"));
         }
     }
     
     static class Validator {
+        
         private static void validate(TableRef[] tableRefs, ColumnRef[] columnRefs) throws SchemaVerificationException {
             if (tableRefs.length == 0) {
                 assert columnRefs.length == 0 : "ColumnRefs without TableRefs";
