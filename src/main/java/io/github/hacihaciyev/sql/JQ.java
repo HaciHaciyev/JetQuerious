@@ -42,6 +42,10 @@ public sealed interface JQ {
             this(sql, tableRefs, columnRefs, JetQuerious.defaultInstance());
         }
         
+        public static Read withoutValidation(String sql, TableRef[] tableRefs, ColumnRef[] columnRefs) {
+            return new Read(sql, tableRefs, columnRefs, JetQuerious.defaultInstance());
+        }
+        
         @Override
         public JQ bind(JetQuerious instance) {
             return new Read(sql, tableRefs, columnRefs, requireNonNull(instance, "JetQuerious instance cannot be null"));
@@ -59,9 +63,13 @@ public sealed interface JQ {
             this(sql, tableRefs, columnRefs, JetQuerious.defaultInstance());
         }
         
+        public static Write withoutValidation(String sql, TableRef[] tableRefs, ColumnRef[] columnRefs) {
+            return new Write(sql, tableRefs, columnRefs, JetQuerious.defaultInstance());
+        }
+        
         @Override
         public JQ bind(JetQuerious instance) {
-            return new Read(sql, tableRefs, columnRefs, requireNonNull(instance, "JetQuerious instance cannot be null"));
+            return new Write(sql, tableRefs, columnRefs, requireNonNull(instance, "JetQuerious instance cannot be null"));
         }
     }
     
