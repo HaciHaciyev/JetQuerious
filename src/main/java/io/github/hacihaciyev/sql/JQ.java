@@ -48,7 +48,7 @@ public sealed interface JQ {
         }
     }
     
-    record Write(String sql, TableRef[] tableRefs, ColumnRef[] columnRefs, JetQuerious executor) implements JQ, WriteOperations, Transactions {
+    record Write(String sql, TableRef[] tableRefs, ColumnRef[] columnRefs, JetQuerious executor) implements JQ, WriteOperations {
         public Write {
             requireNonNull(sql);
             requireNonNull(executor);
