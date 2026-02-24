@@ -37,7 +37,7 @@ public final class CTEBuilder {
         var tableRefs = collectTableRefs(mainQuery);
         var columnRefs = collectColumnRefs(mainQuery);
         
-        return new JQ.Read(sql, tableRefs, columnRefs);
+        return JQ.Read.withoutValidation(sql, tableRefs, columnRefs);
     }
     
     public JQ.Write write(JQ mainQuery) throws SchemaVerificationException {
@@ -47,7 +47,7 @@ public final class CTEBuilder {
         var tableRefs = collectTableRefs(mainQuery);
         var columnRefs = collectColumnRefs(mainQuery);
         
-        return new JQ.Write(sql, tableRefs, columnRefs);
+        return JQ.Write.withoutValidation(sql, tableRefs, columnRefs);
     }
     
     private String buildSql(JQ mainQuery) {

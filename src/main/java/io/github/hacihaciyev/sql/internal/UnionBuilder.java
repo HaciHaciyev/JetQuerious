@@ -110,7 +110,7 @@ public final class UnionBuilder {
         var tableRefs = collectTableRefs(parts);
         var columnRefs = collectColumnRefs(parts, orderByColumns);
         
-        return new JQ.Read(sql, tableRefs, columnRefs);
+        return JQ.Read.withoutValidation(sql, tableRefs, columnRefs);
     }
     
     private static String buildSql(List<UnionPart> parts, List<ColumnRef> orderByColumns, Limit limit, Offset offset) {
