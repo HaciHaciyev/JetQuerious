@@ -1,12 +1,10 @@
-package io.github.hacihaciyev.sql.internal;
+package io.github.hacihaciyev.sql;
 
 import static java.util.Objects.requireNonNull;
 
 import java.util.ArrayList;
 import java.util.List;
 
-import io.github.hacihaciyev.sql.JQ;
-import io.github.hacihaciyev.sql.Transaction;
 import io.github.hacihaciyev.sql.Transaction.*;
 
 public final class TransactionBuilder {

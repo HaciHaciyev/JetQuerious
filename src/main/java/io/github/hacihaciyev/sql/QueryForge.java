@@ -1,7 +1,5 @@
 package io.github.hacihaciyev.sql;
 
-import io.github.hacihaciyev.sql.internal.*;
-
 public class QueryForge {
 
     private QueryForge() {}

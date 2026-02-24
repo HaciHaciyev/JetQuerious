@@ -1,6 +1,4 @@
-package io.github.hacihaciyev.sql.internal;
-
-import io.github.hacihaciyev.sql.Expr;
+package io.github.hacihaciyev.sql;
 
 public class SelectBuilder {
 

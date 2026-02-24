@@ -1,9 +1,6 @@
-package io.github.hacihaciyev.sql.internal;
+package io.github.hacihaciyev.sql;
 
 import io.github.hacihaciyev.build_errors.SchemaVerificationException;
-import io.github.hacihaciyev.sql.ColumnRef;
-import io.github.hacihaciyev.sql.JQ;
-import io.github.hacihaciyev.sql.TableRef;
 
 import java.util.ArrayList;
 import java.util.Arrays;
