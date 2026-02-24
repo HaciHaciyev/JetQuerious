@@ -11,6 +11,9 @@ import javax.sql.DataSource;
 import io.github.hacihaciyev.build_errors.SchemaVerificationException;
 import io.github.hacihaciyev.config.Conf;
 import io.github.hacihaciyev.jdbc.JetQuerious;
+import io.github.hacihaciyev.jdbc.ReadOperations;
+import io.github.hacihaciyev.jdbc.Transactions;
+import io.github.hacihaciyev.jdbc.WriteOperations;
 import io.github.hacihaciyev.sql.internal.schema.Column;
 import io.github.hacihaciyev.sql.internal.schema.Table;
 import io.github.hacihaciyev.types.SQLType;
@@ -28,7 +31,7 @@ public sealed interface JQ {
     ColumnRef[] columnRefs();
     JQ bind(JetQuerious instance);
     
-    record Read(String sql, TableRef[] tableRefs, ColumnRef[] columnRefs, JetQuerious executor) implements JQ {
+    record Read(String sql, TableRef[] tableRefs, ColumnRef[] columnRefs, JetQuerious executor) implements JQ, ReadOperations {
         public Read {
             requireNonNull(sql);
             requireNonNull(executor);
@@ -45,7 +48,7 @@ public sealed interface JQ {
         }
     }
     
-    record Write(String sql, TableRef[] tableRefs, ColumnRef[] columnRefs, JetQuerious executor) implements JQ {
+    record Write(String sql, TableRef[] tableRefs, ColumnRef[] columnRefs, JetQuerious executor) implements JQ, WriteOperations, Transactions {
         public Write {
             requireNonNull(sql);
             requireNonNull(executor);

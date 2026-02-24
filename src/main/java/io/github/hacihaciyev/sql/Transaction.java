@@ -2,7 +2,12 @@ package io.github.hacihaciyev.sql;
 
 import static java.util.Objects.requireNonNull;
 
-public record Transaction(JQ[] operations, Savepoint[] savepoints, IsolationLevel isolationLevel) {
+import io.github.hacihaciyev.jdbc.JetQuerious;
+import io.github.hacihaciyev.jdbc.Transactions;
+
+public record Transaction(JQ[] operations, Savepoint[] savepoints, IsolationLevel isolationLevel, JetQuerious executor)
+    implements Transactions {
+    
     public Transaction {
         operations = requireNonNull(operations, "Transaction operations cannot be null").clone();
         if (operations.length == 0) throw new IllegalArgumentException("Transaction must have at least one operation");
@@ -10,8 +15,12 @@ public record Transaction(JQ[] operations, Savepoint[] savepoints, IsolationLeve
         requireNonNull(isolationLevel, "Transaction isolation level is required");
     }
     
+    public Transaction(JQ[] operations, Savepoint[] savepoints, IsolationLevel isolationLevel) {
+        this(operations, savepoints, isolationLevel, JetQuerious.defaultInstance());
+    }
+    
     public Transaction(JQ[] operations, Savepoint[] savepoints) {
-        this(operations, savepoints, IsolationLevel.DEFAULT);
+        this(operations, savepoints, IsolationLevel.DEFAULT, JetQuerious.defaultInstance());
     }
     
     public record Savepoint(int position, String name) {
