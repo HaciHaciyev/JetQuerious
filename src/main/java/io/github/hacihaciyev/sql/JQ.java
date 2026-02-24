@@ -12,7 +12,6 @@ import io.github.hacihaciyev.build_errors.SchemaVerificationException;
 import io.github.hacihaciyev.config.Conf;
 import io.github.hacihaciyev.jdbc.JetQuerious;
 import io.github.hacihaciyev.jdbc.ReadOperations;
-import io.github.hacihaciyev.jdbc.Transactions;
 import io.github.hacihaciyev.jdbc.WriteOperations;
 import io.github.hacihaciyev.sql.internal.schema.Column;
 import io.github.hacihaciyev.sql.internal.schema.Table;
