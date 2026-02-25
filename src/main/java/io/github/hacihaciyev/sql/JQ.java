@@ -32,8 +32,7 @@ public sealed interface JQ {
     
     record Read(String sql, TableRef[] tableRefs, ColumnRef[] columnRefs, JetQuerious executor) implements JQ, ReadOperations {
         public Read {
-            requireNonNull(sql);
-            requireNonNull(executor);
+            Validator.validate(sql, tableRefs, columnRefs, executor);
         }
         
         public Read(String sql, TableRef[] tableRefs, ColumnRef[] columnRefs) throws SchemaVerificationException {   
@@ -41,7 +40,7 @@ public sealed interface JQ {
             this(sql, tableRefs, columnRefs, JetQuerious.defaultInstance());
         }
         
-        public static Read withoutValidation(String sql, TableRef[] tableRefs, ColumnRef[] columnRefs) {
+        static Read withoutValidation(String sql, TableRef[] tableRefs, ColumnRef[] columnRefs) {
             return new Read(sql, tableRefs, columnRefs, JetQuerious.defaultInstance());
         }
         
@@ -53,16 +52,14 @@ public sealed interface JQ {
     
     record Write(String sql, TableRef[] tableRefs, ColumnRef[] columnRefs, JetQuerious executor) implements JQ, WriteOperations {
         public Write {
-            requireNonNull(sql);
-            requireNonNull(executor);
+            Validator.validate(sql, tableRefs, columnRefs, executor);
         }
         
         public Write(String sql, TableRef[] tableRefs, ColumnRef[] columnRefs) throws SchemaVerificationException {
-            Validator.validate(tableRefs, columnRefs);            
             this(sql, tableRefs, columnRefs, JetQuerious.defaultInstance());
         }
         
-        public static Write withoutValidation(String sql, TableRef[] tableRefs, ColumnRef[] columnRefs) {
+        static Write withoutValidation(String sql, TableRef[] tableRefs, ColumnRef[] columnRefs) {
             return new Write(sql, tableRefs, columnRefs, JetQuerious.defaultInstance());
         }
         
@@ -73,6 +70,15 @@ public sealed interface JQ {
     }
     
     static class Validator {
+        
+        private static void validate(String sql, TableRef[] tableRefs, ColumnRef[] columnRefs, JetQuerious executor) {
+            requireNonNull(sql);
+            requireNonNull(tableRefs);
+            requireNonNull(columnRefs);
+            requireNonNull(executor);
+            
+            Validator.validate(tableRefs, columnRefs);
+        }
         
         private static void validate(TableRef[] tableRefs, ColumnRef[] columnRefs) throws SchemaVerificationException {
             if (tableRefs.length == 0) {
