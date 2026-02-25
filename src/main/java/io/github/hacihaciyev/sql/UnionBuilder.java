@@ -12,42 +12,42 @@ public final class UnionBuilder {
     
     private final List<UnionPart> parts = new ArrayList<>();
     
-    record UnionPart(UnionType type, JQ query) {}
+    record UnionPart(UnionType type, JQ query) {
+        public UnionPart {
+            requireNonNull(type, "Union type cannot be null");
+            requireNonNull(query, "JQ cannot be null");
+        }
+    }
     
     public UnionBuilder(UnionType type, JQ first, JQ... rest) {
-        requireNonNull(type, "Union type cannot be null");
-        requireNonNull(first, "First query cannot be null");
         requireNonNull(rest, "Rest queries cannot be null");
         if (rest.length == 0) throw new IllegalArgumentException("Union requires at least two queries");
         
-        parts.add(new UnionPart(null, first));
-        for (JQ q : rest) parts.add(new UnionPart(type, requireNonNull(q, "JQ cannot be null")));
+        parts.add(new UnionPart(type, first));
+        for (var q : rest) parts.add(new UnionPart(type, q));
     }
     
     public UnionBuilder union(JQ query) {
-        parts.add(new UnionPart(UnionType.UNION, requireNonNull(query, "JQ cannot be null")));
+        parts.add(new UnionPart(UnionType.UNION, query));
         return this;
     }
     
     public UnionBuilder unionAll(JQ query) {
-        parts.add(new UnionPart(UnionType.UNION_ALL, requireNonNull(query, "JQ cannot be null")));
+        parts.add(new UnionPart(UnionType.UNION_ALL, query));
         return this;
     }
     
     public UnionBuilder intersect(JQ query) {
-        parts.add(new UnionPart(UnionType.INTERSECT, requireNonNull(query, "JQ cannot be null")));
+        parts.add(new UnionPart(UnionType.INTERSECT, query));
         return this;
     }
     
     public UnionBuilder except(JQ query) {
-        parts.add(new UnionPart(UnionType.EXCEPT, requireNonNull(query, "JQ cannot be null")));
+        parts.add(new UnionPart(UnionType.EXCEPT, query));
         return this;
     }
     
     public OrderByStage orderBy(ColumnRef... columns) {
-        requireNonNull(columns, "Order by columns cannot be null");
-        if (columns.length == 0) throw new IllegalArgumentException("Order by requires at least one column");
-        for (var c : columns) requireNonNull(c, "Column cannot be null");
         return new OrderByStage(parts, List.of(columns));
     }
     
@@ -56,7 +56,6 @@ public final class UnionBuilder {
     }
     
     public LimitStage limit(Limit limit) {
-        requireNonNull(limit, "Limit cannot be null");
         return new LimitStage(parts, List.of(), limit);
     }
     
@@ -68,10 +67,12 @@ public final class UnionBuilder {
         public OrderByStage {
             parts = List.copyOf(requireNonNull(parts));
             orderByColumns = List.copyOf(requireNonNull(orderByColumns));
+            
+            for (var part : parts) requireNonNull(part, "Union part cannot be null");
+            for (var cr : orderByColumns) requireNonNull(cr, "Order by column cannot be null");
         }
         
         public LimitStage limit(Limit limit) {
-            requireNonNull(limit, "Limit cannot be null");
             return new LimitStage(parts, orderByColumns, limit);
         }
         
@@ -84,6 +85,10 @@ public final class UnionBuilder {
         public LimitStage {
             parts = List.copyOf(requireNonNull(parts));
             orderByColumns = List.copyOf(requireNonNull(orderByColumns));
+            
+            for (var part : parts) requireNonNull(part, "Union part cannot be null");
+            for (var cr : orderByColumns) requireNonNull(cr, "Order by column cannot be null");
+            
             requireNonNull(limit);
         }
         
