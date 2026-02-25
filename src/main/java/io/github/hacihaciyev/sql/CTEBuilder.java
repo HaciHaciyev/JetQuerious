@@ -26,6 +26,10 @@ public final class CTEBuilder {
     }
     
     public CTEBuilder with(String name, JQ query) {
+        for (var part : parts) {
+            if (part.name.equalsIgnoreCase(name)) throw new IllegalArgumentException("Duplicate CTE name: " + name);
+        }
+        
         parts.add(new CTEPart(name, query));
         return this;
     }
