@@ -12,17 +12,20 @@ public final class CTEBuilder {
     
     private final List<CTEPart> parts = new ArrayList<>();
     
-    record CTEPart(TableRef.Base name, JQ query) {}
+    record CTEPart(String name, JQ query) {
+        public CTEPart {
+            requireNonNull(name, "CTE name cannot be null");
+            requireNonNull(query, "CTE query cannot be null");
+            if (name.trim().isBlank()) throw new IllegalArgumentException("CTE name cannot be blank");
+            name = name.trim();
+        }
+    }
     
-    public CTEBuilder(TableRef.Base name, JQ query) {
-        requireNonNull(name, "CTE name cannot be null");
-        requireNonNull(query, "CTE query cannot be null");
+    public CTEBuilder(String name, JQ query) {
         parts.add(new CTEPart(name, query));
     }
     
-    public CTEBuilder with(TableRef.Base name, JQ query) {
-        requireNonNull(name, "CTE name cannot be null");
-        requireNonNull(query, "CTE query cannot be null");
+    public CTEBuilder with(String name, JQ query) {
         parts.add(new CTEPart(name, query));
         return this;
     }
@@ -37,6 +40,7 @@ public final class CTEBuilder {
         return JQ.Read.withoutValidation(sql, tableRefs, columnRefs);
     }
     
+    // TODO context for validation
     public JQ.Write write(JQ mainQuery) throws SchemaVerificationException {
         requireNonNull(mainQuery, "Main query cannot be null");
         
