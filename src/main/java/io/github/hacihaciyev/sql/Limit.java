@@ -4,4 +4,9 @@ public record Limit(int value) {
     public Limit {
         if (value <= 0) throw new IllegalArgumentException("Limit cannot be equals or below zero");
     }
+    
+    @Override
+    public String toString() {
+        return "" + value;
+    }
 }

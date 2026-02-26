@@ -49,7 +49,7 @@ public class QueryForge {
     }
     
     public static CTEBuilder with(String name, JQ subQuery) {
-        return new CTEBuilder(new TableRef.Base(name), subQuery);
+        return new CTEBuilder(name, subQuery);
     }
   
     public static UnionBuilder union(JQ first, JQ... rest) {
