@@ -2,9 +2,11 @@ package io.github.hacihaciyev.sql;
 
 import io.github.hacihaciyev.build_errors.SchemaVerificationException;
 import io.github.hacihaciyev.config.Conf;
+import io.github.hacihaciyev.sql.expressions.ColumnRef;
 import io.github.hacihaciyev.sql.internal.schema.Column;
 import io.github.hacihaciyev.sql.internal.schema.SchemaResolver;
 import io.github.hacihaciyev.sql.internal.schema.Table;
+import io.github.hacihaciyev.sql.value_objects.TableRef;
 import io.github.hacihaciyev.types.SQLType;
 import io.github.hacihaciyev.util.Ok;
 import io.github.hacihaciyev.util.Err;

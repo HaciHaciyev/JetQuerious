@@ -1,5 +1,17 @@
 package io.github.hacihaciyev.sql;
 
+import io.github.hacihaciyev.sql.builders.CTEBuilder;
+import io.github.hacihaciyev.sql.builders.DeleteBuilder;
+import io.github.hacihaciyev.sql.builders.InsertBuilder;
+import io.github.hacihaciyev.sql.builders.SelectBuilder;
+import io.github.hacihaciyev.sql.builders.TransactionBuilder;
+import io.github.hacihaciyev.sql.builders.UnionBuilder;
+import io.github.hacihaciyev.sql.builders.UpdateBuilder;
+import io.github.hacihaciyev.sql.expressions.ColumnRef;
+import io.github.hacihaciyev.sql.expressions.Expr;
+import io.github.hacihaciyev.sql.value_objects.TableRef;
+import io.github.hacihaciyev.sql.value_objects.UnionType;
+
 public class QueryForge {
 
     private QueryForge() {}
@@ -70,7 +82,7 @@ public class QueryForge {
     
     private static Expr[] toExprs(String... columns) {
         var exprs = new Expr[columns.length];
-        for (var i = 0; i < columns.length; i++) exprs[i] = new Expr.Col(columns[i]);
+        for (var i = 0; i < columns.length; i++) exprs[i] = new ColumnRef.Base(columns[i]);
         return exprs;
     }
 }

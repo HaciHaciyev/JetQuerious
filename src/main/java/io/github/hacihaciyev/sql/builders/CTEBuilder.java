@@ -1,6 +1,11 @@
-package io.github.hacihaciyev.sql;
+package io.github.hacihaciyev.sql.builders;
 
 import io.github.hacihaciyev.build_errors.SchemaVerificationException;
+import io.github.hacihaciyev.sql.JQ;
+import io.github.hacihaciyev.sql.JQ.Read;
+import io.github.hacihaciyev.sql.JQ.Write;
+import io.github.hacihaciyev.sql.expressions.ColumnRef;
+import io.github.hacihaciyev.sql.value_objects.TableRef;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -34,6 +39,7 @@ public final class CTEBuilder {
         return this;
     }
     
+    // TODO contect for validation
     public JQ.Read read(JQ mainQuery) throws SchemaVerificationException {
         requireNonNull(mainQuery, "Main query cannot be null");
         
@@ -41,7 +47,7 @@ public final class CTEBuilder {
         var tableRefs = collectTableRefs(mainQuery);
         var columnRefs = collectColumnRefs(mainQuery);
         
-        return JQ.Read.withoutValidation(sql, tableRefs, columnRefs);
+        return new JQ.Read(sql, tableRefs, columnRefs);
     }
     
     // TODO context for validation
@@ -52,7 +58,7 @@ public final class CTEBuilder {
         var tableRefs = collectTableRefs(mainQuery);
         var columnRefs = collectColumnRefs(mainQuery);
         
-        return JQ.Write.withoutValidation(sql, tableRefs, columnRefs);
+        return new JQ.Write(sql, tableRefs, columnRefs);
     }
     
     private String buildSql(JQ mainQuery) {

@@ -1,8 +1,8 @@
-package io.github.hacihaciyev.sql;
+package io.github.hacihaciyev.sql.expressions;
 
 import static java.util.Objects.requireNonNull;
 
-public sealed interface ColumnRef {
+public sealed interface ColumnRef extends Expr {
 
     String name();
     Type type();

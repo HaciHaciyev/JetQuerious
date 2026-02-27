@@ -1,4 +1,6 @@
-package io.github.hacihaciyev.sql;
+package io.github.hacihaciyev.sql.builders;
+
+import io.github.hacihaciyev.sql.expressions.Expr;
 
 public class SelectBuilder {
 

@@ -1,4 +1,6 @@
-package io.github.hacihaciyev.sql;
+package io.github.hacihaciyev.sql.builders;
+
+import io.github.hacihaciyev.sql.value_objects.TableRef;
 
 public class UpdateBuilder {
 

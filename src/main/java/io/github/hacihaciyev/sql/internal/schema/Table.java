@@ -1,7 +1,7 @@
 package io.github.hacihaciyev.sql.internal.schema;
 
-import io.github.hacihaciyev.sql.ColumnRef;
-import io.github.hacihaciyev.sql.TableRef;
+import io.github.hacihaciyev.sql.expressions.ColumnRef;
+import io.github.hacihaciyev.sql.value_objects.TableRef;
 
 import java.util.Optional;
 

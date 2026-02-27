@@ -1,4 +1,4 @@
-package io.github.hacihaciyev.sql;
+package io.github.hacihaciyev.sql.value_objects;
 
 public record Offset(int value) {
     public Offset {

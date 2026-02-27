@@ -1,4 +1,4 @@
-package io.github.hacihaciyev.sql;
+package io.github.hacihaciyev.sql.value_objects;
 
 import static java.util.Objects.requireNonNull;
 

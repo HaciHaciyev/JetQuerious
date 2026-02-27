@@ -13,8 +13,10 @@ import io.github.hacihaciyev.config.Conf;
 import io.github.hacihaciyev.jdbc.JetQuerious;
 import io.github.hacihaciyev.jdbc.ReadOperations;
 import io.github.hacihaciyev.jdbc.WriteOperations;
+import io.github.hacihaciyev.sql.expressions.ColumnRef;
 import io.github.hacihaciyev.sql.internal.schema.Column;
 import io.github.hacihaciyev.sql.internal.schema.Table;
+import io.github.hacihaciyev.sql.value_objects.TableRef;
 import io.github.hacihaciyev.types.SQLType;
 import io.github.hacihaciyev.types.internal.TypeInfo;
 import io.github.hacihaciyev.types.internal.TypeRegistry;
@@ -40,10 +42,6 @@ public sealed interface JQ {
             this(sql, tableRefs, columnRefs, JetQuerious.defaultInstance());
         }
         
-        static Read withoutValidation(String sql, TableRef[] tableRefs, ColumnRef[] columnRefs) {
-            return new Read(sql, tableRefs, columnRefs, JetQuerious.defaultInstance());
-        }
-        
         @Override
         public JQ bind(JetQuerious instance) {
             return new Read(sql, tableRefs, columnRefs, requireNonNull(instance, "JetQuerious instance cannot be null"));
@@ -57,10 +55,6 @@ public sealed interface JQ {
         
         public Write(String sql, TableRef[] tableRefs, ColumnRef[] columnRefs) throws SchemaVerificationException {
             this(sql, tableRefs, columnRefs, JetQuerious.defaultInstance());
-        }
-        
-        static Write withoutValidation(String sql, TableRef[] tableRefs, ColumnRef[] columnRefs) {
-            return new Write(sql, tableRefs, columnRefs, JetQuerious.defaultInstance());
         }
         
         @Override
