@@ -18,6 +18,10 @@ public sealed interface ColumnRef extends Expr {
         
         record None() implements Type {}
     }
+    
+    sealed interface AliasedColumn permits Alias, VariableAlias {
+        String alias();
+    }
         
     sealed interface VariableColumn permits VariableBase, VariableAlias {
         String variable();
@@ -39,7 +43,7 @@ public sealed interface ColumnRef extends Expr {
         }
     }
 
-    record Alias(String name, String alias, Type type) implements ColumnRef {
+    record Alias(String name, String alias, Type type) implements ColumnRef, AliasedColumn {
         public Alias {
             name = validate(name, "column");
             alias = validate(alias, "alias");
@@ -73,7 +77,7 @@ public sealed interface ColumnRef extends Expr {
         }
     }
 
-    record VariableAlias(String variable, String name, String alias, Type type) implements ColumnRef, VariableColumn {
+    record VariableAlias(String variable, String name, String alias, Type type) implements ColumnRef, VariableColumn, AliasedColumn {
         public VariableAlias {
             variable = validate(variable, "variable");
             name = validate(name, "column");
