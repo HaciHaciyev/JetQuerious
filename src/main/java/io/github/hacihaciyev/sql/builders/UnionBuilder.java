@@ -19,14 +19,14 @@ public final class UnionBuilder {
     
     private final List<UnionPart> parts = new ArrayList<>();
     
-    record UnionPart(UnionType type, JQ query) {
+    record UnionPart(UnionType type, JQ.Read query) {
         public UnionPart {
             requireNonNull(type, "Union type cannot be null");
             requireNonNull(query, "JQ cannot be null");
         }
     }
     
-    public UnionBuilder(UnionType type, JQ first, JQ... rest) {
+    public UnionBuilder(UnionType type, JQ.Read first, JQ.Read... rest) {
         requireNonNull(rest, "Rest queries cannot be null");
         if (rest.length == 0) throw new IllegalArgumentException("Union requires at least two queries");
         
@@ -34,22 +34,22 @@ public final class UnionBuilder {
         for (var q : rest) parts.add(new UnionPart(type, q));
     }
     
-    public UnionBuilder union(JQ query) {
+    public UnionBuilder union(JQ.Read query) {
         parts.add(new UnionPart(UnionType.UNION, query));
         return this;
     }
     
-    public UnionBuilder unionAll(JQ query) {
+    public UnionBuilder unionAll(JQ.Read query) {
         parts.add(new UnionPart(UnionType.UNION_ALL, query));
         return this;
     }
     
-    public UnionBuilder intersect(JQ query) {
+    public UnionBuilder intersect(JQ.Read query) {
         parts.add(new UnionPart(UnionType.INTERSECT, query));
         return this;
     }
     
-    public UnionBuilder except(JQ query) {
+    public UnionBuilder except(JQ.Read query) {
         parts.add(new UnionPart(UnionType.EXCEPT, query));
         return this;
     }
