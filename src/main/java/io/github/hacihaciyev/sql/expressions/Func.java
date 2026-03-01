@@ -1,108 +1,92 @@
 package io.github.hacihaciyev.sql.expressions;
 
+import static java.util.Objects.requireNonNull;
+
 import java.util.List;
-import java.util.stream.Collectors;
 
 import io.github.hacihaciyev.types.SQLType;
 
 public sealed interface Func extends Expr {
 
-    sealed interface Aggregate permits Count, Sum, Avg, Min, Max {}
+    sealed interface Aggregate permits Count, CountAll, Sum, Avg, Min, Max {}
     sealed interface Text permits Upper, Lower, Trim, Substring, Length {}
     sealed interface Temporal permits CurrentDate, CurrentTimestamp, Extract {}
-    sealed interface Conditional permits Case, Coalesce, NullIf {}
+    sealed interface Conditional permits Coalesce, NullIf {}
     sealed interface Numeric permits Abs, Round, Floor, Ceil, Power, Sqrt, Mod {}
     sealed interface Conversion permits Cast {}
 
-    public record Count(Expr expr, boolean distinct) implements Func, Aggregate {
-        @Override
-        public String toString() {
-            if (expr == null) return "COUNT(*)";
-            return "COUNT(" + (distinct ? "DISTINCT " : "") + expr + ")";
+    record Count(Expr expr, boolean distinct) implements Func, Aggregate {
+        public Count {
+            requireNonNull(expr);
         }
     }
 
-    public record Sum(Expr expr, boolean distinct) implements Func, Aggregate {
-        @Override
-        public String toString() {
-            return "SUM(" + (distinct ? "DISTINCT " : "") + expr + ")";
+    record CountAll(boolean distinct) implements Func, Aggregate {}
+
+    record Sum(Expr expr, boolean distinct) implements Func, Aggregate {
+        public Sum {
+            requireNonNull(expr);
         }
     }
 
-    public record Avg(Expr expr, boolean distinct) implements Func, Aggregate {
-        @Override
-        public String toString() {
-            return "AVG(" + (distinct ? "DISTINCT " : "") + expr + ")";
+    record Avg(Expr expr, boolean distinct) implements Func, Aggregate {
+        public Avg {
+            requireNonNull(expr);
         }
     }
 
-    public record Min(Expr expr) implements Func, Aggregate {
-        @Override
-        public String toString() {
-            return "MIN(" + expr + ")";
+    record Min(Expr expr) implements Func, Aggregate {
+        public Min {
+            requireNonNull(expr);
         }
     }
 
-    public record Max(Expr expr) implements Func, Aggregate {
-        @Override
-        public String toString() {
-            return "MAX(" + expr + ")";
+    record Max(Expr expr) implements Func, Aggregate {
+        public Max {
+            requireNonNull(expr);
         }
     }
 
-    public record Upper(Expr value) implements Func, Text {
-        @Override
-        public String toString() {
-            return "UPPER(" + value + ")";
+    record Upper(Expr value) implements Func, Text {
+        public Upper {
+            requireNonNull(value);
         }
     }
 
-    public record Lower(Expr value) implements Func, Text {
-        @Override
-        public String toString() {
-            return "LOWER(" + value + ")";
+    record Lower(Expr value) implements Func, Text {
+        public Lower {
+            requireNonNull(value);
         }
     }
 
-    public record Trim(Expr value) implements Func, Text {
-        @Override
-        public String toString() {
-            return "TRIM(" + value + ")";
+    record Trim(Expr value) implements Func, Text {
+        public Trim {
+            requireNonNull(value);
         }
     }
 
-    public record Length(Expr value) implements Func, Text {
-        @Override
-        public String toString() {
-            return "LENGTH(" + value + ")";
+    record Length(Expr value) implements Func, Text {
+        public Length {
+            requireNonNull(value);
         }
     }
 
-    public record Substring(Expr value, Expr start, Expr length) implements Func, Text {
-        @Override
-        public String toString() {
-            return "SUBSTRING(" + value + ", " + start + ", " + length + ")";
+    record Substring(Expr value, Expr start, Expr length) implements Func, Text {
+        public Substring {
+            requireNonNull(value);
+            requireNonNull(start);
+            requireNonNull(length);
         }
     }
 
-    public record CurrentDate() implements Func, Temporal {
-        @Override
-        public String toString() {
-            return "CURRENT_DATE";
-        }
-    }
+    record CurrentDate() implements Func, Temporal {}
 
-    public record CurrentTimestamp() implements Func, Temporal {
-        @Override
-        public String toString() {
-            return "CURRENT_TIMESTAMP";
-        }
-    }
+    record CurrentTimestamp() implements Func, Temporal {}
 
-    public record Extract(TemporalField field, Expr source) implements Func, Temporal {
-        @Override
-        public String toString() {
-            return "EXTRACT(" + field.name() + " FROM " + source + ")";
+    record Extract(TemporalField field, Expr source) implements Func, Temporal {
+        public Extract {
+            requireNonNull(field);
+            requireNonNull(source);
         }
     }
 
@@ -110,97 +94,72 @@ public sealed interface Func extends Expr {
         YEAR, MONTH, DAY, HOUR, MINUTE, SECOND
     }
 
-    public record Coalesce(List<Expr> values) implements Func, Conditional {
-        @Override
-        public String toString() {
-            var joined = values.stream()
-                    .map(Object::toString)
-                    .collect(Collectors.joining(", "));
-            return "COALESCE(" + joined + ")";
+    record Coalesce(List<Expr> values) implements Func, Conditional {
+        public Coalesce {
+            requireNonNull(values);
+            if (values.size() < 2) throw new IllegalArgumentException("COALESCE requires at least 2 values");
+            
+            values = List.copyOf(values);
+            for (var v : values) requireNonNull(v);
         }
     }
 
-    public record NullIf(Expr first, Expr second) implements Func, Conditional {
-        @Override
-        public String toString() {
-            return "NULLIF(" + first + ", " + second + ")";
+    record NullIf(Expr first, Expr second) implements Func, Conditional {
+        public NullIf {
+            requireNonNull(first);
+            requireNonNull(second);
         }
     }
 
-    public record Case(List<WhenThen> branches, Expr elseExpr) implements Func, Conditional {
-        @Override
-        public String toString() {
-            var sb = new StringBuilder("CASE ");
-            for (var branch : branches) {
-                sb.append("WHEN ")
-                  .append(branch.condition())
-                  .append(" THEN ")
-                  .append(branch.result())
-                  .append(" ");
-            }
-            if (elseExpr != null) {
-                sb.append("ELSE ").append(elseExpr).append(" ");
-            }
-            sb.append("END");
-            return sb.toString();
+    record Abs(Expr value) implements Func, Numeric {
+        public Abs {
+            requireNonNull(value);
         }
     }
 
-    public record WhenThen(Expr condition, Expr result) {}
-
-    public record Abs(Expr value) implements Func, Numeric {
-        @Override
-        public String toString() {
-            return "ABS(" + value + ")";
+    record Round(Expr value, Expr precision) implements Func, Numeric {
+        public Round {
+            requireNonNull(value);
+            requireNonNull(precision);
         }
     }
 
-    public record Round(Expr value, Expr precision) implements Func, Numeric {
-        @Override
-        public String toString() {
-            return "ROUND(" + value + ", " + precision + ")";
+    record Floor(Expr value) implements Func, Numeric {
+        public Floor {
+            requireNonNull(value);
         }
     }
 
-    public record Floor(Expr value) implements Func, Numeric {
-        @Override
-        public String toString() {
-            return "FLOOR(" + value + ")";
+    record Ceil(Expr value) implements Func, Numeric {
+        public Ceil {
+            requireNonNull(value);
         }
     }
 
-    public record Ceil(Expr value) implements Func, Numeric {
-        @Override
-        public String toString() {
-            return "CEIL(" + value + ")";
+    record Power(Expr base, Expr exponent) implements Func, Numeric {
+        public Power {
+            requireNonNull(base);
+            requireNonNull(exponent);
         }
     }
 
-    public record Power(Expr base, Expr exponent) implements Func, Numeric {
-        @Override
-        public String toString() {
-            return "POWER(" + base + ", " + exponent + ")";
+    record Sqrt(Expr value) implements Func, Numeric {
+        public Sqrt {
+            requireNonNull(value);
         }
     }
 
-    public record Sqrt(Expr value) implements Func, Numeric {
-        @Override
-        public String toString() {
-            return "SQRT(" + value + ")";
+    record Mod(Expr left, Expr right) implements Func, Numeric {
+        public Mod {
+            requireNonNull(left);
+            requireNonNull(right);
         }
     }
 
-    public record Mod(Expr left, Expr right) implements Func, Numeric {
-        @Override
-        public String toString() {
-            return "MOD(" + left + ", " + right + ")";
-        }
-    }
-
-    public record Cast(Expr value, SQLType targetType) implements Func, Conversion {
-        @Override
-        public String toString() {
-            return "CAST(" + value + " AS " + targetType + ")";
+    record Cast(Expr value, SQLType targetType) implements Func, Conversion {
+        public Cast {
+            requireNonNull(value);
+            requireNonNull(targetType);
         }
     }
 }

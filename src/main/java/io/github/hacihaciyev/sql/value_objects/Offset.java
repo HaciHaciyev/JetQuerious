@@ -4,9 +4,4 @@ public record Offset(int value) {
     public Offset {
         if (value < 0) throw new IllegalArgumentException("Offset cannot be below zero");
     }
-    
-    @Override
-    public String toString() {
-        return "" + value;
-    }
 }
