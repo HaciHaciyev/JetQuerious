@@ -1,10 +1,8 @@
 package io.github.hacihaciyev.sql.expressions;
 
-import static java.util.Objects.requireNonNull;
-
 import java.util.List;
-
 import io.github.hacihaciyev.types.SQLType;
+import static java.util.Objects.requireNonNull;
 
 public sealed interface Func extends Expr {
 

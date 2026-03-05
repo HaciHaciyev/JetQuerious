@@ -9,10 +9,10 @@ public sealed interface Column {
     boolean known();
     boolean nullable();
 
-    record Known(String name, SQLType type, boolean nullable) implements Column {
+    record Known(String name, SQLType sqlType, boolean nullable) implements Column {
         public Known {
             requireNonNull(name, "Column name cannot be null");
-            requireNonNull(type, "Type cannot be null");
+            requireNonNull(sqlType, "Type cannot be null");
             name = name.trim();
         }
 

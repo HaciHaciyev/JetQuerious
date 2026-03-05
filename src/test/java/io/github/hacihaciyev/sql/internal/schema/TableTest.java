@@ -128,7 +128,7 @@ class TableTest {
     }
 
     @Test
-    @DisplayName("Should preserve column type and nullable information")
+    @DisplayName("Should preserve column value and nullable information")
     void shouldPreserveColumnTypeAndNullable() {
         var table = new Table(
                 new Table.Catalog.Unknown(),
@@ -146,7 +146,7 @@ class TableTest {
         var metaCol = table.column(new ColumnRef.Base("metadata"), new TableRef.Base("users")).orElseThrow();
 
         assertInstanceOf(Column.Known.class, idCol);
-        assertEquals(SQLType.INTEGER, ((Column.Known) idCol).type());
+        assertEquals(SQLType.INTEGER, ((Column.Known) idCol).sqlType());
         assertFalse(idCol.nullable());
 
         assertInstanceOf(Column.Known.class, nameCol);

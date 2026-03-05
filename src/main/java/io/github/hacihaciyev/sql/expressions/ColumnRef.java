@@ -5,14 +5,14 @@ import static java.util.Objects.requireNonNull;
 public sealed interface ColumnRef extends Expr {
 
     String name();
-    Type type();
+    Type typeClass();
     
     sealed interface Type {
         None NONE = new None();
         
-        record Some(Class<?> type) implements Type {
+        record Some(Class<?> value) implements Type {
             public Some {
-                requireNonNull(type, "Type cannot be null");
+                requireNonNull(value, "Type cannot be null");
             }
         }
         
@@ -27,10 +27,10 @@ public sealed interface ColumnRef extends Expr {
         String variable();
     }
 
-    record Base(String name, Type type) implements ColumnRef {
+    record Base(String name, Type typeClass) implements ColumnRef {
         public Base {
             name = validate(name, "column");
-            requireNonNull(type, "Type cannot be null");
+            requireNonNull(typeClass, "Type cannot be null");
         }
         
         public Base(String name) {
@@ -43,11 +43,11 @@ public sealed interface ColumnRef extends Expr {
         }
     }
 
-    record Alias(String name, String alias, Type type) implements ColumnRef, AliasedColumn {
+    record Alias(String name, String alias, Type typeClass) implements ColumnRef, AliasedColumn {
         public Alias {
             name = validate(name, "column");
             alias = validate(alias, "alias");
-            requireNonNull(type, "Type cannot be null");
+            requireNonNull(typeClass, "Type cannot be null");
         }
         
         public Alias(String name, String alias) {
@@ -60,11 +60,11 @@ public sealed interface ColumnRef extends Expr {
         }
     }
 
-    record VariableBase(String variable, String name, Type type) implements ColumnRef, VariableColumn {
+    record VariableBase(String variable, String name, Type typeClass) implements ColumnRef, VariableColumn {
         public VariableBase {
             variable = validate(variable, "variable");
             name = validate(name, "column");
-            requireNonNull(type, "Type cannot be null");
+            requireNonNull(typeClass, "Type cannot be null");
         }
         
         public VariableBase(String variable, String name) {
@@ -77,12 +77,12 @@ public sealed interface ColumnRef extends Expr {
         }
     }
 
-    record VariableAlias(String variable, String name, String alias, Type type) implements ColumnRef, VariableColumn, AliasedColumn {
+    record VariableAlias(String variable, String name, String alias, Type typeClass) implements ColumnRef, VariableColumn, AliasedColumn {
         public VariableAlias {
             variable = validate(variable, "variable");
             name = validate(name, "column");
             alias = validate(alias, "alias");
-            requireNonNull(type, "Type cannot be null");
+            requireNonNull(typeClass, "Type cannot be null");
         }
         
         public VariableAlias(String variable, String name, String alias) {

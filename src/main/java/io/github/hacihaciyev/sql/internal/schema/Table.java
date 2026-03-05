@@ -61,14 +61,14 @@ public record Table(Catalog catalog, Schema schema, String name, Column[] column
 
     private boolean tableMatch(TableRef table) {
         return switch (table) {
-            case TableRef.Base(var name) -> eqTableName(name);
-            case TableRef.WithSchema(var schem, var name) -> eqTableName(name) && eqSchem(schem);
-            case TableRef.WithCatalog(var cat, var name) -> eqTableName(name) && eqCat(cat);
-            case TableRef.WithCatalogAndSchema(var cat, var schem, var name) -> eqTableName(name) && eqCat(cat) && eqSchem(schem);
-            case TableRef.AliasedBase(var name, _) -> eqTableName(name);
-            case TableRef.AliasedWithSchema(var schem, var name, _) -> eqTableName(name) && eqSchem(schem);
-            case TableRef.AliasedWithCatalog(var cat, var name, _) -> eqTableName(name) && eqCat(cat);
-            case TableRef.AliasedWithCatalogAndSchema(var cat, var schem, var name, _) -> eqTableName(name) && eqCat(cat) && eqSchem(schem);
+            case TableRef.Base(var tname) -> eqTableName(tname);
+            case TableRef.WithSchema(var schem, var tname) -> eqTableName(tname) && eqSchem(schem);
+            case TableRef.WithCatalog(var cat, var tname) -> eqTableName(tname) && eqCat(cat);
+            case TableRef.WithCatalogAndSchema(var cat, var schem, var tname) -> eqTableName(tname) && eqCat(cat) && eqSchem(schem);
+            case TableRef.AliasedBase(var tname, _) -> eqTableName(tname);
+            case TableRef.AliasedWithSchema(var schem, var tname, _) -> eqTableName(tname) && eqSchem(schem);
+            case TableRef.AliasedWithCatalog(var cat, var tname, _) -> eqTableName(tname) && eqCat(cat);
+            case TableRef.AliasedWithCatalogAndSchema(var cat, var schem, var tname, _) -> eqTableName(tname) && eqCat(cat) && eqSchem(schem);
         };
     }
     
@@ -87,7 +87,7 @@ public record Table(Catalog catalog, Schema schema, String name, Column[] column
     }
     
     private boolean eqNonAlias(ColumnRef cref) {
-        return cref instanceof ColumnRef.VariableColumn vc ? eqTableName(vc.variable()) : true;
+        return !(cref instanceof ColumnRef.VariableColumn vc) || eqTableName(vc.variable());
     }
     
     private boolean eqTableName(String other) {

@@ -19,19 +19,19 @@ public final class UnionBuilder {
     
     private final List<UnionPart> parts = new ArrayList<>();
     
-    record UnionPart(UnionType type, JQ.Read query) {
+    record UnionPart(UnionType value, JQ.Read query) {
         public UnionPart {
-            requireNonNull(type, "Union type cannot be null");
+            requireNonNull(value, "Union value cannot be null");
             requireNonNull(query, "JQ cannot be null");
         }
     }
     
-    public UnionBuilder(UnionType type, JQ.Read first, JQ.Read... rest) {
+    public UnionBuilder(UnionType value, JQ.Read first, JQ.Read... rest) {
         requireNonNull(rest, "Rest queries cannot be null");
         if (rest.length == 0) throw new IllegalArgumentException("Union requires at least two queries");
         
-        parts.add(new UnionPart(type, first));
-        for (var q : rest) parts.add(new UnionPart(type, q));
+        parts.add(new UnionPart(value, first));
+        for (var q : rest) parts.add(new UnionPart(value, q));
     }
     
     public UnionBuilder union(JQ.Read query) {
@@ -116,16 +116,17 @@ public final class UnionBuilder {
         var tableRefs = collectTableRefs(parts);
         var columnRefs = collectColumnRefs(parts, orderByColumns);
         
-        return new JQ.Read(sql, tableRefs, columnRefs);
+        // TODO return new JQ.Read(sql, tableRefs, columnRefs);
+        return null;
     }
     
     private static String buildSql(List<UnionPart> parts, List<ColumnRef> orderByColumns, Limit limit, Offset offset) {
-        var sb = new StringBuilder("(").append(parts.get(0).query.sql()).append(")");
+        var sb = new StringBuilder("(").append(parts.getFirst().query.sql()).append(")");
         
         for (int i = 1; i < parts.size(); i++) {
             var part = parts.get(i);
             
-            var op = switch (part.type) {
+            var op = switch (part.value) {
                 case UNION -> " UNION ";
                 case UNION_ALL -> " UNION ALL ";
                 case INTERSECT -> " INTERSECT ";
@@ -148,13 +149,13 @@ public final class UnionBuilder {
     
     private static TableRef[] collectTableRefs(List<UnionPart> parts) {
         var allRefs = new ArrayList<TableRef>();
-        for (var part : parts) allRefs.addAll(Arrays.asList(part.query.tableRefs()));
+        //for (var part : parts) allRefs.addAll(Arrays.asList(part.query.tableRefs()));
         return allRefs.toArray(new TableRef[0]);
     }
     
     private static ColumnRef[] collectColumnRefs(List<UnionPart> parts, List<ColumnRef> orderByColumns) {
         var allRefs = new ArrayList<ColumnRef>();
-        for (var part : parts) allRefs.addAll(Arrays.asList(part.query.columnRefs()));
+        //for (var part : parts) allRefs.addAll(Arrays.asList(part.query.columnRefs()));
         if (orderByColumns != null) allRefs.addAll(orderByColumns);
         return allRefs.toArray(new ColumnRef[0]);
     }

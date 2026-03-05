@@ -64,19 +64,19 @@ public class QueryForge {
         return new CTEBuilder(name, subQuery);
     }
   
-    public static UnionBuilder union(JQ first, JQ... rest) {
+    public static UnionBuilder union(JQ.Read first, JQ.Read... rest) {
         return new UnionBuilder(UnionType.UNION, first, rest);
     }
     
-    public static UnionBuilder unionAll(JQ first, JQ... rest) {
+    public static UnionBuilder unionAll(JQ.Read first, JQ.Read... rest) {
         return new UnionBuilder(UnionType.UNION_ALL, first, rest);
     }
     
-    public static UnionBuilder intersect(JQ first, JQ... rest) {
+    public static UnionBuilder intersect(JQ.Read first, JQ.Read... rest) {
         return new UnionBuilder(UnionType.INTERSECT, first, rest);
     }
     
-    public static UnionBuilder except(JQ first, JQ... rest) {
+    public static UnionBuilder except(JQ.Read first, JQ.Read... rest) {
         return new UnionBuilder(UnionType.EXCEPT, first, rest);
     }
     

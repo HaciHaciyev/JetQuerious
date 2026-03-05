@@ -1,9 +1,5 @@
 package io.github.hacihaciyev.sql.internal.schema;
 
-import static io.github.hacihaciyev.sql.internal.schema.Table.Catalog;
-import static io.github.hacihaciyev.sql.internal.schema.Table.Schema;
-import static java.util.Objects.requireNonNull;
-
 import io.github.hacihaciyev.build_errors.SchemaVerificationException;
 import io.github.hacihaciyev.config.Conf;
 import io.github.hacihaciyev.sql.value_objects.TableRef;
@@ -21,6 +17,10 @@ import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReferenceArray;
 import javax.sql.DataSource;
+
+import static io.github.hacihaciyev.sql.internal.schema.Table.Catalog;
+import static io.github.hacihaciyev.sql.internal.schema.Table.Schema;
+import static java.util.Objects.requireNonNull;
 
 public class SchemaResolver {
 

@@ -14,7 +14,7 @@ class ColumnTest {
         var column = new Column.Known("user_id", SQLType.BIGINT, false);
 
         assertEquals("user_id", column.name());
-        assertEquals(SQLType.BIGINT, column.type());
+        assertEquals(SQLType.BIGINT, column.sqlType());
         assertFalse(column.nullable());
         assertTrue(column.known());
     }
@@ -45,7 +45,7 @@ class ColumnTest {
     }
 
     @Test
-    @DisplayName("Should throw NPE when known column type is null")
+    @DisplayName("Should throw NPE when known column value is null")
     void shouldThrowNPEWhenKnownColumnTypeIsNull() {
         assertThrows(NullPointerException.class, () ->
                 new Column.Known("id", null, false)
@@ -129,7 +129,7 @@ class ColumnTest {
         Column.Unknown unknown = new Column.Unknown("exotic", true);
 
         Column.Known k1 = known;
-        String knownResult = "Known: " + k1.name() + " (" + k1.type() + ")";
+        String knownResult = "Known: " + k1.name() + " (" + k1.sqlType() + ")";
         assertEquals("Known: id (INTEGER)", knownResult);
 
         Column.Unknown u = unknown;

@@ -47,7 +47,8 @@ public final class CTEBuilder {
         var tableRefs = collectTableRefs(mainQuery);
         var columnRefs = collectColumnRefs(mainQuery);
         
-        return new JQ.Read(sql, tableRefs, columnRefs);
+        // TODO return new JQ.Read(sql, tableRefs, columnRefs);
+        return null;
     }
     
     // TODO context for validation
@@ -58,7 +59,8 @@ public final class CTEBuilder {
         var tableRefs = collectTableRefs(mainQuery);
         var columnRefs = collectColumnRefs(mainQuery);
         
-        return new JQ.Write(sql, tableRefs, columnRefs);
+        // TODO return new JQ.Write(sql, tableRefs, columnRefs);
+        return null;
     }
     
     private String buildSql(JQ mainQuery) {
@@ -80,15 +82,15 @@ public final class CTEBuilder {
     
     private TableRef[] collectTableRefs(JQ mainQuery) {
         var allRefs = new ArrayList<TableRef>();        
-        for (var part : parts) allRefs.addAll(Arrays.asList(part.query.tableRefs()));
-        allRefs.addAll(Arrays.asList(mainQuery.tableRefs()));
+        //for (var part : parts) allRefs.addAll(Arrays.asList(part.query.tableRefs()));
+        //allRefs.addAll(Arrays.asList(mainQuery.tableRefs()));
         return allRefs.toArray(new TableRef[0]);
     }
     
     private ColumnRef[] collectColumnRefs(JQ mainQuery) {
         var allRefs = new ArrayList<ColumnRef>();
-        for (var part : parts) allRefs.addAll(Arrays.asList(part.query.columnRefs()));
-        allRefs.addAll(Arrays.asList(mainQuery.columnRefs()));
+        //for (var part : parts) allRefs.addAll(Arrays.asList(part.query.columnRefs()));
+        //allRefs.addAll(Arrays.asList(mainQuery.columnRefs()));
         return allRefs.toArray(new ColumnRef[0]);
     }
 }
