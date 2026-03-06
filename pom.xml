@@ -30,6 +30,7 @@
   <maven.compiler.source>25</maven.compiler.source>
   <maven.compiler.target>25</maven.compiler.target>
   <maven.compiler.release>25</maven.compiler.release>
+  <scala.version>3.8.2</scala.version>
   <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 </properties>
 
@@ -60,6 +61,13 @@
   </dependencyManagement>
 
   <dependencies>
+    <dependency>
+      <groupId>org.scala-lang</groupId>
+      <artifactId>scala3-library_3</artifactId>
+      <version>${scala.version}</version>
+      <scope>provided</scope>
+    </dependency>
+  
     <dependency>
       <groupId>org.assertj</groupId>
       <artifactId>assertj-core</artifactId>
@@ -110,6 +118,25 @@
 
 <build>
   <plugins>
+    <plugin>
+      <groupId>net.alchim31.maven</groupId>
+      <artifactId>scala-maven-plugin</artifactId>
+      <version>4.9.9</version>
+      <executions>
+        <execution>
+          <goals>
+            <goal>compile</goal>
+          </goals>
+        </execution>
+      </executions>
+      <configuration>
+        <scalaVersion>${scala.version}</scalaVersion>
+        <args>
+          <arg>-Werror</arg>
+        </args>
+      </configuration>
+    </plugin>
+  
     <plugin>
       <groupId>org.sonatype.central</groupId>
       <artifactId>central-publishing-maven-plugin</artifactId>
