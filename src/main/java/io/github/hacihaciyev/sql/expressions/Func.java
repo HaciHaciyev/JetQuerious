@@ -19,7 +19,7 @@ public sealed interface Func extends Expr {
         }
     }
 
-    record CountAll(boolean distinct) implements Func, Aggregate {}
+    record CountAll() implements Func, Aggregate {}
 
     record Sum(Expr expr, boolean distinct) implements Func, Aggregate {
         public Sum {

@@ -10,23 +10,11 @@ public sealed interface Literal extends Expr {
         }
     }
     
-    record IntLiteral(int value) implements Literal {
-        public IntLiteral {
-            requireNonNull(value);
-        }
-    }
+    record IntLiteral(int value) implements Literal {}
     
-    record LongLiteral(long value) implements Literal {
-        public LongLiteral {
-            requireNonNull(value);
-        }
-    }
+    record LongLiteral(long value) implements Literal {}
     
-    record BooleanLiteral(boolean value) implements Literal {
-        public BooleanLiteral {
-            requireNonNull(value);
-        }
-    }
+    record BooleanLiteral(boolean value) implements Literal {}
     
     record NullLiteral() implements Literal {}
     

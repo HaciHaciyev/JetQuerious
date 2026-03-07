@@ -17,7 +17,12 @@ public record BinaryOp(BinaryOperator operator, Expr left, Expr right) implement
         AND,
         OR,
         EQ,
+        NEQ,
         GT,
-        LT
+        GTE,
+        LT,
+        LTE,
+        LIKE,
+        NOT_LIKE
     }
 }
