@@ -12,6 +12,17 @@ public sealed interface CaseExpr extends Expr {
             requireNonNull(result);
         }
     }
+
+    record SimpleCase(Expr operand, List<WhenThen> branches) implements CaseExpr {
+        public SimpleCase {
+            requireNonNull(operand);
+            requireNonNull(branches);
+            if (branches.isEmpty()) throw new IllegalArgumentException("CASE requires at least one branch");
+
+            branches = List.copyOf(branches);
+            for (var b : branches) requireNonNull(b);
+        }
+    }
     
     record Case(List<WhenThen> branches) implements CaseExpr {
         public Case {
@@ -29,6 +40,17 @@ public sealed interface CaseExpr extends Expr {
             requireNonNull(elseBranch);
             if (branches.isEmpty()) throw new IllegalArgumentException("CASE requires at least one branch");
              
+            branches = List.copyOf(branches);
+            for (var b : branches) requireNonNull(b);
+        }
+    }
+
+    record SimpleCaseElse(Expr operand, List<WhenThen> branches, Expr elseBranch) implements CaseExpr {
+        public SimpleCaseElse {
+            requireNonNull(operand);
+            requireNonNull(branches);
+            requireNonNull(elseBranch);
+            if (branches.isEmpty()) throw new IllegalArgumentException("CASE requires at least one branch");
             branches = List.copyOf(branches);
             for (var b : branches) requireNonNull(b);
         }
