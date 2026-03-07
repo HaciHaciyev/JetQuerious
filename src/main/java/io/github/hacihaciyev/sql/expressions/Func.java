@@ -4,7 +4,7 @@ import java.util.List;
 import io.github.hacihaciyev.types.SQLType;
 import static java.util.Objects.requireNonNull;
 
-public sealed interface Func extends Expr {
+public sealed interface Func extends ValueExpr {
 
     sealed interface Aggregate permits Count, CountAll, Sum, Avg, Min, Max {}
     sealed interface Text permits Upper, Lower, Trim, Substring, Length {}

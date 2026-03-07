@@ -2,7 +2,7 @@ package io.github.hacihaciyev.sql.expressions;
 
 import static java.util.Objects.requireNonNull;
 
-public sealed interface BetweenExpr extends Expr  {
+public sealed interface BetweenExpr extends ValueExpr  {
     
     record Between(Expr operand, Expr low, Expr high) implements BetweenExpr { 
         public Between {

@@ -4,7 +4,7 @@ import java.math.BigDecimal;
 
 import static java.util.Objects.requireNonNull;
 
-public sealed interface Literal extends Expr {
+public sealed interface Literal extends ValueExpr {
    
     record StringLiteral(String value) implements Literal {
         public StringLiteral {

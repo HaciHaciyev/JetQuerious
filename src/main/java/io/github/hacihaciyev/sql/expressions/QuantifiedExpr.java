@@ -2,7 +2,7 @@ package io.github.hacihaciyev.sql.expressions;
 
 import static java.util.Objects.requireNonNull;
 
-public sealed interface QuantifiedExpr extends Expr {
+public sealed interface QuantifiedExpr extends ValueExpr {
 
     enum ComparisonOperator {
         EQ, NEQ, GT, GTE, LT, LTE

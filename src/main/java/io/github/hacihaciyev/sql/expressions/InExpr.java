@@ -4,7 +4,7 @@ import java.util.List;
 
 import static java.util.Objects.requireNonNull;
 
-public sealed interface InExpr extends Expr {
+public sealed interface InExpr extends ValueExpr {
 
     Expr operand();
 

@@ -4,7 +4,7 @@ import java.util.List;
 
 import static java.util.Objects.requireNonNull;
 
-public sealed interface CaseExpr extends Expr {
+public sealed interface CaseExpr extends ValueExpr {
 
     record WhenThen(Expr condition, Expr result) {
         public WhenThen {

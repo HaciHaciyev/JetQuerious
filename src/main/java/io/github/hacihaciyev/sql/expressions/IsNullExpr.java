@@ -2,7 +2,7 @@ package io.github.hacihaciyev.sql.expressions;
 
 import static java.util.Objects.requireNonNull;
 
-public sealed interface IsNullExpr extends Expr {
+public sealed interface IsNullExpr extends ValueExpr {
     
     record IsNull(Expr operand) implements IsNullExpr { 
         public IsNull {
