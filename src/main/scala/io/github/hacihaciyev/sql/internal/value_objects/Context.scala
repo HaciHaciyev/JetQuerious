@@ -6,22 +6,25 @@ import io.github.hacihaciyev.sql.value_objects.{Projection, TableRef}
 import io.github.hacihaciyev.sql.expressions.{ColumnRef, Expr, ValueExpr}
 import io.github.hacihaciyev.sql.expressions.ColumnRef.*
 import io.github.hacihaciyev.sql.internal.schema.{Column, SchemaResolver, Table}
-import io.github.hacihaciyev.sql.internal.value_objects.{Ref, ExprTraversal}
+import io.github.hacihaciyev.sql.internal.value_objects.{ExprTraversal, Ref, TableSource}
 import io.github.hacihaciyev.types.SQLType
 import io.github.hacihaciyev.util.{Err, Ok}
 import io.github.hacihaciyev.types.internal.{TypeInfo, TypeInfoOk, TypeRegistry}
 
+import scala.annotation.tailrec
 import scala.jdk.CollectionConverters.*
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 
 sealed trait Context {
-    def trefs: List[TableRef]
+    def sources: List[TableSource]
     def refs: List[Ref]
+    def outer: Option[Context]
 
-    require(trefs != null)
+    require(sources != null)
     require(refs != null)
-    require(!trefs.contains(null))
+    require(outer != null)
+    require(!sources.contains(null))
     require(!refs.contains(null))
 
     validate()
@@ -31,102 +34,161 @@ sealed trait Context {
 
 object Context {
 
-    case class Select(trefs: List[TableRef],
-                      refs: List[Ref],
-                      where: Option[Expr],
-                      groupBy: List[Expr],
-                      having: Option[Expr],
-                      orderBy: List[Expr]) extends Context {
+    case class Select(
+                         sources: List[TableSource],
+                         refs: List[Ref],
+                         where: Option[Expr],
+                         groupBy: List[Expr],
+                         having: Option[Expr],
+                         orderBy: List[Expr],
+                         outer: Option[Context] = None
+                     ) extends Context {
 
-        require(where != null)
         require(groupBy != null)
-        require(having != null)
         require(orderBy != null)
 
         protected def validate(): Unit = {
-            validateCommon(trefs, refs)
-            val tables = loadTables(trefs)
-            val errs   = mutable.ListBuffer[String]()
+            validateCommon(sources, refs)
+            val (physical, virtual) = resolve(sources)
+            val errs = mutable.ListBuffer[String]()
 
-            validateProjection(trefs, refs, tables, errs)
+            validateProjection(sources, refs, physical, virtual, errs)
 
             val whereCrefs  = where.toList.flatMap(ExprTraversal.collectCrefs)
             val groupCrefs  = groupBy.flatMap(ExprTraversal.collectCrefs)
             val havingCrefs = having.toList.flatMap(ExprTraversal.collectCrefs)
             val orderCrefs  = orderBy.flatMap(ExprTraversal.collectCrefs)
 
-            val extraCrefs = whereCrefs ++ groupCrefs ++ havingCrefs ++ orderCrefs
+            val extraCrefs  = whereCrefs ++ groupCrefs ++ havingCrefs ++ orderCrefs
 
-            for (cref <- extraCrefs) validateCref(cref, tables, errs)
+            for (cref <- extraCrefs) validateCref(cref, physical, virtual, outer, errs)
             throwIfErrors(errs)
         }
     }
 
-    case class Insert(trefs: List[TableRef],
-                      refs: List[Ref],
-                      returning: Option[List[Ref]]) extends Context {
+    case class Insert(
+                         sources: List[TableSource],
+                         refs: List[Ref],
+                         returning: Option[List[Ref]],
+                         outer: Option[Context] = None
+                     ) extends Context {
 
         require(returning != null)
 
         protected def validate(): Unit = {
-            validateCommon(trefs, refs)
-            val tables = loadTables(trefs)
-            val errs   = mutable.ListBuffer[String]()
+            validateCommon(sources, refs)
+            val (physical, virtual) = resolve(sources)
+            val errs = mutable.ListBuffer[String]()
 
             validateNamedOnly(refs, errs)
-            validateProjection(trefs, refs, tables, errs)
-            returning.foreach(r => validateProjection(trefs, r, tables, errs))
+            validateProjection(sources, refs, physical, virtual, errs)
+            returning.foreach(r => validateProjection(sources, r, physical, virtual, errs))
             throwIfErrors(errs)
         }
     }
 
-    case class Update(trefs: List[TableRef],
-                      refs: List[Ref],
-                      where: Option[Expr],
-                      returning: Option[List[Ref]]) extends Context {
+    case class Update(
+                         sources: List[TableSource],
+                         refs: List[Ref],
+                         where: Option[Expr],
+                         returning: Option[List[Ref]],
+                         outer: Option[Context] = None
+                     ) extends Context {
 
         require(returning != null)
 
         protected def validate(): Unit = {
-            validateCommon(trefs, refs)
-            val tables = loadTables(trefs)
-            val errs   = mutable.ListBuffer[String]()
+            validateCommon(sources, refs)
+            val (physical, virtual) = resolve(sources)
+            val errs = mutable.ListBuffer[String]()
 
             validateNamedOnly(refs, errs)
-            validateProjection(trefs, refs, tables, errs)
-
+            validateProjection(sources, refs, physical, virtual, errs)
 
             val whereCrefs = where.toList.flatMap(ExprTraversal.collectCrefs)
-            for (cref <- whereCrefs) validateCref(cref, tables, errs)
+            for (cref <- whereCrefs) validateCref(cref, physical, virtual, outer, errs)
 
-            returning.foreach(r => validateProjection(trefs, r, tables, errs))
+            returning.foreach(r => validateProjection(sources, r, physical, virtual, errs))
             throwIfErrors(errs)
         }
     }
 
-    case class Delete(trefs: List[TableRef],
-                      refs: List[Ref],
-                      where: Option[Expr],
-                      returning: Option[List[Ref]]) extends Context {
+    case class Delete(
+                         sources: List[TableSource],
+                         refs: List[Ref],
+                         where: Option[Expr],
+                         returning: Option[List[Ref]],
+                         outer: Option[Context] = None
+                     ) extends Context {
 
         require(returning != null)
 
         protected def validate(): Unit = {
-            validateCommon(trefs, refs)
-            val tables = loadTables(trefs)
-            val errs   = mutable.ListBuffer[String]()
+            validateCommon(sources, refs)
+            val (physical, virtual) = resolve(sources)
+            val errs = mutable.ListBuffer[String]()
 
             val whereCrefs = where.toList.flatMap(ExprTraversal.collectCrefs)
-            for (cref <- whereCrefs) validateCref(cref, tables, errs)
+            for (cref <- whereCrefs) validateCref(cref, physical, virtual, outer, errs)
 
-            returning.foreach(r => validateProjection(trefs, r, tables, errs))
+            returning.foreach(r => validateProjection(sources, r, physical, virtual, errs))
             throwIfErrors(errs)
         }
     }
 
-    private def validateCommon(trefs: List[TableRef], refs: List[Ref]): Unit = {
-        if (trefs.isEmpty) {
-            assert(refs.isEmpty, "Refs without TableRefs")
+    private def resolve(sources: List[TableSource]): (Map[TableRef, Table], Map[String, List[String]]) = {
+        val physical = mutable.Map[TableRef, Table]()
+        val virtual  = mutable.Map[String, List[String]]()
+
+        sources.foreach {
+            case source: TableSource.Physical =>
+                SchemaResolver.load(source.tref, ds()) match {
+                    case ok: Ok[Table, SchemaVerificationException]   => physical(source.tref) = ok.value()
+                    case err: Err[Table, SchemaVerificationException] => throw SchemaVerificationException(tableNotFound(source), err.err())
+                }
+
+            case source: TableSource.Virtual =>
+                val cols = extractVirtualCols(source.ctx)
+                virtual(source.effectiveName) = cols
+        }
+
+        (physical.toMap, virtual.toMap)
+    }
+
+    private def extractVirtualCols(ctx: Context): List[String] =
+        ctx.refs.map(_.value).flatMap {
+            case base: Projection.Base => base.expr match {
+                case ac: ColumnRef.AliasedColumn => List(ac.alias())
+                case col: ColumnRef => List(col.name())
+                case _: ValueExpr => List()
+            }
+            case aliased: Projection.Aliased => List(aliased.alias())
+            case _: Projection.Wildcard => extractAllCols(ctx.sources)
+            case qw: Projection.QualifiedWildcard => extractQualifiedCols(qw.qualifier(), ctx.sources)
+        }
+
+    private def extractAllCols(sources: List[TableSource]): List[String] =
+        sources.flatMap {
+            case src: TableSource.Physical => loadPhysicalColNames(src.tref)
+            case src: TableSource.Virtual => extractVirtualCols(src.ctx)
+        }
+
+    private def extractQualifiedCols(qualifier: String, sources: List[TableSource]): List[String] =
+        sources.find(_.effectiveName.equalsIgnoreCase(qualifier)) match {
+            case Some(src: TableSource.Physical) => loadPhysicalColNames(src.tref)
+            case Some(src: TableSource.Virtual) => extractVirtualCols(src.ctx)
+            case None => throw SchemaVerificationException(s"Wildcard qualifier '$qualifier' refers to non-existent table.")
+        }
+
+    private def loadPhysicalColNames(tref: TableRef): List[String] =
+        SchemaResolver.load(tref, ds()) match {
+            case ok: Ok[Table, SchemaVerificationException] => List.from(ok.value().columns().map(_.name()))
+            case err: Err[Table, SchemaVerificationException] => throw err.err()
+        }
+
+    private def validateCommon(sources: List[TableSource], refs: List[Ref]): Unit = {
+        if (sources.isEmpty) {
+            assert(refs.isEmpty, "Refs without sources")
             return
         }
 
@@ -134,22 +196,26 @@ object Context {
         if (indexes.toSet.size != indexes.size)
             throw SchemaVerificationException("Duplicate positional indexes found in context.")
 
-        val names = effectiveTableNames(trefs)
+        val names = sources.map(_.effectiveName)
         if (names.toSet.size != names.size)
             throw SchemaVerificationException("Duplicate table effective names found in context.")
     }
 
-    private def effectiveTableNames(trefs: List[TableRef]): List[String] = trefs.map {
-        case ta: TableRef.Aliased => ta.alias()
-        case base                 => base.name()
-    }
+    private def validateNamedOnly(refs: List[Ref], errs: ListBuffer[String]): Unit =
+        refs.foreach {
+            case _: Ref.Named =>
+            case _: Ref.Indexed => errs.addOne("DML context does not allow positional refs")
+        }
 
-    private def validateProjection(trefs: List[TableRef],
-                                   refs: List[Ref],
-                                   tables: Map[TableRef, Table],
-                                   errs: ListBuffer[String]): Unit = {
+    private def validateProjection(
+                                      sources: List[TableSource],
+                                      refs: List[Ref],
+                                      physical: Map[TableRef, Table],
+                                      virtual: Map[String, List[String]],
+                                      errs: ListBuffer[String]
+                                  ): Unit = {
 
-        val trefByName = effectiveTableNames(trefs).zip(trefs).toMap
+        val trefByName = sources.map(s => s.effectiveName -> s).toMap
         val crefs      = mutable.ListBuffer[ColumnRef]()
 
         val names = refs.map(_.value).flatMap {
@@ -174,67 +240,82 @@ object Context {
 
             case qw: Projection.QualifiedWildcard =>
                 trefByName.get(qw.qualifier()) match {
-                    case Some(tref) => loadCrefs(tref, crefs)
+                    case Some(src: TableSource.Physical) => loadPhysicalCrefs(src.tref, crefs)
+                    case Some(src: TableSource.Virtual)  => loadVirtualCrefs(src, crefs)
                     case None => throw SchemaVerificationException(s"Wildcard qualifier '${qw.qualifier()}' refers to non-existent table.")
                 }
 
             case _: Projection.Wildcard =>
-                trefs.flatMap(tref => loadCrefs(tref, crefs))
+                sources.flatMap {
+                    case src: TableSource.Physical => loadPhysicalCrefs(src.tref, crefs)
+                    case src: TableSource.Virtual  => loadVirtualCrefs(src, crefs)
+                }
         }
 
         if (names.toSet.size != names.size)
             throw SchemaVerificationException("Duplicate column names or aliases found in context.")
 
-        for (cref <- crefs.toList) validateCref(cref, tables, errs)
+        for (cref <- crefs.toList) validateCref(cref, physical, virtual, None, errs)
     }
 
-    private def validateNamedOnly(refs: List[Ref], errs: ListBuffer[String]): Unit =
-        refs.foreach {
-            case _: Ref.Named   =>
-            case _: Ref.Indexed => errs.addOne("DML context does not allow positional refs")
+    @tailrec
+    private def validateCref(
+                                cref: ColumnRef,
+                                physical: Map[TableRef, Table],
+                                virtual: Map[String, List[String]],
+                                outer: Option[Context],
+                                errs: ListBuffer[String]
+                            ): Unit = {
+
+        val physicalMatches = physical.filter { case (tref, table) => table.column(cref, tref).isPresent }
+
+        val virtualMatch = cref match {
+            case vc: ColumnRef.VariableColumn => virtual.get(vc.variable()).exists(_.exists(_.equalsIgnoreCase(cref.name())))
+            case col => virtual.values.exists(_.exists(_.equalsIgnoreCase(col.name())))
         }
 
-    private def validateCref(cref: ColumnRef,
-                             tables: Map[TableRef, Table],
-                             errs: ListBuffer[String]): Unit = {
+        val totalMatches = physicalMatches.size + (if virtualMatch then 1 else 0)
 
-        val matches = tables.filter { case (tref, table) => table.column(cref, tref).isPresent }
+        totalMatches match {
+            case 0 => outer match {
+                case Some(ctx) =>
+                    val (outerPhysical, outerVirtual) = resolve(ctx.sources)
+                    validateCref(cref, outerPhysical, outerVirtual, ctx.outer, errs)
 
-        matches.size match {
-            case 0 => errs.addOne(s"Column '$cref' not found in any table")
-            case 1 =>
-                val (tref, table) = matches.head
+                case None => errs.addOne(s"Column '$cref' not found in any table or subquery")
+            }
+
+            case 1 if physicalMatches.size == 1 =>
+                val (tref, table) = physicalMatches.head
                 val column        = table.column(cref, tref).get
                 (cref.typeClass, column) match {
                     case (tpe: Type.Some, col: Column.Known) => validateTypes(cref, tpe.value(), col.sqlType(), errs)
-                    case _                                   =>
+                    case _ =>
                 }
-            case _ => errs.addOne(s"Ambiguous column '$cref' found in multiple tables: ${matches.keys.map(_.name()).mkString(", ")}")
+
+            case 1 =>
+
+            case _ =>
+                errs.addOne(s"Ambiguous column '$cref' found in multiple tables: ${physicalMatches.keys.map(_.name()).mkString(", ")}")
         }
     }
 
-    private def validateTypes(cref: ColumnRef,
-                              javaType: Class[?],
-                              sqlType: SQLType,
-                              errs: mutable.ListBuffer[String]): Unit =
+    private def validateTypes(
+                                 cref: ColumnRef,
+                                 javaType: Class[?],
+                                 sqlType: SQLType,
+                                 errs: mutable.ListBuffer[String]
+                             ): Unit =
 
         TypeRegistry.info(javaType) match {
             case typeInfo: TypeInfoOk =>
-                if (!typeInfo.sqlTypes().contains(sqlType)) {
+                if (!typeInfo.sqlTypes().contains(sqlType))
                     errs.addOne(typeMismatchError(cref, javaType, sqlType, typeInfo.sqlTypes().asScala.toSet))
-                }
+
             case _: TypeInfo.None => errs.addOne(unsupportedType(cref, javaType))
         }
 
-    private def loadTables(trefs: List[TableRef]): Map[TableRef, Table] =
-        trefs.flatMap { tref =>
-            SchemaResolver.load(tref, ds()) match {
-                case ok: Ok[Table, SchemaVerificationException]   => Some(tref -> ok.value())
-                case err: Err[Table, SchemaVerificationException] => throw SchemaVerificationException(s"Table '$tref' not found", err.err())
-            }
-        }.toMap
-
-    private def loadCrefs(tref: TableRef, crefs: mutable.ListBuffer[ColumnRef]): List[String] = {
+    private def loadPhysicalCrefs(tref: TableRef, crefs: mutable.ListBuffer[ColumnRef]): List[String] = {
         val cols = SchemaResolver.load(tref, ds()) match {
             case ok: Ok[Table, SchemaVerificationException]   => List.from(ok.value().columns().map(_.name()))
             case err: Err[Table, SchemaVerificationException] => throw err.err()
@@ -243,13 +324,24 @@ object Context {
         cols
     }
 
-    private def throwIfErrors(errs: ListBuffer[String]): Unit =
-        if (errs.nonEmpty) throw new SchemaVerificationException(s"Schema validation failed:\n  - ${errs.mkString("\n  - ")}")
+    private def loadVirtualCrefs(src: TableSource.Virtual, crefs: mutable.ListBuffer[ColumnRef]): List[String] = {
+        val cols = extractVirtualCols(src.ctx)
+        crefs.addAll(cols.map(s => ColumnRef.VariableBase(src.effectiveName, s)))
+        cols
+    }
 
-    private def ds() = Conf.INSTANCE.dataSource().orElseThrow(() => SchemaVerificationException("Cannot obtain a datasource"))
+    private def throwIfErrors(errs: ListBuffer[String]): Unit =
+        if (errs.nonEmpty)
+            throw new SchemaVerificationException(s"Schema validation failed:\n  - ${errs.mkString("\n  - ")}")
+
+    private def ds() =
+        Conf.INSTANCE.dataSource().orElseThrow(() => SchemaVerificationException("Cannot obtain a datasource"))
+
+    private def tableNotFound(source: TableSource.Physical) = s"Table '${source.tref}' not found"
 
     private def typeMismatchError(cref: ColumnRef, javaType: Class[?], sqlType: SQLType, compatible: Set[SQLType]): String =
         s"Type mismatch for column '$cref': Java type '${javaType.getSimpleName}' is not compatible with SQL type '$sqlType'. Expected one of: $compatible"
 
-    private def unsupportedType(cref: ColumnRef, javaType: Class[?]): String = s"Unsupported Java type '${javaType.getName}' for column '$cref'"
+    private def unsupportedType(cref: ColumnRef, javaType: Class[?]): String =
+        s"Unsupported Java type '${javaType.getName}' for column '$cref'"
 }
