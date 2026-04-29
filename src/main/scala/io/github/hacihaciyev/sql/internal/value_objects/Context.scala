@@ -32,6 +32,10 @@ sealed trait Context {
     protected def validate(): Unit
 }
 
+sealed trait DQL
+
+sealed trait DML
+
 object Context {
 
     case class Select(
@@ -42,7 +46,7 @@ object Context {
                          having: Option[Expr],
                          orderBy: List[Expr],
                          outer: Option[Context] = None
-                     ) extends Context {
+                     ) extends Context, DQL {
 
         require(groupBy != null)
         require(orderBy != null)
@@ -71,7 +75,7 @@ object Context {
                          refs: List[Ref],
                          returning: Option[List[Ref]],
                          outer: Option[Context] = None
-                     ) extends Context {
+                     ) extends Context, DML {
 
         require(returning != null)
 
@@ -93,7 +97,7 @@ object Context {
                          where: Option[Expr],
                          returning: Option[List[Ref]],
                          outer: Option[Context] = None
-                     ) extends Context {
+                     ) extends Context, DML {
 
         require(returning != null)
 
@@ -119,7 +123,7 @@ object Context {
                          where: Option[Expr],
                          returning: Option[List[Ref]],
                          outer: Option[Context] = None
-                     ) extends Context {
+                     ) extends Context, DML {
 
         require(returning != null)
 
