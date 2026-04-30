@@ -4,3 +4,6 @@
 /.project
 /.settings/
 /.zed/
+/.metals/
+/.bloop/
+.project
