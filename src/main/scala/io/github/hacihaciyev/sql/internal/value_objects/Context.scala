@@ -348,4 +348,66 @@ object Context {
 
     private def unsupportedType(cref: ColumnRef, javaType: Class[?]): String =
         s"Unsupported Java type '${javaType.getName}' for column '$cref'"
+        
+    def insertContext(
+                          sources: java.util.List[TableSource],
+                          refs: java.util.List[Ref],
+                          returning: java.util.Optional[java.util.List[Ref]],
+                          outer: java.util.Optional[Context]
+                     ): Context.Insert = Context.Insert(
+          
+        asScala(sources).toList,
+        asScala(refs).toList,
+        if returning.isPresent then Some(asScala(returning.get).toList) else None,
+        if outer.isPresent then Some(outer.get) else None
+    )
+     
+    def selectContext(
+                          sources: java.util.List[TableSource],
+                          refs: java.util.List[Ref],
+                          where: java.util.Optional[Expr],
+                          groupBy: java.util.List[Expr],
+                          having: java.util.Optional[Expr],
+                          orderBy: java.util.List[Expr],
+                          outer: java.util.Optional[Context]
+                     ): Context.Select = Context.Select(
+         
+        asScala(sources).toList,
+        asScala(refs).toList,
+        if where.isPresent then Some(where.get) else None,
+        asScala(groupBy).toList,
+        if having.isPresent then Some(having.get) else None,
+        asScala(orderBy).toList,
+        if outer.isPresent then Some(outer.get) else None
+    )
+     
+    def updateContext(
+                          sources: java.util.List[TableSource],
+                          refs: java.util.List[Ref],
+                          where: java.util.Optional[Expr],
+                          returning: java.util.Optional[java.util.List[Ref]],
+                          outer: java.util.Optional[Context]
+                     ): Context.Update = Context.Update(
+            
+        asScala(sources).toList,
+        asScala(refs).toList,
+        if where.isPresent then Some(where.get) else None,
+        if returning.isPresent then Some(asScala(returning.get).toList) else None,
+        if outer.isPresent then Some(outer.get) else None
+    )
+     
+    def deleteContext(
+                          sources: java.util.List[TableSource],
+                          refs: java.util.List[Ref],
+                          where: java.util.Optional[Expr],
+                          returning: java.util.Optional[java.util.List[Ref]],
+                          outer: java.util.Optional[Context]
+                     ): Context.Delete = Context.Delete(
+            
+        asScala(sources).toList,
+        asScala(refs).toList,
+        if where.isPresent then Some(where.get) else None,
+        if returning.isPresent then Some(asScala(returning.get).toList) else None,
+        if outer.isPresent then Some(outer.get) else None
+    )    
 }
