@@ -124,17 +124,44 @@
       <version>4.9.9</version>
       <executions>
         <execution>
+          <id>scala-compile</id>
+          <phase>compile</phase>
           <goals>
+            <goal>add-source</goal>
             <goal>compile</goal>
+          </goals>
+        </execution>
+        <execution>
+          <id>scala-test-compile</id>
+          <phase>test-compile</phase>
+          <goals>
+            <goal>testCompile</goal>
           </goals>
         </execution>
       </executions>
       <configuration>
         <scalaVersion>${scala.version}</scalaVersion>
+        <compileOrder>Mixed</compileOrder>
         <args>
           <arg>-Werror</arg>
         </args>
       </configuration>
+    </plugin>
+
+    <plugin>
+      <groupId>org.apache.maven.plugins</groupId>
+      <artifactId>maven-compiler-plugin</artifactId>
+      <version>3.14.0</version>
+      <executions>
+        <execution>
+          <id>default-compile</id>
+          <phase>none</phase>
+        </execution>
+        <execution>
+          <id>default-testCompile</id>
+          <phase>none</phase>
+        </execution>
+      </executions>
     </plugin>
   
     <plugin>
