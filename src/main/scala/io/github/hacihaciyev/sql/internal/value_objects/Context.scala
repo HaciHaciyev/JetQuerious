@@ -356,9 +356,9 @@ object Context {
                           outer: java.util.Optional[Context]
                      ): Context.Insert = Context.Insert(
           
-        asScala(sources).toList,
-        asScala(refs).toList,
-        if returning.isPresent then Some(asScala(returning.get).toList) else None,
+        sources.asScala.toList,
+        refs.asScala.toList,
+        if returning.isPresent then Some(returning.get.asScala.toList) else None,
         if outer.isPresent then Some(outer.get) else None
     )
      
@@ -372,12 +372,12 @@ object Context {
                           outer: java.util.Optional[Context]
                      ): Context.Select = Context.Select(
          
-        asScala(sources).toList,
-        asScala(refs).toList,
+        sources.asScala.toList,
+        refs.asScala.toList,
         if where.isPresent then Some(where.get) else None,
-        asScala(groupBy).toList,
+        groupBy.asScala.toList,
         if having.isPresent then Some(having.get) else None,
-        asScala(orderBy).toList,
+        orderBy.asScala.toList,
         if outer.isPresent then Some(outer.get) else None
     )
      
@@ -389,10 +389,10 @@ object Context {
                           outer: java.util.Optional[Context]
                      ): Context.Update = Context.Update(
             
-        asScala(sources).toList,
-        asScala(refs).toList,
+        sources.asScala.toList,
+        refs.asScala.toList,
         if where.isPresent then Some(where.get) else None,
-        if returning.isPresent then Some(asScala(returning.get).toList) else None,
+        if returning.isPresent then Some(returning.get.asScala.toList) else None,
         if outer.isPresent then Some(outer.get) else None
     )
      
@@ -404,10 +404,10 @@ object Context {
                           outer: java.util.Optional[Context]
                      ): Context.Delete = Context.Delete(
             
-        asScala(sources).toList,
-        asScala(refs).toList,
+        sources.asScala.toList,
+        refs.asScala.toList,
         if where.isPresent then Some(where.get) else None,
-        if returning.isPresent then Some(asScala(returning.get).toList) else None,
+        if returning.isPresent then Some(returning.get.asScala.toList) else None,
         if outer.isPresent then Some(outer.get) else None
     )    
 }
