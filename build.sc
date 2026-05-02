@@ -8,7 +8,7 @@ object jetquerious extends ScalaModule with PublishModule {
 
   def scalaVersion = "3.6.4"
 
-  def javacOptions = Seq("25")
+  def javacOptions = Seq("--release", "25")
 
   def scalacOptions = Seq("-Werror")
 
@@ -29,32 +29,30 @@ object jetquerious extends ScalaModule with PublishModule {
     )
   )
 
-  def runMetaGen = Task {
-    val compiled = compile()
+  override def sources = Task.Sources(
+    moduleDir / os.up / "src" / "main" / "java",
+    moduleDir / os.up / "src" / "main" / "scala"
+  )
 
-    val cp = (
-      compileClasspath().map(_.path) :+
-      compiled.classes.path
-    ).mkString(java.io.File.pathSeparator)
-
-    os.proc(
-      "java",
+  override def compile = Task {
+    val result = super.compile()
+    val cp = (compileClasspath().map(_.path) :+ result.classes.path)
+      .mkString(java.io.File.pathSeparator)
+    os.proc("java",
       "-cp", cp,
       "-Djetquerious.packages=io.github.hacihaciyev.types",
       "io.github.hacihaciyev.types.internal.MetaGen"
     ).call(stdout = os.Inherit, stderr = os.Inherit)
-
-    compiled
-  }
-
-  override def compile = super.compile
-
-  def build = Task {
-    runMetaGen()
+    result
   }
 
   object test extends ScalaTests {
-  
+
+    override def sources = Task.Sources(
+      moduleDir / os.up / os.up / "src" / "test" / "java",
+      moduleDir / os.up / os.up / "src" / "test" / "scala"
+    )
+
     def mvnDeps = Seq(
       mvn"org.assertj:assertj-core:4.0.0-M1",
       mvn"org.junit.jupiter:junit-jupiter-api:5.13.0-M2",
@@ -65,24 +63,7 @@ object jetquerious extends ScalaModule with PublishModule {
       mvn"org.testcontainers:postgresql:1.21.3",
       mvn"net.aichler:jupiter-interface:0.11.1"
     )
-  
+
     def testFramework = "net.aichler.jupiter.api.JupiterFramework"
-  
-    def generateTestMeta = Task {
-      val cp = runClasspath().map(_.path)
-        .mkString(java.io.File.pathSeparator)
-  
-      os.proc(
-        "java",
-        "--enable-preview",
-        "-cp", cp,
-        "-Djetquerious.packages=io.github.hacihaciyev.types",
-        "io.github.hacihaciyev.types.internal.MetaGen"
-      ).call(stdout = os.Inherit, stderr = os.Inherit)
-    }
-  
-    def runMeta = Task {
-      generateTestMeta()
-    }
   }
 }

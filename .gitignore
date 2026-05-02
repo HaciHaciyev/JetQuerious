@@ -7,4 +7,5 @@
 /.metals/
 /.bloop/
 /out/
+/.bsp/
 .project
