@@ -6,4 +6,5 @@
 /.zed/
 /.metals/
 /.bloop/
+/out/
 .project
