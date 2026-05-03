@@ -6,18 +6,6 @@ import mill.scalalib.publish.*
 
 object jetquerious extends ScalaModule with PublishModule {
 
-  def scalaVersion = "3.6.4"
-
-  def javacOptions = Seq("--release", "25")
-
-  def scalacOptions = Seq("-Werror")
-
-  def mvnDeps = Seq(
-    mvn"org.scala-lang::scala3-library:3.6.4"
-  )
-
-  def publishVersion = "1.0.7"
-
   def pomSettings = PomSettings(
     description = "JetQuerious is a lightweight, high-performance, and developer-friendly library for working with JDBC and SQL in Java.",
     organization = "io.github.hacihaciyev",
@@ -28,7 +16,17 @@ object jetquerious extends ScalaModule with PublishModule {
       Developer("hadzhy", "Hadzhyiev Hadzhy", "https://github.com/HaciHaciyev")
     )
   )
+  
+  def publishVersion = "1.0.7"
+  
+  def scalaVersion = "3.6.4"
 
+  def javacOptions = Seq("--release", "25")
+
+  def scalacOptions = Seq("-Werror")
+
+  def mvnDeps = Seq(mvn"org.scala-lang::scala3-library:3.6.4")
+  
   override def sources = Task.Sources(
     moduleDir / os.up / "src" / "main" / "java",
     moduleDir / os.up / "src" / "main" / "scala"
@@ -36,8 +34,8 @@ object jetquerious extends ScalaModule with PublishModule {
 
   override def compile = Task {
     val result = super.compile()
-    val cp = (compileClasspath().map(_.path) :+ result.classes.path)
-      .mkString(java.io.File.pathSeparator)
+    val cp = (compileClasspath().map(_.path) :+ result.classes.path).mkString(java.io.File.pathSeparator)
+    
     os.proc(
       sys.props("java.home") + "/bin/java",
       "-cp", cp,
@@ -45,6 +43,7 @@ object jetquerious extends ScalaModule with PublishModule {
       s"-Djetquerious.output_dir=${result.classes.path}",
       "io.github.hacihaciyev.types.internal.MetaGen"
     ).call(stdout = os.Inherit, stderr = os.Inherit)
+    
     result
   }
 
@@ -57,6 +56,7 @@ object jetquerious extends ScalaModule with PublishModule {
 
     def mvnDeps = Seq(
       mvn"org.assertj:assertj-core:4.0.0-M1",
+      mvn"com.github.sbt.junit:jupiter-interface:0.18.0",
       mvn"org.junit.jupiter:junit-jupiter-api:5.13.0-M2",
       mvn"org.junit.jupiter:junit-jupiter-params:5.13.0-M2",
       mvn"org.mockito:mockito-core:5.18.0",
@@ -66,6 +66,6 @@ object jetquerious extends ScalaModule with PublishModule {
       mvn"net.aichler:jupiter-interface:0.11.1"
     )
 
-    def testFramework = "net.aichler.jupiter.api.JupiterFramework"
+    def testFramework = "com.github.sbt.junit.jupiter.api.JupiterFramework"
   }
 }
