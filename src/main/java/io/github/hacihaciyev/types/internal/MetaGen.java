@@ -41,9 +41,9 @@ public final class MetaGen {
 
     static final String INVALID_PACKAGE_DEF = "JetQuerious. Property: jetquerious.packages. Invalid package definition";
 
-    static final Path META_REGISTRY_BACKUP = Path.of(Conf.INSTANCE.outputDir() + "io/github/hacihaciyev/types/internal/MetaRegistry.class.backup");
+    static final Path META_REGISTRY_BACKUP = Path.of(Conf.INSTANCE.outputDir() + "/io/github/hacihaciyev/types/internal/MetaRegistry.class.backup");
 
-    static final Path META_REGISTRY_PATH = Path.of(Conf.INSTANCE.outputDir() + "io/github/hacihaciyev/types/internal/MetaRegistry.class");
+    static final Path META_REGISTRY_PATH = Path.of(Conf.INSTANCE.outputDir() + "/io/github/hacihaciyev/types/internal/MetaRegistry.class");
 
     static final ClassDesc META_REGISTRY_DESC = ClassDesc.of("io.github.hacihaciyev.types.internal.MetaRegistry");
 
