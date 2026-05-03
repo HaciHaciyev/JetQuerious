@@ -38,9 +38,11 @@ object jetquerious extends ScalaModule with PublishModule {
     val result = super.compile()
     val cp = (compileClasspath().map(_.path) :+ result.classes.path)
       .mkString(java.io.File.pathSeparator)
-    os.proc("java",
+    os.proc(
+      sys.props("java.home") + "/bin/java",
       "-cp", cp,
       "-Djetquerious.packages=io.github.hacihaciyev.types",
+      s"-Djetquerious.output_dir=${result.classes.path}",
       "io.github.hacihaciyev.types.internal.MetaGen"
     ).call(stdout = os.Inherit, stderr = os.Inherit)
     result
