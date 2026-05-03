@@ -10,6 +10,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import static java.util.Objects.requireNonNull;
 
 public final class Conf {
+    private final String outputDir;
     private final String[] packages;
     private final UUIDStrategy.Type uuidStrategy;
     private final Duration schemaTTLInSeconds;
@@ -19,6 +20,7 @@ public final class Conf {
     public static final Conf INSTANCE = new Conf();
 
     private Conf() {
+        this.outputDir = defOutputDir();
         this.packages = defPackages();
         this.uuidStrategy = defUUIDStrategy();
         this.schemaTTLInSeconds = defSchemaCacheTTL();
@@ -44,7 +46,17 @@ public final class Conf {
     public Optional<DataSource> dataSource() {
         return Optional.ofNullable(dataSourceRef.get());
     }
+    
+    public String outputDir() {
+        return outputDir;
+    }
 
+    public String defOutputDir() {
+        var outputDir = System.getProperty("jetquerious.output_dir");
+        if (outputDir == null || outputDir.isBlank()) return "target/classes";
+        return outputDir;
+    }
+    
     public void defDataSource(DataSource dataSource) {
         requireNonNull(dataSource, "DataSource cannot be null");
         dataSourceRef.set(dataSource);
