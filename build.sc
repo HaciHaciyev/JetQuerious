@@ -6,7 +6,7 @@ import mill.scalalib.publish.*
 
 object jetquerious extends ScalaModule with PublishModule {
 
-    def pomSettings      = PomSettings(
+    def pomSettings                 = PomSettings(
         description     = "JetQuerious is a lightweight, high-performance, and developer-friendly library for working with JDBC and SQL in Java.",
         organization    = "io.github.hacihaciyev",
         url             = "https://github.com/HaciHaciyev/JetQuerious",
@@ -17,22 +17,22 @@ object jetquerious extends ScalaModule with PublishModule {
         )
     )
 
-    def publishVersion   = "1.0.7"
+    def publishVersion              = "1.0.7"
   
-    def scalaVersion     = "3.6.4"
+    def scalaVersion                = "3.6.4"
 
-    def javacOptions     = Seq("--release", "25")
+    def javacOptions                = Seq("--release", "25")
 
-    def scalacOptions    = Seq("-Werror")
+    def scalacOptions               = Seq("-Werror")
 
-    def mvnDeps          = Seq(mvn"org.scala-lang::scala3-library:3.6.4")
+    def mvnDeps                     = Seq(mvn"org.scala-lang::scala3-library:3.6.4")
 
-    override def sources = Task.Sources(
+    override def sources            = Task.Sources(
         moduleDir / os.up / "src" / "main" / "java",
         moduleDir / os.up / "src" / "main" / "scala"
     )
   
-    def metaGen          = Task {
+    def metaGen                     = Task {
         val mainClasses = compile().classes.path
         val testClasses = this.test.compile().classes.path
         val deps        = compileClasspath().map(_.path) ++ this.test.compileClasspath().map(_.path)
@@ -50,20 +50,31 @@ object jetquerious extends ScalaModule with PublishModule {
         ).call()
     }
     
-    def build            = Task {
+    def build                      = Task {
         metaGen()
         test.testCached()
         ()
     }
     
+    def testWithGen(args: String*) = Task.Command {
+        metaGen()
+        test.testOnly(args*)()
+        ()
+    }
+    
+    def testOnly(args: String*)    = Task.Command {
+        test.testOnly(args*)()
+        ()
+    }
+    
     private object test extends ScalaTests {
 
-        override def sources = Task.Sources(
+        override def sources       = Task.Sources(
             moduleDir / os.up / os.up / "src" / "test" / "java",
             moduleDir / os.up / os.up / "src" / "test" / "scala"
         )
 
-        def mvnDeps          = Seq(
+        def mvnDeps                = Seq(
             mvn"org.assertj:assertj-core:4.0.0-M1",
             mvn"com.github.sbt.junit:jupiter-interface:0.18.0",
             mvn"org.junit.jupiter:junit-jupiter-api:5.13.0-M2",
@@ -74,6 +85,6 @@ object jetquerious extends ScalaModule with PublishModule {
             mvn"org.testcontainers:postgresql:1.21.3"
         )
 
-        def testFramework    = "com.github.sbt.junit.jupiter.api.JupiterFramework"
+        def testFramework          = "com.github.sbt.junit.jupiter.api.JupiterFramework"
     }
 }
