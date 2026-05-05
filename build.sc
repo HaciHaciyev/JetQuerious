@@ -7,12 +7,12 @@ import mill.scalalib.publish.*
 object jetquerious extends ScalaModule with PublishModule {
 
     def pomSettings      = PomSettings(
-        description    = "JetQuerious is a lightweight, high-performance, and developer-friendly library for working with JDBC and SQL in Java.",
-        organization   = "io.github.hacihaciyev",
-        url            = "https://github.com/HaciHaciyev/JetQuerious",
-        licenses       = Seq(License.MIT),
-        versionControl = VersionControl.github("HaciHaciyev", "JetQuerious"),
-        developers     = Seq(
+        description     = "JetQuerious is a lightweight, high-performance, and developer-friendly library for working with JDBC and SQL in Java.",
+        organization    = "io.github.hacihaciyev",
+        url             = "https://github.com/HaciHaciyev/JetQuerious",
+        licenses        = Seq(License.MIT),
+        versionControl  = VersionControl.github("HaciHaciyev", "JetQuerious"),
+        developers      = Seq(
             Developer("hadzhy", "Hadzhyiev Hadzhy", "https://github.com/HaciHaciyev")
         )
     )
@@ -48,6 +48,12 @@ object jetquerious extends ScalaModule with PublishModule {
             testClasses.toString,
             os.pwd.toString
         ).call()
+    }
+    
+    def build            = Task {
+        metaGen()
+        test.testCached()
+        ()
     }
     
     private object test extends ScalaTests {
