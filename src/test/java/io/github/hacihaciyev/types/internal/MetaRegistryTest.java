@@ -1,5 +1,6 @@
 package io.github.hacihaciyev.types.internal;
 
+import io.github.hacihaciyev.config.Conf;
 import io.github.hacihaciyev.types.TypeInstantiationException;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -30,7 +31,7 @@ class MetaRegistryTest {
     @Order(1)
     void testMethodsCreated() throws Exception {
         var cf = ClassFile.of();
-        var registryPath = Path.of("target/classes/io/github/hacihaciyev/types/internal/MetaRegistry.class");
+        var registryPath = Path.of(Conf.INSTANCE.outputDir() + "/io/github/hacihaciyev/types/internal/MetaRegistry.class");
         var registry = cf.parse(Files.readAllBytes(registryPath));
         
         assertTrue(hasMethod(registry, "_meta_Lio_github_hacihaciyev_types_internal_MetaRegistryTest$Person"));

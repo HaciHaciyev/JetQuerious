@@ -68,6 +68,13 @@ object jetquerious extends ScalaModule with PublishModule {
     }
     
     private object test extends ScalaTests {
+        
+        override def forkArgs      = Task {
+            Seq(
+                s"-Djetquerious.output_dir=${compile().classes.path}",
+                "-Djetquerious.packages=io.github.hacihaciyev.types"
+            )
+        }
 
         override def sources       = Task.Sources(
             moduleDir / os.up / os.up / "src" / "test" / "java",
