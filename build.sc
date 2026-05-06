@@ -50,38 +50,38 @@ object jetquerious extends ScalaModule with PublishModule {
         ).call()
     }
     
-    def build                      = Task {
+    def build                       = Task {
         metaGen()
         test.testCached()
         ()
     }
     
-    def testWithGen(args: String*) = Task.Command {
+    def testWithGen(args: String*)  = Task.Command {
         metaGen()
         test.testOnly(args*)()
         ()
     }
     
-    def testOnly(args: String*)    = Task.Command {
+    def testOnly(args: String*)     = Task.Command {
         test.testOnly(args*)()
         ()
     }
     
     private object test extends ScalaTests {
         
-        override def forkArgs      = Task {
+        override def forkArgs       = Task {
             Seq(
                 s"-Djetquerious.output_dir=${jetquerious.compile().classes.path}",
                 "-Djetquerious.packages=io.github.hacihaciyev.types"
             )
         }
 
-        override def sources       = Task.Sources(
+        override def sources        = Task.Sources(
             moduleDir / os.up / os.up / "src" / "test" / "java",
             moduleDir / os.up / os.up / "src" / "test" / "scala"
         )
 
-        def mvnDeps                = Seq(
+        def mvnDeps                 = Seq(
             mvn"org.assertj:assertj-core:4.0.0-M1",
             mvn"com.github.sbt.junit:jupiter-interface:0.18.0",
             mvn"org.junit.jupiter:junit-jupiter-api:5.13.0-M2",
@@ -92,6 +92,6 @@ object jetquerious extends ScalaModule with PublishModule {
             mvn"org.testcontainers:postgresql:1.21.3"
         )
 
-        def testFramework          = "com.github.sbt.junit.jupiter.api.JupiterFramework"
+        def testFramework           = "com.github.sbt.junit.jupiter.api.JupiterFramework"
     }
 }
