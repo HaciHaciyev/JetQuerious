@@ -29,11 +29,6 @@ public final class InsertBuilder {
         return new ColumnsStage(pairs);
     }
 
-    public SelectStage select(JQ.Read query) {
-        requireNonNull(query, "Query cannot be null");
-        return new SelectStage(query);
-    }
-
     public final class ColumnsStage {
         private final List<ColumnEntry> columns;
 
@@ -69,7 +64,7 @@ public final class InsertBuilder {
         }
 
         public BuildStage returning(ColumnRef... exprs) {
-            return new BuildStage(columns, null, List.of(exprs), null);
+            return new BuildStage(columns, null, List.of(exprs));
         }
 
         public BuildStage returning(String... columnNames) {
@@ -77,27 +72,7 @@ public final class InsertBuilder {
         }
 
         public JQ.Write build() {
-            return new BuildStage(columns, null, List.of(), null).build();
-        }
-    }
-
-    public final class SelectStage {
-        private final JQ.Read query;
-
-        SelectStage(JQ.Read query) {
-            this.query = query;
-        }
-
-        public BuildStage returning(ColumnRef... exprs) {
-            return new BuildStage(List.of(), null, List.of(exprs), query);
-        }
-
-        public BuildStage returning(String... columnNames) {
-            return returning(Arrays.stream(columnNames).map(ColumnRef.Base::new).toArray(ColumnRef[]::new));
-        }
-
-        public JQ.Write build() {
-            return new BuildStage(List.of(), null, List.of(), query).build();
+            return new BuildStage(columns, null, List.of()).build();
         }
     }
 
@@ -137,7 +112,7 @@ public final class InsertBuilder {
         }
 
         public BuildStage returning(ColumnRef... exprs) {
-            return new BuildStage(columns, conflict, List.of(exprs), null);
+            return new BuildStage(columns, conflict, List.of(exprs));
         }
 
         public BuildStage returning(String... columnNames) {
@@ -145,7 +120,7 @@ public final class InsertBuilder {
         }
 
         public JQ.Write build() {
-            return new BuildStage(columns, conflict, List.of(), null).build();
+            return new BuildStage(columns, conflict, List.of()).build();
         }
     }
 
@@ -153,13 +128,11 @@ public final class InsertBuilder {
         private final List<ColumnEntry> columns;
         private final Conflict conflict;
         private final List<ColumnRef> returning;
-        private final JQ.Read selectQuery;
 
-        BuildStage(List<ColumnEntry> columns, Conflict conflict, List<ColumnRef> returning, JQ.Read selectQuery) {
-            this.columns     = columns;
-            this.conflict    = conflict;
-            this.returning   = returning;
-            this.selectQuery = selectQuery;
+        BuildStage(List<ColumnEntry> columns, Conflict conflict, List<ColumnRef> returning) {
+            this.columns   = columns;
+            this.conflict  = conflict;
+            this.returning = returning;
         }
 
         public JQ.Write build() {
@@ -167,30 +140,24 @@ public final class InsertBuilder {
         }
 
         private String buildSql() {
+            var colNames = columns.stream().map(e -> e.ref().name()).toList();
             var sb = new StringBuilder();
-            sb.append("INSERT INTO ").append(tref);
 
-            if (selectQuery != null) {
-                sb.append(" ").append(selectQuery.sql());
-            } else {
-                var colNames = columns.stream().map(e -> e.ref().name()).toList();
-                sb.append(" (").append(String.join(", ", colNames)).append(")")
-                  .append(" VALUES (").append("?, ".repeat(columns.size() - 1)).append("?)");
+            sb.append("INSERT INTO ").append(tref)
+              .append(" (").append(String.join(", ", colNames)).append(")")
+              .append(" VALUES (").append("?, ".repeat(columns.size() - 1)).append("?)");
 
-                if (conflict != null) {
-                    sb.append(" ON CONFLICT (")
-                      .append(String.join(", ", conflict.conflictColumns().stream().map(ColumnRef::name).toList()))
-                      .append(")");
+            if (conflict != null) {
+                sb.append(" ON CONFLICT (")
+                  .append(String.join(", ", conflict.conflictColumns().stream().map(ColumnRef::name).toList()))
+                  .append(")");
 
-                    switch (conflict.action()) {
-                        case ConflictAction.DoNothing _ -> sb.append(" DO NOTHING");
-                        case ConflictAction.DoUpdate a -> {
-                            var updateCols = a.updateColumns().isEmpty()
-                                ? colNames
-                                : a.updateColumns().stream().map(ColumnRef::name).toList();
-                            sb.append(" DO UPDATE SET ")
-                              .append(String.join(", ", updateCols.stream().map(c -> c + " = EXCLUDED." + c).toList()));
-                        }
+                switch (conflict.action()) {
+                    case ConflictAction.DoNothing _ -> sb.append(" DO NOTHING");
+                    case ConflictAction.DoUpdate a -> {
+                        var updateCols = a.updateColumns().isEmpty() ? colNames : a.updateColumns().stream().map(ColumnRef::name).toList();
+                        sb.append(" DO UPDATE SET ")
+                          .append(String.join(", ", updateCols.stream().map(c -> c + " = EXCLUDED." + c).toList()));
                     }
                 }
             }
@@ -210,6 +177,7 @@ public final class InsertBuilder {
                
                 case ColumnRef ref -> new Ref.Named(new Projection.Base(ref));
             }).toList();
+
             var returningRefs = Optional.of(returning)
                 .filter(r -> !r.isEmpty())
                 .map(r -> r.stream().map(e -> (Ref) new Ref.Named(new Projection.Base(e))).toList());
