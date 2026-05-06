@@ -40,15 +40,19 @@ public final class InsertBuilder {
             var columns = new java.util.ArrayList<ColumnEntry>();
 
             for (var i = 0; i < pairs.length; i += 2) columns.add(switch (pairs[i]) {
+                
                 case String name when !name.isBlank() -> switch (pairs[i + 1]) {
                     case Class<?> type -> new ColumnEntry(new ColumnRef.Base(name.trim()), type);
                     default -> throw new IllegalArgumentException("Expected Class at index " + (i + 1) + ", got: " + pairs[i + 1]);
                 };
+                
                 case String _ -> throw new IllegalArgumentException("Column name cannot be blank at index " + i);
+                
                 case ColumnRef ref -> switch (pairs[i + 1]) {
                     case Class<?> type -> new ColumnEntry(ref, type);
                     default -> throw new IllegalArgumentException("Expected Class at index " + (i + 1) + ", got: " + pairs[i + 1]);
                 };
+                
                 default -> throw new IllegalArgumentException("Expected String or ColumnRef at index " + i + ", got: " + pairs[i]);
             });
 
@@ -172,7 +176,7 @@ public final class InsertBuilder {
             var source = new TableSource.Physical(tref);
 
             var refs = columns.stream().map(e -> (Ref) switch (e.ref()) {
-                case ColumnRef.Base(var name, ColumnRef.Type.None _) ->
+                case ColumnRef.Base(var name, _) ->
                     new Ref.Named(new Projection.Base(new ColumnRef.Base(name, new ColumnRef.Type.Some(e.type_()))));
                
                 case ColumnRef ref -> new Ref.Named(new Projection.Base(ref));
