@@ -32,7 +32,7 @@ object jetquerious extends ScalaModule with PublishModule {
         moduleDir / os.up / "src" / "main" / "scala"
     )
   
-    def metaGen()                   = Task.Command {
+    def metaGen                     = Task {
         val mainClasses = compile().classes.path
         val testClasses = this.test.compile().classes.path
         val deps        = compileClasspath().map(_.path) ++ this.test.compileClasspath().map(_.path)
