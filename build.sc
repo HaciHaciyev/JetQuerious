@@ -32,7 +32,7 @@ object jetquerious extends ScalaModule with PublishModule {
         moduleDir / os.up / "src" / "main" / "scala"
     )
   
-    def metaGen                     = Task {
+    def metaGen()                   = Task.Command {
         val mainClasses = compile().classes.path
         val testClasses = this.test.compile().classes.path
         val deps        = compileClasspath().map(_.path) ++ this.test.compileClasspath().map(_.path)
@@ -71,7 +71,7 @@ object jetquerious extends ScalaModule with PublishModule {
         
         override def forkArgs      = Task {
             Seq(
-                s"-Djetquerious.output_dir=${compile().classes.path}",
+                s"-Djetquerious.output_dir=${jetquerious.compile().classes.path}",
                 "-Djetquerious.packages=io.github.hacihaciyev.types"
             )
         }
