@@ -9,6 +9,7 @@ import io.github.hacihaciyev.sql.value_objects.Projection;
 import io.github.hacihaciyev.sql.value_objects.TableRef;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
@@ -61,7 +62,7 @@ public final class InsertBuilder {
         }
 
         public ConflictTargetStage onConflict(ColumnRef... conflictColumns) {
-            return new ConflictTargetStage(columns, List.of(conflictColumns));
+            return new ConflictTargetStage(columns, List.of(conflictColumns), null);
         }
 
         public ConflictTargetStage onConflict(String... conflictColumns) {
@@ -88,6 +89,14 @@ public final class InsertBuilder {
             this.query = query;
         }
 
+        public ConflictTargetStage onConflict(ColumnRef... conflictColumns) {
+            return new ConflictTargetStage(List.of(), List.of(conflictColumns), query);
+        }
+
+        public ConflictTargetStage onConflict(String... conflictColumns) {
+            return onConflict(Arrays.stream(conflictColumns).map(ColumnRef.Base::new).toArray(ColumnRef[]::new));
+        }
+
         public BuildStage returning(ColumnRef... exprs) {
             return new BuildStage(List.of(), null, List.of(exprs), query);
         }
@@ -104,22 +113,24 @@ public final class InsertBuilder {
     public final class ConflictTargetStage {
         private final List<ColumnEntry> columns;
         private final List<ColumnRef> conflictColumns;
+        private final JQ.Read selectQuery;
 
-        ConflictTargetStage(List<ColumnEntry> columns, List<ColumnRef> conflictColumns) {
+        ConflictTargetStage(List<ColumnEntry> columns, List<ColumnRef> conflictColumns, JQ.Read selectQuery) {
             this.columns         = columns;
             this.conflictColumns = conflictColumns;
+            this.selectQuery     = selectQuery;
         }
 
         public ReturningStage doNothing() {
-            return new ReturningStage(columns, new Conflict(conflictColumns, new ConflictAction.DoNothing()));
+            return new ReturningStage(columns, new Conflict(conflictColumns, new ConflictAction.DoNothing()), selectQuery);
         }
 
         public ReturningStage updateAll() {
-            return new ReturningStage(columns, new Conflict(conflictColumns, new ConflictAction.DoUpdate(List.of())));
+            return new ReturningStage(columns, new Conflict(conflictColumns, new ConflictAction.DoUpdate(List.of())), selectQuery);
         }
 
         public ReturningStage update(ColumnRef... updateColumns) {
-            return new ReturningStage(columns, new Conflict(conflictColumns, new ConflictAction.DoUpdate(List.of(updateColumns))));
+            return new ReturningStage(columns, new Conflict(conflictColumns, new ConflictAction.DoUpdate(List.of(updateColumns))), selectQuery);
         }
 
         public ReturningStage update(String... updateColumns) {
@@ -130,14 +141,16 @@ public final class InsertBuilder {
     public final class ReturningStage {
         private final List<ColumnEntry> columns;
         private final Conflict conflict;
+        private final JQ.Read selectQuery;
 
-        ReturningStage(List<ColumnEntry> columns, Conflict conflict) {
-            this.columns  = columns;
-            this.conflict = conflict;
+        ReturningStage(List<ColumnEntry> columns, Conflict conflict, JQ.Read selectQuery) {
+            this.columns     = columns;
+            this.conflict    = conflict;
+            this.selectQuery = selectQuery;
         }
 
         public BuildStage returning(ColumnRef... exprs) {
-            return new BuildStage(columns, conflict, List.of(exprs), null);
+            return new BuildStage(columns, conflict, List.of(exprs), selectQuery);
         }
 
         public BuildStage returning(String... columnNames) {
@@ -145,7 +158,7 @@ public final class InsertBuilder {
         }
 
         public JQ.Write build() {
-            return new BuildStage(columns, conflict, List.of(), null).build();
+            return new BuildStage(columns, conflict, List.of(), selectQuery).build();
         }
     }
 
@@ -167,37 +180,39 @@ public final class InsertBuilder {
         }
 
         private String buildSql() {
-            var sb = new StringBuilder();
-            sb.append("INSERT INTO ").append(tref);
+            var sb = new StringBuilder("INSERT INTO ").append(tref);
+            var colNames = columns.stream().map(e -> e.ref().name()).toList();
 
-            if (selectQuery != null) {
-                sb.append(" ").append(selectQuery.sql());
-            } else {
-                var colNames = columns.stream().map(e -> e.ref().name()).toList();
-                sb.append(" (").append(String.join(", ", colNames)).append(")")
-                  .append(" VALUES (").append("?, ".repeat(columns.size() - 1)).append("?)");
+            if (!columns.isEmpty()) sb.append(" (").append(String.join(", ", colNames)).append(")");
 
-                if (conflict != null) {
-                    sb.append(" ON CONFLICT (")
-                      .append(String.join(", ", conflict.conflictColumns().stream().map(ColumnRef::name).toList()))
-                      .append(")");
+            if (selectQuery != null) sb.append(" ").append(selectQuery.sql());
+            else {
+                sb.append(" VALUES (")
+                  .append(String.join(", ", Collections.nCopies(columns.size(), "?")))
+                  .append(")");
+            }
 
-                    switch (conflict.action()) {
-                        case ConflictAction.DoNothing _ -> sb.append(" DO NOTHING");
-                        case ConflictAction.DoUpdate a -> {
-                            var updateCols = a.updateColumns().isEmpty()
-                                ? colNames
-                                : a.updateColumns().stream().map(ColumnRef::name).toList();
-                            sb.append(" DO UPDATE SET ")
-                              .append(String.join(", ", updateCols.stream().map(c -> c + " = EXCLUDED." + c).toList()));
-                        }
+            if (conflict != null) {
+                sb.append(" ON CONFLICT (")
+                  .append(String.join(", ", conflict.conflictColumns().stream().map(ColumnRef::name).toList()))
+                  .append(")");
+
+                switch (conflict.action()) {
+                    case ConflictAction.DoNothing _ -> sb.append(" DO NOTHING");
+                    case ConflictAction.DoUpdate a -> {
+                        var updateCols = a.updateColumns().isEmpty()
+                            ? colNames.stream()
+                                .filter(c -> conflict.conflictColumns().stream().noneMatch(cc -> cc.name().equals(c)))
+                                .toList()
+                            : a.updateColumns().stream().map(ColumnRef::name).toList();
+
+                        if (updateCols.isEmpty()) throw new IllegalStateException("No columns available for conflict update");
+                        sb.append(" DO UPDATE SET ").append(String.join(", ", updateCols.stream().map(c -> c + " = EXCLUDED." + c).toList()));
                     }
                 }
             }
 
-            if (!returning.isEmpty())
-                sb.append(" RETURNING ").append(String.join(", ", returning.stream().map(ColumnRef::name).toList()));
-
+            if (!returning.isEmpty()) sb.append(" RETURNING ").append(String.join(", ", returning.stream().map(ColumnRef::name).toList()));
             return sb.toString();
         }
 
@@ -207,9 +222,10 @@ public final class InsertBuilder {
             var refs = columns.stream().map(e -> (Ref) switch (e.ref()) {
                 case ColumnRef.Base(var name, ColumnRef.Type.None _) ->
                     new Ref.Named(new Projection.Base(new ColumnRef.Base(name, new ColumnRef.Type.Some(e.type_()))));
-               
+                
                 case ColumnRef ref -> new Ref.Named(new Projection.Base(ref));
             }).toList();
+            
             var returningRefs = Optional.of(returning)
                 .filter(r -> !r.isEmpty())
                 .map(r -> r.stream().map(e -> (Ref) new Ref.Named(new Projection.Base(e))).toList());
