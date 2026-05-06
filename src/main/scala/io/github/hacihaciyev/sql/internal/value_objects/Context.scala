@@ -74,7 +74,7 @@ object Context {
                          sources: List[TableSource],
                          refs: List[Ref],
                          conflict: Option[OnConflict],
-                         returning: Option[List[Ref]],
+                         returning: List[Ref],
                          outer: Option[Context] = None
                      ) extends Context, DML {
 
@@ -88,8 +88,10 @@ object Context {
 
             validateNamedOnly(refs, errs)
             validateProjection(sources, refs, physical, virtual, errs)
+            
             conflict.foreach(c => validateConflict(c, physical, virtual, errs))
-            returning.foreach(r => validateProjection(sources, r, physical, virtual, errs))
+            
+            if returning.nonEmpty then validateProjection(sources, returning, physical, virtual, errs)
             throwIfErrors(errs)
         }
     }
@@ -98,7 +100,7 @@ object Context {
                          sources: List[TableSource],
                          refs: List[Ref],
                          where: Option[Expr],
-                         returning: Option[List[Ref]],
+                         returning: List[Ref],
                          outer: Option[Context] = None
                      ) extends Context, DML {
 
@@ -115,7 +117,7 @@ object Context {
             val whereCrefs = where.toList.flatMap(ExprTraversal.collectCrefs)
             for (cref <- whereCrefs) validateCref(cref, physical, virtual, outer, errs)
 
-            returning.foreach(r => validateProjection(sources, r, physical, virtual, errs))
+            if returning.nonEmpty then validateProjection(sources, returning, physical, virtual, errs)
             throwIfErrors(errs)
         }
     }
@@ -124,7 +126,7 @@ object Context {
                          sources: List[TableSource],
                          refs: List[Ref],
                          where: Option[Expr],
-                         returning: Option[List[Ref]],
+                         returning: List[Ref],
                          outer: Option[Context] = None
                      ) extends Context, DML {
 
@@ -138,7 +140,7 @@ object Context {
             val whereCrefs = where.toList.flatMap(ExprTraversal.collectCrefs)
             for (cref <- whereCrefs) validateCref(cref, physical, virtual, outer, errs)
 
-            returning.foreach(r => validateProjection(sources, r, physical, virtual, errs))
+            if returning.nonEmpty then validateProjection(sources, returning, physical, virtual, errs)
             throwIfErrors(errs)
         }
     }
@@ -369,17 +371,19 @@ object Context {
 }
 
 object ContextFactory {
-    
+
     def insertContext(
                          sources: java.util.List[TableSource],
                          refs: java.util.List[Ref],
-                         returning: java.util.Optional[java.util.List[Ref]],
+                         onConflict: java.util.Optional[OnConflict],
+                         returning: java.util.List[Ref],
                          outer: java.util.Optional[Context]
                      ): Context.Insert = Context.Insert(
 
         sources.asScala.toList,
         refs.asScala.toList,
-        if returning.isPresent then Some(returning.get.asScala.toList) else None,
+        if onConflict.isPresent then Some(onConflict.get) else None,
+        returning.asScala.toList,
         if outer.isPresent then Some(outer.get) else None
     )
 
@@ -406,14 +410,14 @@ object ContextFactory {
                          sources: java.util.List[TableSource],
                          refs: java.util.List[Ref],
                          where: java.util.Optional[Expr],
-                         returning: java.util.Optional[java.util.List[Ref]],
+                         returning: java.util.List[Ref],
                          outer: java.util.Optional[Context]
                      ): Context.Update = Context.Update(
 
         sources.asScala.toList,
         refs.asScala.toList,
         if where.isPresent then Some(where.get) else None,
-        if returning.isPresent then Some(returning.get.asScala.toList) else None,
+        returning.asScala.toList,
         if outer.isPresent then Some(outer.get) else None
     )
 
@@ -421,14 +425,14 @@ object ContextFactory {
                          sources: java.util.List[TableSource],
                          refs: java.util.List[Ref],
                          where: java.util.Optional[Expr],
-                         returning: java.util.Optional[java.util.List[Ref]],
+                         returning: java.util.List[Ref],
                          outer: java.util.Optional[Context]
                      ): Context.Delete = Context.Delete(
 
         sources.asScala.toList,
         refs.asScala.toList,
         if where.isPresent then Some(where.get) else None,
-        if returning.isPresent then Some(returning.get.asScala.toList) else None,
+        returning.asScala.toList,
         if outer.isPresent then Some(outer.get) else None
     )
 }
