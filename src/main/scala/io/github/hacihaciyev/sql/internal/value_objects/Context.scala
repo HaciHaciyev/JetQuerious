@@ -73,10 +73,12 @@ object Context {
     case class Insert(
                          sources: List[TableSource],
                          refs: List[Ref],
+                         conflict: Option[OnConflict],
                          returning: Option[List[Ref]],
                          outer: Option[Context] = None
                      ) extends Context, DML {
 
+        require(conflict != null)
         require(returning != null)
 
         protected def validate(): Unit = {
@@ -86,6 +88,7 @@ object Context {
 
             validateNamedOnly(refs, errs)
             validateProjection(sources, refs, physical, virtual, errs)
+            conflict.foreach(c => validateConflict(c, physical, virtual, errs))
             returning.foreach(r => validateProjection(sources, r, physical, virtual, errs))
             throwIfErrors(errs)
         }
@@ -210,6 +213,21 @@ object Context {
             case _: Ref.Named =>
             case _: Ref.Indexed => errs.addOne("DML context does not allow positional refs")
         }
+
+    private def validateConflict(
+                                    conflict: OnConflict,
+                                    physical: Map[TableRef, Table],
+                                    virtual: Map[String, List[String]],
+                                    errs: ListBuffer[String]
+                                ): Unit = {
+        
+        for (cref <- conflict.conflictCrefs) validateCref(cref, physical, virtual, None, errs)
+
+        conflict match {
+            case oc: OnConflict.UpdateSet => for (cref <- oc.updateCrefs) validateCref(cref, physical, virtual, None, errs)
+            case _: OnConflict.DoNothing =>
+        }
+    }
 
     private def validateProjection(
                                       sources: List[TableSource],
