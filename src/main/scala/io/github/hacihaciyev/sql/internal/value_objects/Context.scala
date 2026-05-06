@@ -348,30 +348,33 @@ object Context {
 
     private def unsupportedType(cref: ColumnRef, javaType: Class[?]): String =
         s"Unsupported Java type '${javaType.getName}' for column '$cref'"
-        
+}
+
+object ContextFactory {
+    
     def insertContext(
-                          sources: java.util.List[TableSource],
-                          refs: java.util.List[Ref],
-                          returning: java.util.Optional[java.util.List[Ref]],
-                          outer: java.util.Optional[Context]
+                         sources: java.util.List[TableSource],
+                         refs: java.util.List[Ref],
+                         returning: java.util.Optional[java.util.List[Ref]],
+                         outer: java.util.Optional[Context]
                      ): Context.Insert = Context.Insert(
-          
+
         sources.asScala.toList,
         refs.asScala.toList,
         if returning.isPresent then Some(returning.get.asScala.toList) else None,
         if outer.isPresent then Some(outer.get) else None
     )
-     
+
     def selectContext(
-                          sources: java.util.List[TableSource],
-                          refs: java.util.List[Ref],
-                          where: java.util.Optional[Expr],
-                          groupBy: java.util.List[Expr],
-                          having: java.util.Optional[Expr],
-                          orderBy: java.util.List[Expr],
-                          outer: java.util.Optional[Context]
+                         sources: java.util.List[TableSource],
+                         refs: java.util.List[Ref],
+                         where: java.util.Optional[Expr],
+                         groupBy: java.util.List[Expr],
+                         having: java.util.Optional[Expr],
+                         orderBy: java.util.List[Expr],
+                         outer: java.util.Optional[Context]
                      ): Context.Select = Context.Select(
-         
+
         sources.asScala.toList,
         refs.asScala.toList,
         if where.isPresent then Some(where.get) else None,
@@ -380,34 +383,34 @@ object Context {
         orderBy.asScala.toList,
         if outer.isPresent then Some(outer.get) else None
     )
-     
+
     def updateContext(
-                          sources: java.util.List[TableSource],
-                          refs: java.util.List[Ref],
-                          where: java.util.Optional[Expr],
-                          returning: java.util.Optional[java.util.List[Ref]],
-                          outer: java.util.Optional[Context]
+                         sources: java.util.List[TableSource],
+                         refs: java.util.List[Ref],
+                         where: java.util.Optional[Expr],
+                         returning: java.util.Optional[java.util.List[Ref]],
+                         outer: java.util.Optional[Context]
                      ): Context.Update = Context.Update(
-            
+
         sources.asScala.toList,
         refs.asScala.toList,
         if where.isPresent then Some(where.get) else None,
         if returning.isPresent then Some(returning.get.asScala.toList) else None,
         if outer.isPresent then Some(outer.get) else None
     )
-     
+
     def deleteContext(
-                          sources: java.util.List[TableSource],
-                          refs: java.util.List[Ref],
-                          where: java.util.Optional[Expr],
-                          returning: java.util.Optional[java.util.List[Ref]],
-                          outer: java.util.Optional[Context]
+                         sources: java.util.List[TableSource],
+                         refs: java.util.List[Ref],
+                         where: java.util.Optional[Expr],
+                         returning: java.util.Optional[java.util.List[Ref]],
+                         outer: java.util.Optional[Context]
                      ): Context.Delete = Context.Delete(
-            
+
         sources.asScala.toList,
         refs.asScala.toList,
         if where.isPresent then Some(where.get) else None,
         if returning.isPresent then Some(returning.get.asScala.toList) else None,
         if outer.isPresent then Some(outer.get) else None
-    )    
+    )
 }

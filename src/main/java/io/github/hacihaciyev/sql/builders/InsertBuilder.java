@@ -3,6 +3,7 @@ package io.github.hacihaciyev.sql.builders;
 import io.github.hacihaciyev.sql.JQ;
 import io.github.hacihaciyev.sql.expressions.ColumnRef;
 import io.github.hacihaciyev.sql.internal.value_objects.Context;
+import io.github.hacihaciyev.sql.internal.value_objects.ContextFactory;
 import io.github.hacihaciyev.sql.internal.value_objects.Ref;
 import io.github.hacihaciyev.sql.internal.value_objects.TableSource;
 import io.github.hacihaciyev.sql.value_objects.Projection;
@@ -186,7 +187,7 @@ public final class InsertBuilder {
                 .filter(r -> !r.isEmpty())
                 .map(r -> r.stream().map(e -> (Ref) new Ref.Named(new Projection.Base(e))).toList());
 
-            return Context.insertContext(List.of(source), refs, returningRefs, Optional.empty());
+            return ContextFactory.insertContext(List.of(source), refs, returningRefs, Optional.empty());
         }
     }
 
