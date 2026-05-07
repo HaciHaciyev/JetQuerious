@@ -124,13 +124,14 @@ object Context {
 
     case class Delete(
                          sources: List[TableSource],
-                         refs: List[Ref],
                          where: Option[Expr],
                          returning: List[Ref],
                          outer: Option[Context] = None
                      ) extends Context, DML {
 
         require(returning != null)
+        
+        override def refs: List[Ref] = List.empty
 
         protected def validate(): Unit = {
             validateCommon(sources, refs)
@@ -423,14 +424,12 @@ object ContextFactory {
 
     def deleteContext(
                          sources: java.util.List[TableSource],
-                         refs: java.util.List[Ref],
                          where: java.util.Optional[Expr],
                          returning: java.util.List[Ref],
                          outer: java.util.Optional[Context]
                      ): Context.Delete = Context.Delete(
 
         sources.asScala.toList,
-        refs.asScala.toList,
         if where.isPresent then Some(where.get) else None,
         returning.asScala.toList,
         if outer.isPresent then Some(outer.get) else None
