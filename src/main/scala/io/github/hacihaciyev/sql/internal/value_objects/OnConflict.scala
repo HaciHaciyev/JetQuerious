@@ -20,6 +20,7 @@ object OnConflict {
         require(!conflictCrefs.contains(null), "Conflict columns cannot contain null")
 
         require(updateCrefs != null, "updateCrefs cannot be null")
+        require(updateCrefs.nonEmpty, "At least one update column is required")
         require(!updateCrefs.contains(null), "Update columns cannot contain null")
 
         private val intersection: List[ColumnRef.Base] = conflictCrefs.flatMap(c =>
