@@ -1,4 +1,4 @@
-package main.scala.io.github.hacihaciyev.sql.internal
+package io.github.hacihaciyev.sql.internal
 
 import io.github.hacihaciyev.sql.expressions.*
 
