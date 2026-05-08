@@ -32,9 +32,9 @@ sealed trait Context {
     protected def validate(): Unit
 }
 
-sealed trait DQL
+trait DQL
 
-sealed trait DML
+trait DML
 
 object Context {
 
