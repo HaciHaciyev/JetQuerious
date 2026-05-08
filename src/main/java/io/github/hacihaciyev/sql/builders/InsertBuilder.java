@@ -17,6 +17,8 @@ import java.util.Optional;
 
 import static java.util.Objects.requireNonNull;
 
+import java.util.ArrayList;
+
 public final class InsertBuilder {
     private final TableRef tref;
 
@@ -40,7 +42,7 @@ public final class InsertBuilder {
             if (pairs.length == 0) throw new IllegalArgumentException("At least one column is required");
             if (pairs.length % 2 != 0) throw new IllegalArgumentException("Column pairs must be even: (name, type, ...)");
 
-            var columns = new java.util.ArrayList<ColumnEntry>();
+            var columns = new ArrayList<ColumnEntry>();
 
             for (var i = 0; i < pairs.length; i += 2) {
                 var name = switch (pairs[i]) {
