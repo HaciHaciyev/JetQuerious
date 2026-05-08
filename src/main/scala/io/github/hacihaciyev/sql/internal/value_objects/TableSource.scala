@@ -1,6 +1,7 @@
 package io.github.hacihaciyev.sql.internal.value_objects
 
 import io.github.hacihaciyev.sql.value_objects.TableRef
+import io.github.hacihaciyev.sql.internal.Context
 
 sealed trait TableSource {
     def effectiveName: String

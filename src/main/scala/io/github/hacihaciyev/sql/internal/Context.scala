@@ -1,4 +1,4 @@
-package io.github.hacihaciyev.sql.internal.value_objects
+package io.github.hacihaciyev.sql.internal
 
 import io.github.hacihaciyev.build_errors.SchemaVerificationException
 import io.github.hacihaciyev.config.Conf
@@ -6,7 +6,7 @@ import io.github.hacihaciyev.sql.value_objects.{Projection, TableRef}
 import io.github.hacihaciyev.sql.expressions.{ColumnRef, Expr, ValueExpr}
 import io.github.hacihaciyev.sql.expressions.ColumnRef.*
 import io.github.hacihaciyev.sql.internal.schema.{Column, SchemaResolver, Table}
-import io.github.hacihaciyev.sql.internal.value_objects.{ExprTraversal, Ref, TableSource}
+import io.github.hacihaciyev.sql.internal.value_objects.{Ref, TableSource, OnConflict}
 import io.github.hacihaciyev.types.SQLType
 import io.github.hacihaciyev.util.{Err, Ok}
 import io.github.hacihaciyev.types.internal.{TypeInfo, TypeInfoOk, TypeRegistry}

@@ -1,4 +1,4 @@
-package io.github.hacihaciyev.sql.internal.value_objects
+package io.github.hacihaciyev.sql.internal
 
 import io.github.hacihaciyev.sql.expressions.*
 

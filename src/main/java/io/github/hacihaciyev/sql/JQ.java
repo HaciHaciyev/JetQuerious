@@ -1,7 +1,7 @@
 package io.github.hacihaciyev.sql;
 
-import io.github.hacihaciyev.sql.internal.value_objects.DML;
-import io.github.hacihaciyev.sql.internal.value_objects.DQL;
+import io.github.hacihaciyev.sql.internal.DML;
+import io.github.hacihaciyev.sql.internal.DQL;
 
 import static java.util.Objects.requireNonNull;
 
