@@ -1,5 +1,6 @@
 package io.github.hacihaciyev.sql.internal.builders
 
+import io.github.hacihaciyev.sql.internal.value_objects.InsertEntry
 import io.github.hacihaciyev.sql.internal.value_objects.OnConflict
 import io.github.hacihaciyev.sql.value_objects.TableRef
 
@@ -9,12 +10,12 @@ object InsertSQL {
 
     def build(
         tref: TableRef,
-        columns: java.util.List[String],
+        entries: java.util.List[InsertEntry],
         conflict: java.util.Optional[OnConflict],
         returning: java.util.List[String]
     ): String = {
         
-        val cols = columns.asScala.toList
+        val cols = entries.asScala.toList.map(_.col.name())
         val ret  = returning.asScala.toList
         val oc   = if conflict.isPresent then Some(conflict.get) else None
 

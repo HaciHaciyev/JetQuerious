@@ -2,22 +2,22 @@ package io.github.hacihaciyev.sql.builders;
 
 import io.github.hacihaciyev.sql.JQ;
 import io.github.hacihaciyev.sql.expressions.ColumnRef;
+import io.github.hacihaciyev.sql.internal.value_objects.InsertEntry;
+import io.github.hacihaciyev.sql.internal.builders.InsertSQL;
 import io.github.hacihaciyev.sql.internal.value_objects.Context;
 import io.github.hacihaciyev.sql.internal.value_objects.ContextFactory;
 import io.github.hacihaciyev.sql.internal.value_objects.OnConflict;
 import io.github.hacihaciyev.sql.internal.value_objects.Ref;
 import io.github.hacihaciyev.sql.internal.value_objects.TableSource;
-import io.github.hacihaciyev.sql.internal.builders.InsertSQL;
 import io.github.hacihaciyev.sql.value_objects.Projection;
 import io.github.hacihaciyev.sql.value_objects.TableRef;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 
 import static java.util.Objects.requireNonNull;
-
-import java.util.ArrayList;
 
 public final class InsertBuilder {
     private final TableRef tref;
@@ -35,14 +35,14 @@ public final class InsertBuilder {
     }
 
     public final class ColumnsStage {
-        private final List<ColumnEntry> columns;
+        private final List<InsertEntry> columns;
 
         ColumnsStage(Object[] pairs) {
             pairs = requireNonNull(pairs, "Column pairs cannot be null").clone();
             if (pairs.length == 0) throw new IllegalArgumentException("At least one column is required");
             if (pairs.length % 2 != 0) throw new IllegalArgumentException("Column pairs must be even: (name, type, ...)");
 
-            var columns = new ArrayList<ColumnEntry>();
+            var columns = new ArrayList<InsertEntry>();
 
             for (var i = 0; i < pairs.length; i += 2) {
                 var name = switch (pairs[i]) {
@@ -56,7 +56,7 @@ public final class InsertBuilder {
                     default -> throw new IllegalArgumentException("Expected Class at index " + (i + 1) + ", got: " + pairs[i + 1]);
                 };
 
-                columns.add(new ColumnEntry(new ColumnRef.Base(name), type_));
+                columns.add(InsertEntry.of(new ColumnRef.Base(name), type_));
             }
 
             this.columns = List.copyOf(columns);
@@ -88,10 +88,10 @@ public final class InsertBuilder {
     }
 
     public final class ConflictTargetStage {
-        private final List<ColumnEntry> columns;
+        private final List<InsertEntry> columns;
         private final List<ColumnRef.Base> conflictColumns;
 
-        ConflictTargetStage(List<ColumnEntry> columns, List<ColumnRef.Base> conflictColumns) {
+        ConflictTargetStage(List<InsertEntry> columns, List<ColumnRef.Base> conflictColumns) {
             this.columns         = columns;
             this.conflictColumns = conflictColumns;
         }
@@ -101,7 +101,7 @@ public final class InsertBuilder {
         }
 
         public ReturningStage updateAll() {
-            var updateCols = columns.stream().map(ColumnEntry::ref).toList();
+            var updateCols = columns.stream().map(InsertEntry::col).toList();
             return new ReturningStage(columns, OnConflict.updateSet(conflictColumns, updateCols));
         }
 
@@ -117,10 +117,10 @@ public final class InsertBuilder {
     }
 
     public final class ReturningStage {
-        private final List<ColumnEntry> columns;
+        private final List<InsertEntry> columns;
         private final OnConflict conflict;
 
-        ReturningStage(List<ColumnEntry> columns, OnConflict conflict) {
+        ReturningStage(List<InsertEntry> columns, OnConflict conflict) {
             this.columns  = columns;
             this.conflict = conflict;
         }
@@ -141,11 +141,11 @@ public final class InsertBuilder {
     }
 
     public final class BuildStage {
-        private final List<ColumnEntry> columns;
+        private final List<InsertEntry> columns;
         private final OnConflict conflict;
         private final List<ColumnRef> returning;
 
-        BuildStage(List<ColumnEntry> columns, OnConflict conflict, List<ColumnRef> returning) {
+        BuildStage(List<InsertEntry> columns, OnConflict conflict, List<ColumnRef> returning) {
             this.columns   = columns;
             this.conflict  = conflict;
             this.returning = returning;
@@ -156,16 +156,15 @@ public final class InsertBuilder {
         }
 
         private String buildSql() {
-            var colNames = columns.stream().map(e -> e.ref().name()).toList();
             var retNames = returning.stream().map(ColumnRef::name).toList();
-            return InsertSQL.build(tref, colNames, Optional.ofNullable(conflict), retNames);
+            return InsertSQL.build(tref, columns, Optional.ofNullable(conflict), retNames);
         }
 
         private Context.Insert buildContext() {
             var source = new TableSource.Physical(tref);
 
             var refs = columns.stream()
-                .map(e -> (Ref) new Ref.Named(new Projection.Base(new ColumnRef.Base(e.ref().name(), new ColumnRef.Type.Some(e.type_())))))
+                .map(e -> (Ref) new Ref.Named(new Projection.Base(new ColumnRef.Base(e.col().name(), new ColumnRef.Type.Some(e.type_())))))
                 .toList();
 
             var returningRefs = returning.stream()
@@ -179,13 +178,6 @@ public final class InsertBuilder {
                 returningRefs,
                 Optional.empty()
             );
-        }
-    }
-
-    private record ColumnEntry(ColumnRef.Base ref, Class<?> type_) {
-        public ColumnEntry {
-            requireNonNull(ref);
-            requireNonNull(type_);
         }
     }
 }
