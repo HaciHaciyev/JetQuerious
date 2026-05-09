@@ -131,9 +131,11 @@ public final class UpdateBuilder {
             var source = new TableSource.Physical(tref);
 
             var refs = entries.stream()
-                .filter(e -> e instanceof UpdateEntry.Param)
-                .map(e -> (UpdateEntry.Param) e)
-                .map(e -> (Ref) new Ref.Named(new Projection.Base(new ColumnRef.Base(e.col().name(), new ColumnRef.Type.Some(e.type_())))))
+                .map(e -> switch (e) {
+                    case UpdateEntry.Param p -> (Ref) new Ref.Named(new Projection.Base(new ColumnRef.Base(p.col().name(), new ColumnRef.Type.Some(p.type_()))));
+                    case UpdateEntry.Computed c -> new Ref.Named(new Projection.Base(c.col()));
+                    default -> throw new IllegalArgumentException("Unexpected");
+                })
                 .toList();
 
             var returningRefs = returning.stream()
