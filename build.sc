@@ -19,13 +19,13 @@ object jetquerious extends ScalaModule with PublishModule {
 
     def publishVersion              = "1.0.7"
   
-    def scalaVersion                = "3.6.4"
+    def scalaVersion                = "3.8.3"
 
     def javacOptions                = Seq("--release", "25")
 
     def scalacOptions               = Seq("-Werror")
 
-    def mvnDeps                     = Seq(mvn"org.scala-lang::scala3-library:3.6.4")
+    def mvnDeps                     = Seq(mvn"org.scala-lang::scala3-library:3.8.3")
 
     override def sources            = Task.Sources(
         moduleDir / os.up / "src" / "main" / "java",
@@ -81,15 +81,16 @@ object jetquerious extends ScalaModule with PublishModule {
             moduleDir / os.up / os.up / "src" / "test" / "scala"
         )
 
-        def mvnDeps                 = Seq(
-            mvn"org.assertj:assertj-core:4.0.0-M1",
-            mvn"com.github.sbt.junit:jupiter-interface:0.18.0",
-            mvn"org.junit.jupiter:junit-jupiter-api:5.13.0-M2",
-            mvn"org.junit.jupiter:junit-jupiter-params:5.13.0-M2",
-            mvn"org.mockito:mockito-core:5.18.0",
-            mvn"org.postgresql:postgresql:42.7.5",
-            mvn"org.testcontainers:testcontainers:1.21.3",
-            mvn"org.testcontainers:postgresql:1.21.3"
+        def mvnDeps = Seq(
+          mvn"org.junit.jupiter:junit-jupiter-api:6.0.3",
+          mvn"org.junit.jupiter:junit-jupiter-params:6.0.3",
+          mvn"com.github.sbt.junit:jupiter-interface:0.18.0",
+          mvn"net.jqwik:jqwik:1.9.3",        
+          mvn"org.assertj:assertj-core:4.0.0-M1",
+          mvn"org.mockito:mockito-core:5.23.0",
+          mvn"org.postgresql:postgresql:42.7.11",
+          mvn"org.testcontainers:testcontainers:2.0.5",
+          mvn"org.testcontainers:postgresql:1.21.4"
         )
 
         def testFramework           = "com.github.sbt.junit.jupiter.api.JupiterFramework"
