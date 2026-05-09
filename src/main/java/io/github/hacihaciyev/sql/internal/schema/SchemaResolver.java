@@ -73,9 +73,10 @@ public class SchemaResolver {
         TABLE_SCHEM,
         TABLE_NAME,
         COLUMN_NAME,
+        DATA_TYPE,
         TYPE_NAME,
         NULLABLE;
-
+    
         @Override
         public String toString() {
             return name();
@@ -173,16 +174,17 @@ public class SchemaResolver {
     }
 
     private static void column(ResultSet rs, List<Column> cols) throws SQLException {
-        var name = rs.getString(Meta.COLUMN_NAME.toString());
-        var type = rs.getString(Meta.TYPE_NAME.toString());
-        var nullable =
-            rs.getInt(Meta.NULLABLE.toString()) ==
-            DatabaseMetaData.columnNullable;
-
-        SQLType.parse(type).ifPresentOrElse(
-            t -> cols.add(new Column.Known(name, t, nullable)),
-            () -> cols.add(new Column.Unknown(name, nullable))
-        );
+        var name     = rs.getString(Meta.COLUMN_NAME.toString());
+        var jdbcType = rs.getInt(Meta.DATA_TYPE.toString());
+        var typeName = rs.getString(Meta.TYPE_NAME.toString());
+        var nullable = rs.getInt(Meta.NULLABLE.toString()) == DatabaseMetaData.columnNullable;
+    
+        SQLType.fromJDBCType(jdbcType)
+            .or(() -> SQLType.parse(typeName))
+            .ifPresentOrElse(
+                t -> cols.add(new Column.Known(name, t, nullable)),
+                () -> cols.add(new Column.Unknown(name, nullable))
+            );
     }
 
     private static String schemaOrNull(TableRef tableRef) {
