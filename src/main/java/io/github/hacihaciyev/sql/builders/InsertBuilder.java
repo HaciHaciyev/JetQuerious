@@ -46,7 +46,8 @@ public final class InsertBuilder {
 
             for (var i = 0; i < pairs.length; i += 2) {
                 var name = switch (pairs[i]) {
-                    case String s when !s.isBlank() -> s.trim();
+                    case String s when !s.isBlank() -> new ColumnRef.Base(s.trim());
+                    case ColumnRef.Base b -> b;
                     case String _ -> throw new IllegalArgumentException("Column name cannot be blank at index " + i);
                     default -> throw new IllegalArgumentException("Expected String at index " + i + ", got: " + pairs[i]);
                 };
@@ -56,7 +57,7 @@ public final class InsertBuilder {
                     default -> throw new IllegalArgumentException("Expected Class at index " + (i + 1) + ", got: " + pairs[i + 1]);
                 };
 
-                columns.add(InsertEntry.of(new ColumnRef.Base(name), type_));
+                columns.add(InsertEntry.of(name, type_));
             }
 
             this.columns = List.copyOf(columns);
