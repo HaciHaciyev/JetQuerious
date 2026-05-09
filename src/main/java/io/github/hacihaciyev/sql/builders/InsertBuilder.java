@@ -101,10 +101,14 @@ public final class InsertBuilder {
         }
 
         public ReturningStage updateAll() {
-            var updateCols = columns.stream().map(InsertEntry::col).toList();
+            var updateCols = columns.stream()
+                .map(InsertEntry::col)
+                .filter(col -> conflictColumns.stream().noneMatch(c -> c.name().equalsIgnoreCase(col.name())))
+                .toList();
+                
             return new ReturningStage(columns, OnConflict.updateSet(conflictColumns, updateCols));
         }
-
+        
         public ReturningStage update(ColumnRef.Base... updateColumns) {
             return new ReturningStage(columns, OnConflict.updateSet(conflictColumns, List.of(updateColumns)));
         }
