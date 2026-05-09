@@ -1,8 +1,7 @@
-package io.github.hacihaciyev.sql.internal;
+package io.github.hacihaciyev.util;
 
 import io.github.hacihaciyev.config.Conf;
 import org.junit.jupiter.api.extension.BeforeAllCallback;
-import org.junit.jupiter.api.extension.AfterAllCallback;
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.postgresql.ds.PGSimpleDataSource;
 import org.testcontainers.containers.PostgreSQLContainer;
@@ -16,6 +15,12 @@ public class DBTestContainer implements BeforeAllCallback, ExtensionContext.Stor
 
     @Override
     public void beforeAll(ExtensionContext context) throws Exception {
+        initialize();
+    }
+
+    public static void initialize() throws Exception {
+        if (POSTGRES.isRunning()) return;
+
         POSTGRES.start();
 
         var ds = new PGSimpleDataSource();
