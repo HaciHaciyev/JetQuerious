@@ -157,16 +157,16 @@ class SchemaResolverTest {
     @Test
     void load_unknownColumnType_createsUnknownColumn() throws SQLException {
         var tableRef = new TableRef.Base("special_table");
-        when(metaData.getTables(isNull(), isNull(), eq("special_table"), any()))
-                .thenReturn(tablesResultSet);
+        
+        when(metaData.getTables(isNull(), isNull(), eq("special_table"), any())).thenReturn(tablesResultSet);
         when(tablesResultSet.next()).thenReturn(true);
         when(tablesResultSet.getString("TABLE_CAT")).thenReturn(null);
         when(tablesResultSet.getString("TABLE_SCHEM")).thenReturn(null);
 
-        when(metaData.getColumns(isNull(), isNull(), eq("special_table"), isNull()))
-                .thenReturn(columnsResultSet);
+        when(metaData.getColumns(isNull(), isNull(), eq("special_table"), isNull())).thenReturn(columnsResultSet);
         when(columnsResultSet.next()).thenReturn(true, false);
         when(columnsResultSet.getString("COLUMN_NAME")).thenReturn("weird_col");
+        when(columnsResultSet.getInt("DATA_TYPE")).thenReturn(Integer.MAX_VALUE);
         when(columnsResultSet.getString("TYPE_NAME")).thenReturn("UNKNOWN_TYPE_XYZ");
         when(columnsResultSet.getInt("NULLABLE")).thenReturn(DatabaseMetaData.columnNullable);
 
