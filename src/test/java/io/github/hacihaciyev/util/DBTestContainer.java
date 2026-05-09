@@ -7,7 +7,7 @@ import org.junit.jupiter.api.extension.ExtensionContext;
 import org.postgresql.ds.PGSimpleDataSource;
 import org.testcontainers.containers.PostgreSQLContainer;
 
-public class DBTestContainer implements BeforeAllCallback, AfterAllCallback, ExtensionContext.Store.CloseableResource {
+public class DBTestContainer implements BeforeAllCallback, ExtensionContext.Store.CloseableResource {
 
     private static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:16")
         .withDatabaseName("testdb")
@@ -51,11 +51,6 @@ public class DBTestContainer implements BeforeAllCallback, AfterAllCallback, Ext
                 )
             """);
         }
-    }
-
-    @Override
-    public void afterAll(ExtensionContext context) {
-        POSTGRES.stop();
     }
 
     @Override
