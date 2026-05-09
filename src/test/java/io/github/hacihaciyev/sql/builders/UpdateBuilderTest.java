@@ -59,15 +59,15 @@ class UpdateBuilderTest {
     void mixed_paramAndComputed() {
         var expr = new BinaryOp(
             BinaryOp.BinaryOperator.PLUS,
-            new ColumnRef.Base("qtp"),
+            new ColumnRef.Base("qty"),
             new Literal.IntLiteral(1)
         );
 
         var jq = new UpdateBuilder("order_items")
-            .set("product", String.class, "qtp", expr)
+            .set("product", String.class, "qty", expr)
             .build();
 
-        assertEquals("UPDATE order_items SET product = ?, qtp = (qtp + 1)", jq.sql());
+        assertEquals("UPDATE order_items SET product = ?, qty = (qty + 1)", jq.sql());
     }
 
     @Test
