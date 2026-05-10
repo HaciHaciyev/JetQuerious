@@ -127,4 +127,40 @@ class DeleteBuilderTest {
         assertThrows(Exception.class, () ->
             new DeleteBuilder("users").returning("ghost_column").build());
     }
+    
+    @Test
+    void nonExistentColumnInWhere_throws() {
+        var where = new BinaryOp(
+            BinaryOp.BinaryOperator.EQ,
+            new ColumnRef.Base("ghost_column"),
+            new Literal.LongLiteral(1L)
+        );
+    
+        assertThrows(Exception.class, () ->
+            new DeleteBuilder("users")
+                .where(where)
+                .build());
+    }
+    
+    @Test
+    void nonExistentColumnInReturning_throws() {
+        assertThrows(Exception.class, () ->
+            new DeleteBuilder("users")
+                .returning("ghost_column")
+                .build());
+    }
+    
+    @Test
+    void complexWhereWithNonExistentColumn_throws() {
+        var where = new BinaryOp(
+            BinaryOp.BinaryOperator.AND,
+            new BinaryOp(BinaryOp.BinaryOperator.EQ, new ColumnRef.Base("id"), new Literal.LongLiteral(1L)),
+            new BinaryOp(BinaryOp.BinaryOperator.EQ, new ColumnRef.Base("ghost_column"), new Literal.BooleanLiteral(true))
+        );
+    
+        assertThrows(Exception.class, () ->
+            new DeleteBuilder("users")
+                .where(where)
+                .build());
+    }
 }

@@ -173,4 +173,42 @@ class UpdateBuilderTest {
                 .set("ghost_column", String.class)
                 .build());
     }
+    
+    @Test
+    void nonExistentColumnInComputedExpr_throws() {
+        var expr = new BinaryOp(
+            BinaryOp.BinaryOperator.PLUS,
+            new ColumnRef.Base("ghost_column"),
+            new Literal.IntLiteral(1)
+        );
+    
+        assertThrows(Exception.class, () ->
+            new UpdateBuilder("users")
+                .set("name", expr)
+                .build());
+    }
+    
+    @Test
+    void nonExistentColumnInWhere_throws() {
+        var where = new BinaryOp(
+            BinaryOp.BinaryOperator.EQ,
+            new ColumnRef.Base("ghost_column"),
+            new Literal.LongLiteral(1L)
+        );
+    
+        assertThrows(Exception.class, () ->
+            new UpdateBuilder("users")
+                .set("name", String.class)
+                .where(where)
+                .build());
+    }
+    
+    @Test
+    void nonExistentColumnInReturning_throws() {
+        assertThrows(Exception.class, () ->
+            new UpdateBuilder("users")
+                .set("name", String.class)
+                .returning("ghost_column")
+                .build());
+    }
 }

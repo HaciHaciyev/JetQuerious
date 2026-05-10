@@ -1,16 +1,13 @@
 package io.github.hacihaciyev.sql.internal;
 
 import io.github.hacihaciyev.build_errors.SchemaVerificationException;
-import io.github.hacihaciyev.sql.expressions.ColumnRef;
+import io.github.hacihaciyev.sql.expressions.*;
 import io.github.hacihaciyev.sql.internal.value_objects.Ref;
 import io.github.hacihaciyev.sql.internal.value_objects.TableSource;
 import io.github.hacihaciyev.sql.value_objects.Projection;
 import io.github.hacihaciyev.sql.value_objects.TableRef;
 import io.github.hacihaciyev.util.DBJqwikHook;
 import net.jqwik.api.*;
-import net.jqwik.api.constraints.AlphaChars;
-import net.jqwik.api.constraints.StringLength;
-import net.jqwik.api.lifecycle.BeforeContainer;
 import net.jqwik.api.lifecycle.AddLifecycleHook;
 
 import java.util.List;
@@ -22,11 +19,8 @@ import static org.junit.jupiter.api.Assertions.*;
 @AddLifecycleHook(DBJqwikHook.class)
 class ContextPropertyTest {
 
-    private static final Set<String> USERS_COLUMNS        = Set.of("id", "name", "email", "active");
-    private static final Set<String> ORDERS_COLUMNS       = Set.of("id", "user_id", "total", "status");
-    private static final Set<String> ORDER_ITEMS_COLUMNS  = Set.of("id", "order_id", "product", "qty");
-    private static final Set<String> ALL_COLUMNS          = Set.of("id", "name", "email", "active", "user_id", "total", "status", "order_id", "product", "qty");
-    private static final Set<String> ALL_TABLES           = Set.of("users", "orders", "order_items");
+    private static final Set<String> ALL_COLUMNS = Set.of("id", "name", "email", "active", "user_id", "total", "status", "order_id", "product", "qty");
+    private static final Set<String> ALL_TABLES  = Set.of("users", "orders", "order_items");
 
     private static TableSource.Physical physical(String table) {
         return new TableSource.Physical(new TableRef.Base(table));
@@ -46,6 +40,10 @@ class ContextPropertyTest {
 
     private static Ref aliasedRef(String table, String col, String alias) {
         return new Ref.Named(new Projection.Base(new ColumnRef.VariableAlias(table, col, alias)));
+    }
+
+    private static Expr eqExpr(String col, int val) {
+        return new BinaryOp(BinaryOp.BinaryOperator.EQ, new ColumnRef.Base(col), new Literal.IntLiteral(val));
     }
 
     private boolean isKnownColumn(String name) {
@@ -80,11 +78,6 @@ class ContextPropertyTest {
     }
 
     @Provide
-    Arbitrary<String> ordersColumns() {
-        return Arbitraries.of("id", "user_id", "total", "status");
-    }
-
-    @Provide
     Arbitrary<String> nonAmbiguousUsersColumns() {
         return Arbitraries.of("name", "email", "active");
     }
@@ -104,7 +97,19 @@ class ContextPropertyTest {
         return Arbitraries.of(Long.class);
     }
 
-    @Property
+    @Provide
+    Arbitrary<BinaryOp.BinaryOperator> comparisonOperators() {
+        return Arbitraries.of(
+            BinaryOp.BinaryOperator.EQ,
+            BinaryOp.BinaryOperator.NEQ,
+            BinaryOp.BinaryOperator.GT,
+            BinaryOp.BinaryOperator.GTE,
+            BinaryOp.BinaryOperator.LT,
+            BinaryOp.BinaryOperator.LTE
+        );
+    }
+
+    @Property(tries = 64)
     void select_unknownColumn_alwaysFails(@ForAll("unknownColumnNames") String col) {
         assertThrows(SchemaVerificationException.class, () -> ContextFactory.selectContext(
             List.of(physical("users")),
@@ -117,18 +122,12 @@ class ContextPropertyTest {
         ));
     }
 
-    @Property
+    @Property(tries = 64)
     void select_unknownColumnInWhere_alwaysFails(@ForAll("unknownColumnNames") String col) {
-        var where = new io.github.hacihaciyev.sql.expressions.BinaryOp(
-            io.github.hacihaciyev.sql.expressions.BinaryOp.BinaryOperator.EQ,
-            new ColumnRef.Base(col),
-            new io.github.hacihaciyev.sql.expressions.Literal.IntLiteral(1)
-        );
-
         assertThrows(SchemaVerificationException.class, () -> ContextFactory.selectContext(
             List.of(physical("users")),
             List.of(namedRef("name")),
-            Optional.of(where),
+            Optional.of(eqExpr(col, 1)),
             List.of(),
             Optional.empty(),
             List.of(),
@@ -136,7 +135,7 @@ class ContextPropertyTest {
         ));
     }
 
-    @Property
+    @Property(tries = 64)
     void select_unknownColumnInGroupBy_alwaysFails(@ForAll("unknownColumnNames") String col) {
         assertThrows(SchemaVerificationException.class, () -> ContextFactory.selectContext(
             List.of(physical("users")),
@@ -149,7 +148,7 @@ class ContextPropertyTest {
         ));
     }
 
-    @Property
+    @Property(tries = 64)
     void select_unknownColumnInOrderBy_alwaysFails(@ForAll("unknownColumnNames") String col) {
         assertThrows(SchemaVerificationException.class, () -> ContextFactory.selectContext(
             List.of(physical("users")),
@@ -162,7 +161,88 @@ class ContextPropertyTest {
         ));
     }
 
-    @Property
+    @Property(tries = 64)
+    void select_unknownColumnInHaving_alwaysFails(@ForAll("unknownColumnNames") String col) {
+        assertThrows(SchemaVerificationException.class, () -> ContextFactory.selectContext(
+            List.of(physical("orders")),
+            List.of(namedRef("status")),
+            Optional.empty(),
+            List.of(new ColumnRef.Base("status")),
+            Optional.of(eqExpr(col, 1)),
+            List.of(),
+            Optional.empty()
+        ));
+    }
+
+    @Property(tries = 64)
+    void select_unknownColumnInNestedBinaryOp_alwaysFails(@ForAll("unknownColumnNames") String col) {
+        var nested = new BinaryOp(
+            BinaryOp.BinaryOperator.AND,
+            eqExpr("id", 1),
+            eqExpr(col, 2)
+        );
+
+        assertThrows(SchemaVerificationException.class, () -> ContextFactory.selectContext(
+            List.of(physical("users")),
+            List.of(namedRef("name")),
+            Optional.of(nested),
+            List.of(),
+            Optional.empty(),
+            List.of(),
+            Optional.empty()
+        ));
+    }
+
+    @Property(tries = 64)
+    void select_unknownColumnInIsNull_alwaysFails(@ForAll("unknownColumnNames") String col) {
+        var isNull = new IsNullExpr.IsNull(new ColumnRef.Base(col));
+
+        assertThrows(SchemaVerificationException.class, () -> ContextFactory.selectContext(
+            List.of(physical("users")),
+            List.of(namedRef("name")),
+            Optional.of(isNull),
+            List.of(),
+            Optional.empty(),
+            List.of(),
+            Optional.empty()
+        ));
+    }
+
+    @Property(tries = 64)
+    void select_unknownColumnInBetween_alwaysFails(@ForAll("unknownColumnNames") String col) {
+        var between = new BetweenExpr.Between(
+            new ColumnRef.Base(col),
+            new Literal.IntLiteral(1),
+            new Literal.IntLiteral(10)
+        );
+
+        assertThrows(SchemaVerificationException.class, () -> ContextFactory.selectContext(
+            List.of(physical("users")),
+            List.of(namedRef("name")),
+            Optional.of(between),
+            List.of(),
+            Optional.empty(),
+            List.of(),
+            Optional.empty()
+        ));
+    }
+
+    @Property(tries = 64)
+    void select_unknownColumnInFunc_alwaysFails(@ForAll("unknownColumnNames") String col) {
+        var func = new Func.Upper(new ColumnRef.Base(col));
+
+        assertThrows(SchemaVerificationException.class, () -> ContextFactory.selectContext(
+            List.of(physical("users")),
+            List.of(namedRef("name")),
+            Optional.of(new IsNullExpr.IsNotNull(func)),
+            List.of(),
+            Optional.empty(),
+            List.of(),
+            Optional.empty()
+        ));
+    }
+
+    @Property(tries = 64)
     void select_knownNonAmbiguousUsersColumn_alwaysPasses(@ForAll("nonAmbiguousUsersColumns") String col) {
         assertDoesNotThrow(() -> ContextFactory.selectContext(
             List.of(physical("users")),
@@ -175,7 +255,7 @@ class ContextPropertyTest {
         ));
     }
 
-    @Property
+    @Property(tries = 64)
     void select_knownNonAmbiguousOrdersColumn_alwaysPasses(@ForAll("nonAmbiguousOrdersColumns") String col) {
         assertDoesNotThrow(() -> ContextFactory.selectContext(
             List.of(physical("orders")),
@@ -188,7 +268,25 @@ class ContextPropertyTest {
         ));
     }
 
-    @Property
+    @Property(tries = 64)
+    void select_knownColumnInWhere_alwaysPasses(
+            @ForAll("nonAmbiguousUsersColumns") String col,
+            @ForAll("comparisonOperators") BinaryOp.BinaryOperator op
+    ) {
+        var where = new BinaryOp(op, new ColumnRef.Base(col), new Literal.StringLiteral("x"));
+
+        assertDoesNotThrow(() -> ContextFactory.selectContext(
+            List.of(physical("users")),
+            List.of(namedRef("name")),
+            Optional.of(where),
+            List.of(),
+            Optional.empty(),
+            List.of(),
+            Optional.empty()
+        ));
+    }
+
+    @Property(tries = 64)
     void select_qualifiedColumns_alwaysResolveAmbiguity(
             @ForAll("nonAmbiguousUsersColumns") String uCol,
             @ForAll("nonAmbiguousOrdersColumns") String oCol
@@ -204,7 +302,7 @@ class ContextPropertyTest {
         ));
     }
 
-    @Property
+    @Property(tries = 64)
     void select_unknownTable_alwaysFails(@ForAll("unknownTableNames") String table) {
         assertThrows(SchemaVerificationException.class, () -> ContextFactory.selectContext(
             List.of(physical(table)),
@@ -217,7 +315,7 @@ class ContextPropertyTest {
         ));
     }
 
-    @Property
+    @Property(tries = 64)
     void select_wrongTypeForBigint_alwaysFails(@ForAll("wrongTypesForBigint") Class<?> type) {
         assertThrows(SchemaVerificationException.class, () -> ContextFactory.selectContext(
             List.of(physical("users")),
@@ -230,7 +328,7 @@ class ContextPropertyTest {
         ));
     }
 
-    @Property
+    @Property(tries = 64)
     void select_correctTypeForBigint_alwaysPasses(@ForAll("correctTypesForBigint") Class<?> type) {
         assertDoesNotThrow(() -> ContextFactory.selectContext(
             List.of(physical("users")),
@@ -243,7 +341,7 @@ class ContextPropertyTest {
         ));
     }
 
-    @Property
+    @Property(tries = 64)
     void insert_unknownColumn_alwaysFails(@ForAll("unknownColumnNames") String col) {
         assertThrows(SchemaVerificationException.class, () -> ContextFactory.insertContext(
             List.of(physical("users")),
@@ -254,7 +352,7 @@ class ContextPropertyTest {
         ));
     }
 
-    @Property
+    @Property(tries = 64)
     void insert_knownColumn_alwaysPasses(@ForAll("nonAmbiguousUsersColumns") String col) {
         assertDoesNotThrow(() -> ContextFactory.insertContext(
             List.of(physical("users")),
@@ -265,7 +363,7 @@ class ContextPropertyTest {
         ));
     }
 
-    @Property
+    @Property(tries = 64)
     void insert_unknownReturningColumn_alwaysFails(@ForAll("unknownColumnNames") String col) {
         assertThrows(SchemaVerificationException.class, () -> ContextFactory.insertContext(
             List.of(physical("users")),
@@ -276,7 +374,7 @@ class ContextPropertyTest {
         ));
     }
 
-    @Property
+    @Property(tries = 64)
     void update_unknownColumn_alwaysFails(@ForAll("unknownColumnNames") String col) {
         assertThrows(SchemaVerificationException.class, () -> ContextFactory.updateContext(
             List.of(physical("users")),
@@ -288,7 +386,7 @@ class ContextPropertyTest {
         ));
     }
 
-    @Property
+    @Property(tries = 64)
     void update_knownColumn_alwaysPasses(@ForAll("nonAmbiguousUsersColumns") String col) {
         assertDoesNotThrow(() -> ContextFactory.updateContext(
             List.of(physical("users")),
@@ -300,25 +398,37 @@ class ContextPropertyTest {
         ));
     }
 
-    @Property
-    void update_unknownWhereColumn_alwaysFails(@ForAll("unknownColumnNames") String col) {
-        var where = new io.github.hacihaciyev.sql.expressions.BinaryOp(
-            io.github.hacihaciyev.sql.expressions.BinaryOp.BinaryOperator.EQ,
+    @Property(tries = 64)
+    void update_unknownColumnInSetExpr_alwaysFails(@ForAll("unknownColumnNames") String col) {
+        var expr = new BinaryOp(
+            BinaryOp.BinaryOperator.PLUS,
             new ColumnRef.Base(col),
-            new io.github.hacihaciyev.sql.expressions.Literal.IntLiteral(1)
+            new Literal.IntLiteral(1)
         );
 
         assertThrows(SchemaVerificationException.class, () -> ContextFactory.updateContext(
             List.of(physical("users")),
             List.of(namedRef("name")),
-            List.of(),
-            Optional.of(where),
+            List.of(expr),
+            Optional.empty(),
             List.of(),
             Optional.empty()
         ));
     }
 
-    @Property
+    @Property(tries = 64)
+    void update_unknownWhereColumn_alwaysFails(@ForAll("unknownColumnNames") String col) {
+        assertThrows(SchemaVerificationException.class, () -> ContextFactory.updateContext(
+            List.of(physical("users")),
+            List.of(namedRef("name")),
+            List.of(),
+            Optional.of(eqExpr(col, 1)),
+            List.of(),
+            Optional.empty()
+        ));
+    }
+
+    @Property(tries = 64)
     void update_unknownReturningColumn_alwaysFails(@ForAll("unknownColumnNames") String col) {
         assertThrows(SchemaVerificationException.class, () -> ContextFactory.updateContext(
             List.of(physical("users")),
@@ -330,12 +440,22 @@ class ContextPropertyTest {
         ));
     }
 
-    @Property
+    @Property(tries = 64)
     void delete_unknownWhereColumn_alwaysFails(@ForAll("unknownColumnNames") String col) {
-        var where = new io.github.hacihaciyev.sql.expressions.BinaryOp(
-            io.github.hacihaciyev.sql.expressions.BinaryOp.BinaryOperator.EQ,
-            new ColumnRef.Base(col),
-            new io.github.hacihaciyev.sql.expressions.Literal.IntLiteral(1)
+        assertThrows(SchemaVerificationException.class, () -> ContextFactory.deleteContext(
+            List.of(physical("users")),
+            Optional.of(eqExpr(col, 1)),
+            List.of(),
+            Optional.empty()
+        ));
+    }
+
+    @Property(tries = 64)
+    void delete_unknownColumnInNestedWhere_alwaysFails(@ForAll("unknownColumnNames") String col) {
+        var where = new BinaryOp(
+            BinaryOp.BinaryOperator.AND,
+            eqExpr("id", 1),
+            eqExpr(col, 2)
         );
 
         assertThrows(SchemaVerificationException.class, () -> ContextFactory.deleteContext(
@@ -346,7 +466,7 @@ class ContextPropertyTest {
         ));
     }
 
-    @Property
+    @Property(tries = 64)
     void delete_unknownReturningColumn_alwaysFails(@ForAll("unknownColumnNames") String col) {
         assertThrows(SchemaVerificationException.class, () -> ContextFactory.deleteContext(
             List.of(physical("users")),
@@ -356,7 +476,7 @@ class ContextPropertyTest {
         ));
     }
 
-    @Property
+    @Property(tries = 64)
     void delete_unknownTable_alwaysFails(@ForAll("unknownTableNames") String table) {
         assertThrows(SchemaVerificationException.class, () -> ContextFactory.deleteContext(
             List.of(physical(table)),
@@ -366,7 +486,7 @@ class ContextPropertyTest {
         ));
     }
 
-    @Property
+    @Property(tries = 64)
     void select_duplicateTableNames_alwaysFails(@ForAll("usersColumns") String col) {
         assertThrows(SchemaVerificationException.class, () -> ContextFactory.selectContext(
             List.of(physical("users"), physical("users")),

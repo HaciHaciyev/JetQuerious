@@ -161,4 +161,13 @@ class InsertBuilderTest {
                 .columns("ghost_column", String.class)
                 .build());
     }
+    
+    @Test
+    void nonExistentColumnInReturning_throws() {
+        assertThrows(Exception.class, () ->
+            new InsertBuilder("users")
+                .columns("name", String.class)
+                .returning("ghost_column")
+                .build());
+    }
 }
