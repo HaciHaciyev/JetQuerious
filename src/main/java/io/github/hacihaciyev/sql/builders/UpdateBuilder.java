@@ -5,6 +5,7 @@ import io.github.hacihaciyev.sql.expressions.ColumnRef;
 import io.github.hacihaciyev.sql.expressions.Expr;
 import io.github.hacihaciyev.sql.internal.Context;
 import io.github.hacihaciyev.sql.internal.ContextFactory;
+import io.github.hacihaciyev.sql.internal.ExprTraversal;
 import io.github.hacihaciyev.sql.internal.builders.UpdateSQL;
 import io.github.hacihaciyev.sql.internal.value_objects.Ref;
 import io.github.hacihaciyev.sql.internal.value_objects.TableSource;
@@ -18,6 +19,7 @@ import java.util.List;
 import java.util.Optional;
 
 import static java.util.Objects.requireNonNull;
+import static scala.jdk.javaapi.CollectionConverters.*;
 
 public final class UpdateBuilder {
     private final TableRef tref;
@@ -129,22 +131,29 @@ public final class UpdateBuilder {
 
         private Context.Update buildContext() {
             var source = new TableSource.Physical(tref);
-
-            var refs = entries.stream()
-                .map(e -> switch (e) {
-                    case UpdateEntry.Param p -> (Ref) new Ref.Named(new Projection.Base(new ColumnRef.Base(p.col().name(), new ColumnRef.Type.Some(p.type_()))));
-                    case UpdateEntry.Computed c -> new Ref.Named(new Projection.Base(c.col()));
-                    default -> throw new IllegalArgumentException("Unexpected");
-                })
-                .toList();
-
+        
+            var refs = new java.util.ArrayList<Ref>();
+            var setExprs = new java.util.ArrayList<Expr>();
+        
+            for (var entry : entries) switch (entry) {
+                case UpdateEntry.Param p -> refs.add(new Ref.Named(new Projection.Base(new ColumnRef.Base(p.col().name(), new ColumnRef.Type.Some(p.type_())))));
+    
+                case UpdateEntry.Computed c -> {
+                    refs.add(new Ref.Named(new Projection.Base(c.col())));
+                    setExprs.add(c.expr());
+                }
+                
+                default -> throw new IllegalArgumentException("Unexpected");
+            }
+        
             var returningRefs = returning.stream()
                 .map(e -> (Ref) new Ref.Named(new Projection.Base(e)))
                 .toList();
-
+        
             return ContextFactory.updateContext(
                 List.of(source),
                 refs,
+                setExprs,
                 Optional.ofNullable(where),
                 returningRefs,
                 Optional.empty()

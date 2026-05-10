@@ -99,6 +99,7 @@ object Context {
     case class Update(
                          sources: List[TableSource],
                          refs: List[Ref],
+                         setExprs: List[Expr],
                          where: Option[Expr],
                          returning: List[Ref],
                          outer: Option[Context] = None
@@ -114,8 +115,8 @@ object Context {
             validateNamedOnly(refs, errs)
             validateProjection(sources, refs, physical, virtual, errs)
 
-            val whereCrefs = where.toList.flatMap(ExprTraversal.collectCrefs)
-            for (cref <- whereCrefs) validateCref(cref, physical, virtual, outer, errs)
+            val extraCrefs = where.toList.flatMap(ExprTraversal.collectCrefs) ++ setExprs.toList.flatMap(ExprTraversal.collectCrefs)
+            for (cref <- extraCrefs) validateCref(cref, physical, virtual, outer, errs)
 
             if returning.nonEmpty then validateProjection(sources, returning, physical, virtual, errs)
             throwIfErrors(errs)
@@ -410,6 +411,7 @@ object ContextFactory {
     def updateContext(
                          sources: java.util.List[TableSource],
                          refs: java.util.List[Ref],
+                         setExprs: java.util.List[Expr],
                          where: java.util.Optional[Expr],
                          returning: java.util.List[Ref],
                          outer: java.util.Optional[Context]
@@ -417,6 +419,7 @@ object ContextFactory {
 
         sources.asScala.toList,
         refs.asScala.toList,
+        setExprs.asScala.toList,
         if where.isPresent then Some(where.get) else None,
         returning.asScala.toList,
         if outer.isPresent then Some(outer.get) else None

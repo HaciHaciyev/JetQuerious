@@ -298,6 +298,7 @@ class ContextTest {
         assertDoesNotThrow(() -> ContextFactory.updateContext(
             List.of(physical("users")),
             List.of(namedRef("name")),
+            List.of(),
             Optional.empty(),
             List.of(),
             Optional.empty()
@@ -310,6 +311,7 @@ class ContextTest {
         assertThrows(SchemaVerificationException.class, () -> ContextFactory.updateContext(
             List.of(physical("users")),
             List.of(namedRef("ghost")),
+            List.of(),
             Optional.empty(),
             List.of(),
             Optional.empty()
@@ -328,6 +330,7 @@ class ContextTest {
         assertDoesNotThrow(() -> ContextFactory.updateContext(
             List.of(physical("users")),
             List.of(namedRef("name")),
+            List.of(),
             Optional.of(where),
             List.of(),
             Optional.empty()
@@ -346,6 +349,7 @@ class ContextTest {
         assertThrows(SchemaVerificationException.class, () -> ContextFactory.updateContext(
             List.of(physical("users")),
             List.of(namedRef("name")),
+            List.of(),
             Optional.of(where),
             List.of(),
             Optional.empty()
@@ -358,6 +362,7 @@ class ContextTest {
         assertDoesNotThrow(() -> ContextFactory.updateContext(
             List.of(physical("users")),
             List.of(namedRef("name")),
+            List.of(),
             Optional.empty(),
             List.of(namedRef("id")),
             Optional.empty()
@@ -370,6 +375,7 @@ class ContextTest {
         assertThrows(SchemaVerificationException.class, () -> ContextFactory.updateContext(
             List.of(physical("users")),
             List.of(namedRef("name")),
+            List.of(),
             Optional.empty(),
             List.of(namedRef("ghost")),
             Optional.empty()

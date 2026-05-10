@@ -281,6 +281,7 @@ class ContextPropertyTest {
         assertThrows(SchemaVerificationException.class, () -> ContextFactory.updateContext(
             List.of(physical("users")),
             List.of(namedRef(col)),
+            List.of(),
             Optional.empty(),
             List.of(),
             Optional.empty()
@@ -292,6 +293,7 @@ class ContextPropertyTest {
         assertDoesNotThrow(() -> ContextFactory.updateContext(
             List.of(physical("users")),
             List.of(namedRef(col)),
+            List.of(),
             Optional.empty(),
             List.of(),
             Optional.empty()
@@ -309,6 +311,7 @@ class ContextPropertyTest {
         assertThrows(SchemaVerificationException.class, () -> ContextFactory.updateContext(
             List.of(physical("users")),
             List.of(namedRef("name")),
+            List.of(),
             Optional.of(where),
             List.of(),
             Optional.empty()
@@ -320,6 +323,7 @@ class ContextPropertyTest {
         assertThrows(SchemaVerificationException.class, () -> ContextFactory.updateContext(
             List.of(physical("users")),
             List.of(namedRef("name")),
+            List.of(),
             Optional.empty(),
             List.of(namedRef(col)),
             Optional.empty()
