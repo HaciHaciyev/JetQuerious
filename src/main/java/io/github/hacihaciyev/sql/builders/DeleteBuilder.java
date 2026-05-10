@@ -45,6 +45,10 @@ public final class DeleteBuilder {
     public JQ.Write build() {
         return new BuildStage(null, List.of()).build();
     }
+    
+    public JQ.Write build(JQ.Read outer) {
+        return new BuildStage(null, List.of()).build(outer);
+    }
 
     public final class WhereStage {
         private final Expr where;
@@ -66,6 +70,10 @@ public final class DeleteBuilder {
         public JQ.Write build() {
             return new BuildStage(where, List.of()).build();
         }
+        
+        public JQ.Write build(JQ.Read outer) {
+            return new BuildStage(where, List.of()).build(outer);
+        }
     }
 
     public final class BuildStage {
@@ -78,26 +86,30 @@ public final class DeleteBuilder {
         }
 
         public JQ.Write build() {
-            return new JQ.Write(buildSql(), buildContext());
+            return new JQ.Write(buildSql(), buildContext(Optional.empty()));
         }
-
+    
+        public JQ.Write build(JQ.Read outer) {
+            return new JQ.Write(buildSql(), buildContext(Optional.of((Context) outer.context())));
+        }
+            
         private String buildSql() {
             var retNames = returning.stream().map(ColumnRef::name).toList();
             return DeleteSQL.build(tref, Optional.ofNullable(where), retNames);
         }
-
-        private Context.Delete buildContext() {
+        
+        private Context.Delete buildContext(Optional<Context> outer) {
             var source = new TableSource.Physical(tref);
-
+    
             var returningRefs = returning.stream()
                 .map(e -> (Ref) new Ref.Named(new Projection.Base(e)))
                 .toList();
-
+    
             return ContextFactory.deleteContext(
                 List.of(source),
                 Optional.ofNullable(where),
                 returningRefs,
-                Optional.empty()
+                outer
             );
         }
     }

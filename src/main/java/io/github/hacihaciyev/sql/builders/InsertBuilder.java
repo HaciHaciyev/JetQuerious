@@ -82,9 +82,13 @@ public final class InsertBuilder {
                 .map(ColumnRef.Base::new)
                 .toArray(ColumnRef[]::new));
         }
-
+        
         public JQ.Write build() {
             return new BuildStage(columns, null, List.of()).build();
+        }
+    
+        public JQ.Write build(JQ.Read outer) {
+            return new BuildStage(columns, null, List.of()).build(outer);
         }
     }
 
@@ -155,33 +159,37 @@ public final class InsertBuilder {
             this.conflict  = conflict;
             this.returning = returning;
         }
-
+        
         public JQ.Write build() {
-            return new JQ.Write(buildSql(), buildContext());
+            return new JQ.Write(buildSql(), buildContext(Optional.empty()));
+        }
+       
+        public JQ.Write build(JQ.Read outer) {
+           return new JQ.Write(buildSql(), buildContext(Optional.of((Context) outer.context())));
         }
 
         private String buildSql() {
             var retNames = returning.stream().map(ColumnRef::name).toList();
             return InsertSQL.build(tref, columns, Optional.ofNullable(conflict), retNames);
         }
-
-        private Context.Insert buildContext() {
+       
+        private Context.Insert buildContext(Optional<Context> outer) {
             var source = new TableSource.Physical(tref);
-
+       
             var refs = columns.stream()
                 .map(e -> (Ref) new Ref.Named(new Projection.Base(new ColumnRef.Base(e.col().name(), new ColumnRef.Type.Some(e.type_())))))
                 .toList();
-
+       
             var returningRefs = returning.stream()
                 .map(e -> (Ref) new Ref.Named(new Projection.Base(e)))
                 .toList();
-
+       
             return ContextFactory.insertContext(
                 List.of(source),
                 refs,
                 Optional.ofNullable(conflict),
                 returningRefs,
-                Optional.empty()
+                outer
             );
         }
     }

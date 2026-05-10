@@ -79,9 +79,13 @@ public final class UpdateBuilder {
                 .map(ColumnRef.Base::new)
                 .toArray(ColumnRef[]::new));
         }
-
+        
         public JQ.Write build() {
             return new BuildStage(entries, null, List.of()).build();
+        }
+       
+        public JQ.Write build(JQ.Read outer) {
+           return new BuildStage(entries, null, List.of()).build(outer);
         }
     }
 
@@ -105,7 +109,11 @@ public final class UpdateBuilder {
         }
 
         public JQ.Write build() {
-            return new BuildStage(entries, where, List.of()).build();
+           return new BuildStage(entries, where, List.of()).build();
+        }
+       
+        public JQ.Write build(JQ.Read outer) {
+           return new BuildStage(entries, where, List.of()).build(outer);
         }
     }
 
@@ -121,23 +129,26 @@ public final class UpdateBuilder {
         }
 
         public JQ.Write build() {
-            return new JQ.Write(buildSql(), buildContext());
+            return new JQ.Write(buildSql(), buildContext(Optional.empty()));
+        }
+        
+        public JQ.Write build(JQ.Read outer) {
+            return new JQ.Write(buildSql(), buildContext(Optional.of((Context) outer.context())));
         }
 
         private String buildSql() {
             var retNames = returning.stream().map(ColumnRef::name).toList();
             return UpdateSQL.build(tref, entries, Optional.ofNullable(where), retNames);
         }
-
-        private Context.Update buildContext() {
-            var source = new TableSource.Physical(tref);
         
-            var refs = new java.util.ArrayList<Ref>();
-            var setExprs = new java.util.ArrayList<Expr>();
-        
+        private Context.Update buildContext(Optional<Context> outer) {
+            var source   = new TableSource.Physical(tref);
+            var refs     = new ArrayList<Ref>();
+            var setExprs = new ArrayList<Expr>();
+    
             for (var entry : entries) switch (entry) {
                 case UpdateEntry.Param p -> refs.add(new Ref.Named(new Projection.Base(new ColumnRef.Base(p.col().name(), new ColumnRef.Type.Some(p.type_())))));
-    
+                
                 case UpdateEntry.Computed c -> {
                     refs.add(new Ref.Named(new Projection.Base(c.col())));
                     setExprs.add(c.expr());
@@ -145,18 +156,18 @@ public final class UpdateBuilder {
                 
                 default -> throw new IllegalArgumentException("Unexpected");
             }
-        
+    
             var returningRefs = returning.stream()
                 .map(e -> (Ref) new Ref.Named(new Projection.Base(e)))
                 .toList();
-        
+    
             return ContextFactory.updateContext(
                 List.of(source),
                 refs,
                 setExprs,
                 Optional.ofNullable(where),
                 returningRefs,
-                Optional.empty()
+                outer
             );
         }
     }
