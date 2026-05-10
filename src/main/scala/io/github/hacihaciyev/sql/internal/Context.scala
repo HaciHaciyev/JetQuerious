@@ -48,8 +48,7 @@ object Context {
                          outer: Option[Context] = None
                      ) extends Context, DQL {
 
-        require(groupBy != null)
-        require(orderBy != null)
+        req(sources, refs, where, groupBy, having, orderBy, outer)
 
         protected def validate(): Unit = {
             validateCommon(sources, refs)
@@ -78,8 +77,7 @@ object Context {
                          outer: Option[Context] = None
                      ) extends Context, DML {
 
-        require(conflict != null)
-        require(returning != null)
+        req(sources, refs, conflict, returning, outer)
 
         protected def validate(): Unit = {
             validateCommon(sources, refs)
@@ -105,7 +103,7 @@ object Context {
                          outer: Option[Context] = None
                      ) extends Context, DML {
 
-        require(returning != null)
+        req(sources, refs, setExprs, where, returning, outer)
 
         protected def validate(): Unit = {
             validateCommon(sources, refs)
@@ -130,7 +128,7 @@ object Context {
                          outer: Option[Context] = None
                      ) extends Context, DML {
 
-        require(returning != null)
+        req(sources, where, returning, outer)
         
         override def refs: List[Ref] = List.empty
 
@@ -370,6 +368,14 @@ object Context {
 
     private def unsupportedType(cref: ColumnRef, javaType: Class[?]): String =
         s"Unsupported Java type '${javaType.getName}' for column '$cref'"
+        
+    private def req(values: Any*): Unit =
+        values.foreach {
+            case null            => require(false, "null value")
+            case opt: Option[?]  => require(opt.forall(_ != null), "Option contains null")
+            case xs: Iterable[?] => require(!xs.exists(_ == null), "Collection contains null")
+            case _               =>
+        }
 }
 
 object ContextFactory {
