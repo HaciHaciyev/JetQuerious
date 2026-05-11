@@ -64,6 +64,16 @@ public final class SelectBuilder {
         return new SelectBuilder(true, new Projection.Wildcard());
     }
 
+    public static SelectBuilder selectAll(String... qualifiedWildcards) {
+        requireNonNull(qualifiedWildcards, "Qualified wildcards cannot be null");
+        return new SelectBuilder(false, toQW(qualifiedWildcards));
+    }
+
+    public static SelectBuilder selectAllDistinct(String... qualifiedWildcards) {
+        requireNonNull(qualifiedWildcards, "Qualified wildcards cannot be null");
+        return new SelectBuilder(true, toQW(qualifiedWildcards));
+    }
+
     public FromStage from(TableRef tref) {
         return new FromStage(projections, distinct, new FromSource.Physical(requireNonNull(tref, "TableRef cannot be null")));
     }
@@ -589,5 +599,9 @@ public final class SelectBuilder {
         return Arrays.stream(columns)
             .map(ColumnRef.Base::new)
             .toArray(Expr[]::new);
+    }
+
+    private static Projection[] toQW(String... qualifiedWildcards) {
+        return Arrays.stream(qualifiedWildcards).map(Projection.QualifiedWildcard::new).toArray(Projection[]::new);
     }
 }
