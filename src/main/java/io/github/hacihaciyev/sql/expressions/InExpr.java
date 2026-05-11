@@ -19,7 +19,7 @@ public sealed interface InExpr extends ValueExpr {
         }
     }
 
-    record SubquerySource(Subquery.TableSubquery subquery) implements InSource {
+    record SubquerySource(Subquery.Table subquery) implements InSource {
         public SubquerySource {
             requireNonNull(subquery);
         }

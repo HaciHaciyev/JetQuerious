@@ -8,7 +8,7 @@ public sealed interface QuantifiedExpr extends ValueExpr {
         EQ, NEQ, GT, GTE, LT, LTE
     }
     
-    record All(ComparisonOperator operator, Expr operand, Subquery.TableSubquery subquery) implements QuantifiedExpr { 
+    record All(ComparisonOperator operator, Expr operand, Subquery.Table subquery) implements QuantifiedExpr { 
         public All {
             requireNonNull(operator);
             requireNonNull(operand);
@@ -16,7 +16,7 @@ public sealed interface QuantifiedExpr extends ValueExpr {
         }
     }
     
-    record Any(ComparisonOperator operator, Expr operand, Subquery.TableSubquery subquery) implements QuantifiedExpr { 
+    record Any(ComparisonOperator operator, Expr operand, Subquery.Table subquery) implements QuantifiedExpr { 
         public Any {
             requireNonNull(operator);
             requireNonNull(operand);

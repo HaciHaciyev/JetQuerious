@@ -17,8 +17,8 @@ class ExprRendererTest {
     private static final ColumnRef.Base COL_C = new ColumnRef.Base("c");
     private static final Literal.IntLiteral ONE = new Literal.IntLiteral(1);
 
-    private static Subquery.TableSubquery tableSubquery(String sql) {
-        return new Subquery.TableSubquery(TestFixtures.stubJqRead());
+    private static Subquery.Table tableSubquery(String sql) {
+        return new Subquery.Table(TestFixtures.stubJqRead());
     }
 
     // ── ColumnRef ─────────────────────────────────────────────────────────────
@@ -320,7 +320,7 @@ class ExprRendererTest {
 
     @Test
     void scalarSubquery() {
-        var sub = new Subquery.ScalarSubquery(TestFixtures.stubJqRead());
+        var sub = new Subquery.Scalar(TestFixtures.stubJqRead());
         assertEquals("(SELECT 1)", ExprRenderer.render(sub));
     }
 

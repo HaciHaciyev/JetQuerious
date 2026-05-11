@@ -17,8 +17,8 @@ class ExprTraversalTest {
     private static final ColumnRef.Base COL_C = new ColumnRef.Base("c");
     private static final Literal.IntLiteral ONE = new Literal.IntLiteral(1);
 
-    private static Subquery.TableSubquery tableSubquery() {
-        return new Subquery.TableSubquery(TestFixtures.stubJqRead());
+    private static Subquery.Table tableSubquery() {
+        return new Subquery.Table(TestFixtures.stubJqRead());
     }
 
     // ── Literals & terminal nodes ──────────────────────────────────────────────
@@ -35,7 +35,7 @@ class ExprTraversalTest {
 
     @Test
     void scalarSubquery_returnsEmpty() {
-        var sub = new Subquery.ScalarSubquery(TestFixtures.stubJqRead());
+        var sub = new Subquery.Scalar(TestFixtures.stubJqRead());
         assertTrue(ExprTraversal.collectCrefs(sub).isEmpty());
     }
 

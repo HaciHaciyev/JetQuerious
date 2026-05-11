@@ -23,15 +23,15 @@ object ExprRenderer {
         case e: QuantifiedExpr.All           => s"${render(e.operand())} ${renderComparison(e.operator())} ALL (${e.subquery().jq().sql()})"
         case e: QuantifiedExpr.Any           => s"${render(e.operand())} ${renderComparison(e.operator())} ANY (${e.subquery().jq().sql()})"
         case e: Exists                       => s"EXISTS (${e.subquery().jq().sql()})"
-        case e: Subquery.ScalarSubquery      => s"(${e.jq().sql()})"
+        case e: Subquery.Scalar              => s"(${e.jq().sql()})"
         case f: Func                         => renderFunc(f)
         case l: Literal                      => renderLiteral(l)
     }
 
     private def renderColumnRef(col: ColumnRef): String = col match {
-        case c: ColumnRef.Base         => c.name()
-        case c: ColumnRef.Alias        => s"${c.name()} AS ${c.alias()}"
-        case c: ColumnRef.VariableBase => s"${c.variable()}.${c.name()}"
+        case c: ColumnRef.Base          => c.name()
+        case c: ColumnRef.Alias         => s"${c.name()} AS ${c.alias()}"
+        case c: ColumnRef.VariableBase  => s"${c.variable()}.${c.name()}"
         case c: ColumnRef.VariableAlias => s"${c.variable()}.${c.name()} AS ${c.alias()}"
     }
 

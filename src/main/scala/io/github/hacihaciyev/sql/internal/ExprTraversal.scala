@@ -25,7 +25,7 @@ object ExprTraversal {
         case f: Func                     => collectFunc(f)
         case _: Literal                  => List()
         case _: Exists                   => List()
-        case _: Subquery.ScalarSubquery  => List()
+        case _: Subquery.Scalar          => List()
     }
 
     def collectAllCrefs(exprs: List[Expr]): List[ColumnRef] =

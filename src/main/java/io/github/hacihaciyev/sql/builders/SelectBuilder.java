@@ -82,7 +82,7 @@ public final class SelectBuilder {
         return from(new TableRef.Base(table));
     }
 
-    public FromStage from(Subquery.TableSubquery subquery, String alias) {
+    public FromStage from(Subquery.Table subquery, String alias) {
         requireNonNull(subquery, "Subquery cannot be null");
         requireNonNull(alias,    "Alias cannot be null");
         return new FromStage(projections, distinct, new FromSource.Subquery(subquery.jq(), alias));
@@ -107,7 +107,7 @@ public final class SelectBuilder {
             return join(new TableRef.Base(table), on);
         }
 
-        public JoinStage join(Subquery.TableSubquery subquery, String alias, Expr on) {
+        public JoinStage join(Subquery.Table subquery, String alias, Expr on) {
             return new JoinStage(projections, distinct, from, List.of()).join(subquery, alias, on);
         }
 
@@ -119,7 +119,7 @@ public final class SelectBuilder {
             return leftJoin(new TableRef.Base(table), on);
         }
 
-        public JoinStage leftJoin(Subquery.TableSubquery subquery, String alias, Expr on) {
+        public JoinStage leftJoin(Subquery.Table subquery, String alias, Expr on) {
             return new JoinStage(projections, distinct, from, List.of()).leftJoin(subquery, alias, on);
         }
 
@@ -131,7 +131,7 @@ public final class SelectBuilder {
             return rightJoin(new TableRef.Base(table), on);
         }
 
-        public JoinStage rightJoin(Subquery.TableSubquery subquery, String alias, Expr on) {
+        public JoinStage rightJoin(Subquery.Table subquery, String alias, Expr on) {
             return new JoinStage(projections, distinct, from, List.of()).rightJoin(subquery, alias, on);
         }
 
@@ -143,7 +143,7 @@ public final class SelectBuilder {
             return fullJoin(new TableRef.Base(table), on);
         }
 
-        public JoinStage fullJoin(Subquery.TableSubquery subquery, String alias, Expr on) {
+        public JoinStage fullJoin(Subquery.Table subquery, String alias, Expr on) {
             return new JoinStage(projections, distinct, from, List.of()).fullJoin(subquery, alias, on);
         }
 
@@ -155,7 +155,7 @@ public final class SelectBuilder {
             return crossJoin(new TableRef.Base(table));
         }
 
-        public JoinStage crossJoin(Subquery.TableSubquery subquery, String alias) {
+        public JoinStage crossJoin(Subquery.Table subquery, String alias) {
             return new JoinStage(projections, distinct, from, List.of()).crossJoin(subquery, alias);
         }
 
@@ -214,7 +214,7 @@ public final class SelectBuilder {
             return join(new TableRef.Base(table), on);
         }
 
-        public JoinStage join(Subquery.TableSubquery subquery, String alias, Expr on) {
+        public JoinStage join(Subquery.Table subquery, String alias, Expr on) {
             return addJoin(JoinEntry.inner(new FromSource.Subquery(requireNonNull(subquery.jq()), requireNonNull(alias)), requireNonNull(on)));
         }
 
@@ -226,7 +226,7 @@ public final class SelectBuilder {
             return leftJoin(new TableRef.Base(table), on);
         }
 
-        public JoinStage leftJoin(Subquery.TableSubquery subquery, String alias, Expr on) {
+        public JoinStage leftJoin(Subquery.Table subquery, String alias, Expr on) {
             return addJoin(JoinEntry.left(new FromSource.Subquery(requireNonNull(subquery.jq()), requireNonNull(alias)), requireNonNull(on)));
         }
 
@@ -238,7 +238,7 @@ public final class SelectBuilder {
             return rightJoin(new TableRef.Base(table), on);
         }
 
-        public JoinStage rightJoin(Subquery.TableSubquery subquery, String alias, Expr on) {
+        public JoinStage rightJoin(Subquery.Table subquery, String alias, Expr on) {
             return addJoin(JoinEntry.right(new FromSource.Subquery(requireNonNull(subquery.jq()), requireNonNull(alias)), requireNonNull(on)));
         }
 
@@ -250,7 +250,7 @@ public final class SelectBuilder {
             return fullJoin(new TableRef.Base(table), on);
         }
 
-        public JoinStage fullJoin(Subquery.TableSubquery subquery, String alias, Expr on) {
+        public JoinStage fullJoin(Subquery.Table subquery, String alias, Expr on) {
             return addJoin(JoinEntry.full(new FromSource.Subquery(requireNonNull(subquery.jq()), requireNonNull(alias)), requireNonNull(on)));
         }
 
@@ -262,7 +262,7 @@ public final class SelectBuilder {
             return crossJoin(new TableRef.Base(table));
         }
 
-        public JoinStage crossJoin(Subquery.TableSubquery subquery, String alias) {
+        public JoinStage crossJoin(Subquery.Table subquery, String alias) {
             return addJoin(JoinEntry.cross(new FromSource.Subquery(requireNonNull(subquery.jq()), requireNonNull(alias))));
         }
 
