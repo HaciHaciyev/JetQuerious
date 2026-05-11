@@ -28,7 +28,7 @@ public final class SelectBuilder {
     private final List<Projection> projections;
     private final boolean          distinct;
 
-    private SelectBuilder(boolean distinct, Projection[] projections) {
+    private SelectBuilder(boolean distinct, Projection... projections) {
         if (projections.length == 0) throw new IllegalArgumentException("At least one projection is required");
         for (var p : projections) requireNonNull(p, "Projection cannot be null");
         
@@ -44,6 +44,24 @@ public final class SelectBuilder {
     public static SelectBuilder selectDistinct(Expr... exprs) {
         requireNonNull(exprs, "Expressions cannot be null");
         return new SelectBuilder(true, toProjections(exprs));
+    }
+    
+    public static SelectBuilder select(Projection... projections) {
+        requireNonNull(projections, "Projections cannot be null");
+        return new SelectBuilder(false, projections);
+    }
+
+    public static SelectBuilder selectDistinct(Projection... projections) {
+        requireNonNull(projections, "Projections cannot be null");
+        return new SelectBuilder(true, projections);
+    }
+    
+    public static SelectBuilder selectAll() {
+        return new SelectBuilder(false, new Projection.Wildcard());
+    }
+    
+    public static SelectBuilder selectAllDistinct() {
+        return new SelectBuilder(true, new Projection.Wildcard());
     }
 
     public FromStage from(TableRef tref) {
