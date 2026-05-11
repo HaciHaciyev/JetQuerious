@@ -5,13 +5,13 @@ import static java.util.Objects.requireNonNull;
 
 public sealed interface Subquery {
     
-    record ScalarSubquery(JQ jq) implements Subquery, ValueExpr {
+    record ScalarSubquery(JQ.Read jq) implements Subquery, ValueExpr {
         public ScalarSubquery {
             requireNonNull(jq);
         }
     }
     
-    record TableSubquery(JQ jq) implements Subquery {
+    record TableSubquery(JQ.Read jq) implements Subquery {
         public TableSubquery {
             requireNonNull(jq);
         }
