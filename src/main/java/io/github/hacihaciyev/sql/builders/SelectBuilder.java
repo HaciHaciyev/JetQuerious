@@ -180,8 +180,8 @@ public final class SelectBuilder {
             return orderBy(toColumnRefs(columns));
         }
 
-        public LimitStage limit(Limit limit) {
-            return new LimitStage(projections, distinct, from, List.of(), null, List.of(), null, List.of(), limit);
+        public LimitStage limit(int limit) {
+            return new LimitStage(projections, distinct, from, List.of(), null, List.of(), null, List.of(), new Limit(limit));
         }
 
         public JQ.Read build() {
