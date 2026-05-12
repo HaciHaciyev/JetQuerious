@@ -28,6 +28,10 @@ class SelectBuilderTest {
     private static ColumnRef.Alias colAs(String name, String alias) {
         return new ColumnRef.Alias(name, alias);
     }
+    
+    private static ColumnRef.VariableAlias colAs(String table, String name, String alias) {
+        return new ColumnRef.VariableAlias(table, name, alias);
+    }
 
     private static BinaryOp eq(Expr left, Expr right) {
         return new BinaryOp(EQ, left, right);
@@ -234,9 +238,9 @@ class SelectBuilderTest {
         @Test
         void tableWithCatalogAndSchema() {
             var q = SelectBuilder.select(col("id"))
-                    .from(new TableRef.WithCatalogAndSchema("mydb", "public", "users"))
+                    .from(new TableRef.WithCatalogAndSchema("testdb", "public", "users"))
                     .build();
-            assertEquals("SELECT id FROM mydb.public.users", q.sql());
+            assertEquals("SELECT id FROM testdb.public.users", q.sql());
         }
 
         @Test
@@ -372,22 +376,25 @@ class SelectBuilderTest {
 
         @Test
         void existsSubquery() {
-            var sub = SelectBuilder.select(col("id"))
+            var outer = SelectBuilder.select(col("u", "id"), col("u", "name"))
+                    .from(new TableRef.AliasedBase("users", "u"))
+                    .build();
+        
+            var sub = SelectBuilder.select(col("u", "id"))
                     .from(new TableRef.AliasedBase("orders", "o"))
                     .where(eq(col("o", "user_id"), col("u", "id")))
-                    .build();
-
+                    .build(outer);
+        
             var q = SelectBuilder.select(col("u", "id"), col("u", "name"))
                     .from(new TableRef.AliasedBase("users", "u"))
                     .where(new Exists(new Subquery.Table(sub)))
                     .build();
-
+        
             assertEquals(
-                    """
-                    SELECT u.id, u.name FROM users AS u \
-                    WHERE EXISTS (SELECT id FROM orders AS o WHERE (o.user_id = u.id))""",
+                    "SELECT u.id, u.name FROM users AS u " +
+                    "WHERE EXISTS (SELECT u.id FROM orders AS o WHERE (o.user_id = u.id))",
                     q.sql()
-            );
+                    );
         }
     }
 
@@ -448,13 +455,13 @@ class SelectBuilderTest {
 
         @Test
         void crossJoin() {
-            var q = SelectBuilder.select(col("u", "id"), col("o", "id"))
+            var q = SelectBuilder.select(colAs("u", "id", "user_id"), colAs("o", "id", "order_id"))
                     .from(new TableRef.AliasedBase("users", "u"))
                     .crossJoin(new TableRef.AliasedBase("orders", "o"))
                     .build();
-
+                    
             assertEquals(
-                    "SELECT u.id, o.id FROM users AS u CROSS JOIN orders AS o",
+                    "SELECT u.id AS user_id, o.id AS order_id FROM users AS u CROSS JOIN orders AS o",
                     q.sql()
             );
         }
