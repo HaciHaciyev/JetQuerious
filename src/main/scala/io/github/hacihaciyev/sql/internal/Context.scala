@@ -341,11 +341,15 @@ object Context {
         }
 
     private def loadPhysicalCrefs(tref: TableRef, crefs: mutable.ListBuffer[ColumnRef]): List[String] = {
+        val effectiveName = tref match {
+            case ta: TableRef.Aliased => ta.alias()
+            case base                 => base.name()
+        }
         val cols = SchemaResolver.load(tref, ds()) match {
             case ok: Ok[Table, SchemaVerificationException]   => List.from(ok.value().columns().map(_.name()))
             case err: Err[Table, SchemaVerificationException] => throw err.err()
         }
-        crefs.addAll(cols.map(s => ColumnRef.Base(s)))
+        crefs.addAll(cols.map(s => ColumnRef.VariableBase(effectiveName, s)))
         cols
     }
 
