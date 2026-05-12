@@ -236,7 +236,7 @@ object Context {
                                       refs: List[Ref],
                                       physical: Map[TableRef, Table],
                                       virtual: Map[String, List[String]],
-                                      outher: Option[Context],
+                                      outer: Option[Context],
                                       errs: ListBuffer[String]
                                   ): Unit = {
 
@@ -280,7 +280,7 @@ object Context {
         if (names.toSet.size != names.size)
             throw SchemaVerificationException("Duplicate column names or aliases found in context.")
 
-        for (cref <- crefs.toList) validateCref(cref, physical, virtual, outher, errs)
+        for (cref <- crefs.toList) validateCref(cref, physical, virtual, outer, errs)
     }
 
     @tailrec
