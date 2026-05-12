@@ -36,7 +36,8 @@ public class DBTestContainer implements BeforeAllCallback, ExtensionContext.Stor
                     id      BIGINT,
                     name    VARCHAR,
                     email   VARCHAR,
-                    active  BOOLEAN
+                    active  BOOLEAN,
+                    age     INTEGER
                 )
             """);
             stmt.execute("""
@@ -44,6 +45,7 @@ public class DBTestContainer implements BeforeAllCallback, ExtensionContext.Stor
                     id      BIGINT,
                     user_id BIGINT,
                     total   NUMERIC,
+                    amount  NUMERIC,
                     status  VARCHAR
                 )
             """);
@@ -53,6 +55,20 @@ public class DBTestContainer implements BeforeAllCallback, ExtensionContext.Stor
                     order_id BIGINT,
                     product  VARCHAR,
                     qty      INTEGER
+                )
+            """);
+            stmt.execute("""
+                CREATE TABLE IF NOT EXISTS employees (
+                    id         BIGINT,
+                    department VARCHAR,
+                    salary     NUMERIC,
+                    active     BOOLEAN
+                )
+            """);
+            stmt.execute("""
+                CREATE TABLE IF NOT EXISTS banned_users (
+                    id      BIGINT,
+                    user_id BIGINT
                 )
             """);
         }
