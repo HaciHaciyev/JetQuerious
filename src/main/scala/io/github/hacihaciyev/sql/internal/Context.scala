@@ -55,7 +55,7 @@ object Context {
             val (physical, virtual) = resolve(sources)
             val errs = mutable.ListBuffer[String]()
 
-            validateProjection(sources, refs, physical, virtual, errs)
+            validateProjection(sources, refs, physical, virtual, outer, errs)
 
             val whereCrefs  = where.toList.flatMap(ExprTraversal.collectCrefs)
             val groupCrefs  = groupBy.flatMap(ExprTraversal.collectCrefs)
@@ -85,11 +85,11 @@ object Context {
             val errs = mutable.ListBuffer[String]()
 
             validateNamedOnly(refs, errs)
-            validateProjection(sources, refs, physical, virtual, errs)
+            validateProjection(sources, refs, physical, virtual, outer, errs)
             
             conflict.foreach(c => validateConflict(c, physical, virtual, errs))
             
-            if returning.nonEmpty then validateProjection(sources, returning, physical, virtual, errs)
+            if returning.nonEmpty then validateProjection(sources, returning, physical, virtual, outer, errs)
             throwIfErrors(errs)
         }
     }
@@ -111,12 +111,12 @@ object Context {
             val errs = mutable.ListBuffer[String]()
 
             validateNamedOnly(refs, errs)
-            validateProjection(sources, refs, physical, virtual, errs)
+            validateProjection(sources, refs, physical, virtual, outer, errs)
 
             val extraCrefs = where.toList.flatMap(ExprTraversal.collectCrefs) ++ setExprs.toList.flatMap(ExprTraversal.collectCrefs)
             for (cref <- extraCrefs) validateCref(cref, physical, virtual, outer, errs)
 
-            if returning.nonEmpty then validateProjection(sources, returning, physical, virtual, errs)
+            if returning.nonEmpty then validateProjection(sources, returning, physical, virtual, outer, errs)
             throwIfErrors(errs)
         }
     }
@@ -140,7 +140,7 @@ object Context {
             val whereCrefs = where.toList.flatMap(ExprTraversal.collectCrefs)
             for (cref <- whereCrefs) validateCref(cref, physical, virtual, outer, errs)
 
-            if returning.nonEmpty then validateProjection(sources, returning, physical, virtual, errs)
+            if returning.nonEmpty then validateProjection(sources, returning, physical, virtual, outer, errs)
             throwIfErrors(errs)
         }
     }
@@ -236,6 +236,7 @@ object Context {
                                       refs: List[Ref],
                                       physical: Map[TableRef, Table],
                                       virtual: Map[String, List[String]],
+                                      outher: Option[Context],
                                       errs: ListBuffer[String]
                                   ): Unit = {
 
@@ -279,7 +280,7 @@ object Context {
         if (names.toSet.size != names.size)
             throw SchemaVerificationException("Duplicate column names or aliases found in context.")
 
-        for (cref <- crefs.toList) validateCref(cref, physical, virtual, None, errs)
+        for (cref <- crefs.toList) validateCref(cref, physical, virtual, outher, errs)
     }
 
     @tailrec
