@@ -1,162 +1,117 @@
 package io.github.hacihaciyev.sql.builders;
 
-import io.github.hacihaciyev.build_errors.SchemaVerificationException;
 import io.github.hacihaciyev.sql.JQ;
-import io.github.hacihaciyev.sql.JQ.Read;
 import io.github.hacihaciyev.sql.expressions.ColumnRef;
+import io.github.hacihaciyev.sql.expressions.Expr;
+import io.github.hacihaciyev.sql.internal.builders.UnionSQL;
 import io.github.hacihaciyev.sql.value_objects.Limit;
 import io.github.hacihaciyev.sql.value_objects.Offset;
-import io.github.hacihaciyev.sql.value_objects.TableRef;
 import io.github.hacihaciyev.sql.value_objects.UnionType;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 
 import static java.util.Objects.requireNonNull;
 
 public final class UnionBuilder {
-    
-    private final List<UnionPart> parts = new ArrayList<>();
-    
-    record UnionPart(UnionType value, JQ.Read query) {
-        public UnionPart {
-            requireNonNull(value, "Union value cannot be null");
-            requireNonNull(query, "JQ cannot be null");
-        }
+    private final UnionType     unionType;
+    private final List<JQ.Read> queries;
+
+    public UnionBuilder(UnionType unionType, JQ.Read first, JQ.Read... rest) {
+        this.unionType = requireNonNull(unionType, "Union type cannot be null");
+        requireNonNull(first, "First query cannot be null");
+        requireNonNull(rest,  "Rest queries cannot be null");
+
+        var queries = new ArrayList<JQ.Read>();
+        queries.add(first);
+        for (var q : rest) queries.add(requireNonNull(q, "Query cannot be null"));
+        this.queries = List.copyOf(queries);
     }
-    
-    public UnionBuilder(UnionType value, JQ.Read first, JQ.Read... rest) {
-        requireNonNull(rest, "Rest queries cannot be null");
-        if (rest.length == 0) throw new IllegalArgumentException("Union requires at least two queries");
-        
-        parts.add(new UnionPart(value, first));
-        for (var q : rest) parts.add(new UnionPart(value, q));
+
+    public UnionBuilder add(JQ.Read query) {
+        requireNonNull(query, "Query cannot be null");
+        var queries = new ArrayList<>(this.queries);
+        queries.add(query);
+        return new UnionBuilder(unionType, queries.getFirst(), queries.subList(1, queries.size()).toArray(JQ.Read[]::new));
     }
-    
-    public UnionBuilder union(JQ.Read query) {
-        parts.add(new UnionPart(UnionType.UNION, query));
-        return this;
+
+    public OrderByStage orderBy(Expr... exprs) {
+        if (exprs.length == 0) throw new IllegalArgumentException("At least one ORDER BY expression is required");
+        for (var e : exprs) requireNonNull(e, "ORDER BY expression cannot be null");
+        return new OrderByStage(List.of(exprs));
     }
-    
-    public UnionBuilder unionAll(JQ.Read query) {
-        parts.add(new UnionPart(UnionType.UNION_ALL, query));
-        return this;
-    }
-    
-    public UnionBuilder intersect(JQ.Read query) {
-        parts.add(new UnionPart(UnionType.INTERSECT, query));
-        return this;
-    }
-    
-    public UnionBuilder except(JQ.Read query) {
-        parts.add(new UnionPart(UnionType.EXCEPT, query));
-        return this;
-    }
-    
-    public OrderByStage orderBy(ColumnRef... columns) {
-        return new OrderByStage(parts, List.of(columns));
-    }
-    
+
     public OrderByStage orderBy(String... columns) {
-        return orderBy(Arrays.stream(columns).map(ColumnRef.Base::new).toArray(ColumnRef[]::new));
+        return orderBy(Arrays.stream(columns)
+            .map(ColumnRef.Base::new)
+            .toArray(Expr[]::new));
     }
-    
-    public LimitStage limit(Limit limit) {
-        return new LimitStage(parts, List.of(), limit);
+
+    public LimitStage limit(int value) {
+        return new LimitStage(List.of(), new Limit(value));
     }
-    
-    public JQ.Read build() throws SchemaVerificationException {
-        return buildQuery(parts, null, null, null);
+
+    public JQ.Read build() {
+        return new BuildStage(List.of(), null, null).build();
     }
-    
-    public record OrderByStage(List<UnionPart> parts, List<ColumnRef> orderByColumns) {
-        public OrderByStage {
-            parts = List.copyOf(requireNonNull(parts));
-            orderByColumns = List.copyOf(requireNonNull(orderByColumns));
-            
-            for (var part : parts) requireNonNull(part, "Union part cannot be null");
-            for (var cr : orderByColumns) requireNonNull(cr, "Order by column cannot be null");
+
+    public final class OrderByStage {
+        private final List<Expr> orderBy;
+
+        OrderByStage(List<Expr> orderBy) {
+            this.orderBy = orderBy;
         }
-        
-        public LimitStage limit(Limit limit) {
-            return new LimitStage(parts, orderByColumns, limit);
+
+        public LimitStage limit(int value) {
+            return new LimitStage(orderBy, new Limit(value));
         }
-        
-        public JQ.Read build() throws SchemaVerificationException {
-            return buildQuery(parts, orderByColumns, null, null);
-        }
-    }
-    
-    public record LimitStage(List<UnionPart> parts, List<ColumnRef> orderByColumns, Limit limit) {
-        public LimitStage {
-            parts = List.copyOf(requireNonNull(parts));
-            orderByColumns = List.copyOf(requireNonNull(orderByColumns));
-            
-            for (var part : parts) requireNonNull(part, "Union part cannot be null");
-            for (var cr : orderByColumns) requireNonNull(cr, "Order by column cannot be null");
-            
-            requireNonNull(limit);
-        }
-        
-        public JQ.Read offset(Offset offset) throws SchemaVerificationException {
-            requireNonNull(offset, "Offset cannot be null");
-            return buildQuery(parts, orderByColumns, limit, offset);
-        }
-        
-        public JQ.Read build() throws SchemaVerificationException {
-            return buildQuery(parts, orderByColumns, limit, null);
+
+        public JQ.Read build() {
+            return new BuildStage(orderBy, null, null).build();
         }
     }
-    
-    private static JQ.Read buildQuery(List<UnionPart> parts, List<ColumnRef> orderByColumns, Limit limit, Offset offset)
-        throws SchemaVerificationException {
-                                          
-        var sql = buildSql(parts, orderByColumns, limit, offset);
-        var tableRefs = collectTableRefs(parts);
-        var columnRefs = collectColumnRefs(parts, orderByColumns);
-        
-        // TODO return new JQ.Read(sql, tableRefs, columnRefs);
-        return null;
-    }
-    
-    private static String buildSql(List<UnionPart> parts, List<ColumnRef> orderByColumns, Limit limit, Offset offset) {
-        var sb = new StringBuilder("(").append(parts.getFirst().query.sql()).append(")");
-        
-        for (int i = 1; i < parts.size(); i++) {
-            var part = parts.get(i);
-            
-            var op = switch (part.value) {
-                case UNION -> " UNION ";
-                case UNION_ALL -> " UNION ALL ";
-                case INTERSECT -> " INTERSECT ";
-                case EXCEPT -> " EXCEPT ";
-            };
-            
-            sb.append(op).append("(").append(part.query.sql()).append(")");
+
+    public final class LimitStage {
+        private final List<Expr> orderBy;
+        private final Limit      limit;
+
+        LimitStage(List<Expr> orderBy, Limit limit) {
+            this.orderBy = orderBy;
+            this.limit   = limit;
         }
-        
-        if (orderByColumns != null && !orderByColumns.isEmpty()) {
-            sb.append(" ORDER BY ");
-            sb.append(String.join(", ", orderByColumns.stream().map(ColumnRef::toString).toList()));
+
+        public JQ.Read offset(int value) {
+            return new BuildStage(orderBy, limit, new Offset(value)).build();
         }
-        
-        if (limit != null) sb.append(" LIMIT ").append(limit);
-        if (offset != null) sb.append(" OFFSET ").append(offset);
-        
-        return sb.toString();
+
+        public JQ.Read build() {
+            return new BuildStage(orderBy, limit, null).build();
+        }
     }
-    
-    private static TableRef[] collectTableRefs(List<UnionPart> parts) {
-        var allRefs = new ArrayList<TableRef>();
-        //for (var part : parts) allRefs.addAll(Arrays.asList(part.query.tableRefs()));
-        return allRefs.toArray(new TableRef[0]);
-    }
-    
-    private static ColumnRef[] collectColumnRefs(List<UnionPart> parts, List<ColumnRef> orderByColumns) {
-        var allRefs = new ArrayList<ColumnRef>();
-        //for (var part : parts) allRefs.addAll(Arrays.asList(part.query.columnRefs()));
-        if (orderByColumns != null) allRefs.addAll(orderByColumns);
-        return allRefs.toArray(new ColumnRef[0]);
+
+    private final class BuildStage {
+        private final List<Expr> orderBy;
+        private final Limit      limit;
+        private final Offset     offset;
+
+        BuildStage(List<Expr> orderBy, Limit limit, Offset offset) {
+            this.orderBy = orderBy;
+            this.limit   = limit;
+            this.offset  = offset;
+        }
+
+        public JQ.Read build() {
+            var sqls = queries.stream().map(JQ.Read::sql).toList();
+            var sql  = UnionSQL.build(
+                unionType,
+                sqls,
+                orderBy,
+                Optional.ofNullable(limit),
+                Optional.ofNullable(offset)
+            );
+            return new JQ.Read(sql, queries.get(0).context());
+        }
     }
 }
