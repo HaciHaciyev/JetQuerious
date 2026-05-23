@@ -185,7 +185,7 @@ object Context {
             val orderCrefs = orderBy.flatMap(ExprTraversal.collectCrefs)
     
             for (cref <- orderCrefs) {
-                if !known.contains(cref.name().toLowerCase) then errs.addOne(s"ORDER BY column '$cref' not found in UNION projection")
+                if !known.exists(_.equalsIgnoreCase(cref.name())) then errs.addOne(s"ORDER BY column '$cref' not found in UNION projection")
             }
     
             throwIfErrors(errs)
@@ -241,6 +241,44 @@ object Context {
             case ok: Ok[Table, SchemaVerificationException] => List.from(ok.value().columns().map(_.name()))
             case err: Err[Table, SchemaVerificationException] => throw err.err()
         }
+        
+    private def effectiveProjectionNames(refs: List[Ref], sources: List[TableSource], crefs: mutable.ListBuffer[ColumnRef] = mutable.ListBuffer[ColumnRef]()): List[String] = {
+        val trefByName = sources.map(s => s.effectiveName -> s).toMap
+        
+        refs.map(_.value).flatMap {
+            case base: Projection.Base => base.expr match {
+                case ac: ColumnRef.AliasedColumn =>
+                    crefs.addOne(ac match {
+                        case a: Alias          => a
+                        case va: VariableAlias => va
+                    })
+                    List(ac.alias())
+                case col: ColumnRef =>
+                    crefs.addOne(col)
+                    List(col.name())
+                case ve: ValueExpr =>
+                    crefs.addAll(ExprTraversal.collectCrefs(ve))
+                    List()
+            }
+
+            case aliased: Projection.Aliased =>
+                crefs.addAll(ExprTraversal.collectCrefs(aliased.expr()))
+                List(aliased.alias())
+
+            case qw: Projection.QualifiedWildcard =>
+                trefByName.get(qw.qualifier()) match {
+                    case Some(src: TableSource.Physical) => loadPhysicalCrefs(src.tref, crefs)
+                    case Some(src: TableSource.Virtual)  => loadVirtualCrefs(src, crefs)
+                    case None => throw SchemaVerificationException(s"Wildcard qualifier '${qw.qualifier()}' refers to non-existent table.")
+                }
+
+            case _: Projection.Wildcard =>
+                sources.flatMap {
+                    case src: TableSource.Physical => loadPhysicalCrefs(src.tref, crefs)
+                    case src: TableSource.Virtual  => loadVirtualCrefs(src, crefs)
+                }
+        }
+    }        
 
     private def validateCommon(sources: List[TableSource], refs: List[Ref]): Unit = {
         if (sources.isEmpty) {
@@ -349,44 +387,6 @@ object Context {
 
             case _: TypeInfo.None => errs.addOne(unsupportedType(cref, javaType))
         }
-        
-    private def effectiveProjectionNames(refs: List[Ref], sources: List[TableSource], crefs: mutable.ListBuffer[ColumnRef] = mutable.ListBuffer[ColumnRef]()): List[String] = {
-        val trefByName = sources.map(s => s.effectiveName -> s).toMap
-        
-        refs.map(_.value).flatMap {
-            case base: Projection.Base => base.expr match {
-                case ac: ColumnRef.AliasedColumn =>
-                    crefs.addOne(ac match {
-                        case a: Alias          => a
-                        case va: VariableAlias => va
-                    })
-                    List(ac.alias())
-                case col: ColumnRef =>
-                    crefs.addOne(col)
-                    List(col.name())
-                case ve: ValueExpr =>
-                    crefs.addAll(ExprTraversal.collectCrefs(ve))
-                    List()
-            }
-
-            case aliased: Projection.Aliased =>
-                crefs.addAll(ExprTraversal.collectCrefs(aliased.expr()))
-                List(aliased.alias())
-
-            case qw: Projection.QualifiedWildcard =>
-                trefByName.get(qw.qualifier()) match {
-                    case Some(src: TableSource.Physical) => loadPhysicalCrefs(src.tref, crefs)
-                    case Some(src: TableSource.Virtual)  => loadVirtualCrefs(src, crefs)
-                    case None => throw SchemaVerificationException(s"Wildcard qualifier '${qw.qualifier()}' refers to non-existent table.")
-                }
-
-            case _: Projection.Wildcard =>
-                sources.flatMap {
-                    case src: TableSource.Physical => loadPhysicalCrefs(src.tref, crefs)
-                    case src: TableSource.Virtual  => loadVirtualCrefs(src, crefs)
-                }
-        }
-    }    
 
     private def loadPhysicalCrefs(tref: TableRef, crefs: mutable.ListBuffer[ColumnRef]): List[String] = {
         val effectiveName = tref match {
