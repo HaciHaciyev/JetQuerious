@@ -3,6 +3,8 @@ package io.github.hacihaciyev.sql.builders;
 import io.github.hacihaciyev.sql.JQ;
 import io.github.hacihaciyev.sql.expressions.ColumnRef;
 import io.github.hacihaciyev.sql.expressions.Expr;
+import io.github.hacihaciyev.sql.internal.Context;
+import io.github.hacihaciyev.sql.internal.ContextFactory;
 import io.github.hacihaciyev.sql.internal.builders.UnionSQL;
 import io.github.hacihaciyev.sql.value_objects.Limit;
 import io.github.hacihaciyev.sql.value_objects.Offset;
@@ -103,15 +105,20 @@ public final class UnionBuilder {
         }
 
         public JQ.Read build() {
-            var sqls = queries.stream().map(JQ.Read::sql).toList();
-            var sql  = UnionSQL.build(
+            var sql = UnionSQL.build(
                 unionType,
-                sqls,
+                queries.stream().map(JQ.Read::sql).toList(),
                 orderBy,
                 Optional.ofNullable(limit),
                 Optional.ofNullable(offset)
             );
-            return new JQ.Read(sql, queries.get(0).context());
+            
+            return new JQ.Read(sql, ContextFactory.unionContext(
+                queries.stream().map(q -> (Context) q.context()).toList(),
+                unionType,
+                orderBy,
+                Optional.empty()
+            ));
         }
     }
 }

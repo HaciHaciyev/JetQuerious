@@ -10,6 +10,7 @@ import io.github.hacihaciyev.sql.internal.value_objects.{Ref, TableSource, OnCon
 import io.github.hacihaciyev.types.SQLType
 import io.github.hacihaciyev.util.{Err, Ok}
 import io.github.hacihaciyev.types.internal.{TypeInfo, TypeInfoOk, TypeRegistry}
+import io.github.hacihaciyev.sql.value_objects.UnionType
 
 import scala.annotation.tailrec
 import scala.jdk.CollectionConverters.*
@@ -144,7 +145,53 @@ object Context {
             throwIfErrors(errs)
         }
     }
-
+    
+    case class Union(
+                       queries:   List[Context & DQL],
+                       unionType: UnionType,
+                       orderBy:   List[Expr],
+                       outer:     Option[Context] = None
+                   ) extends Context, DQL {
+    
+        req(queries, unionType, orderBy, outer)
+        require(queries.size >= 2, "UNION requires at least two queries")
+    
+        override def sources: List[TableSource] = queries.head.sources
+        override def refs: List[Ref]            = queries.head.refs
+    
+        protected def validate(): Unit = {
+            validateColumnCounts()
+            validateOrderBy()
+        }
+    
+        private def validateColumnCounts(): Unit = {
+            val firstSize = effectiveProjectionNames(queries.head.refs, queries.head.sources).size +
+                            queries.head.refs.count(_.isInstanceOf[Ref.Indexed])
+    
+            queries.tail.foreach { q =>
+                val size = effectiveProjectionNames(q.refs, q.sources).size + q.refs.count(_.isInstanceOf[Ref.Indexed])
+                
+                if (size != firstSize) {
+                    throw SchemaVerificationException(s"All queries in UNION must have the same number of columns. First query has $firstSize, but another has $size")
+                }
+            }
+        }
+    
+        private def validateOrderBy(): Unit = {
+            if orderBy.isEmpty then return
+    
+            val known      = effectiveProjectionNames(queries.head.refs, queries.head.sources).map(_.toLowerCase).toSet
+            val errs       = mutable.ListBuffer[String]()
+            val orderCrefs = orderBy.flatMap(ExprTraversal.collectCrefs)
+    
+            for (cref <- orderCrefs) {
+                if !known.contains(cref.name().toLowerCase) then errs.addOne(s"ORDER BY column '$cref' not found in UNION projection")
+            }
+    
+            throwIfErrors(errs)
+        }
+    }
+    
     private def resolve(sources: List[TableSource]): (Map[TableRef, Table], Map[String, List[String]]) = {
         val physical = mutable.Map[TableRef, Table]()
         val virtual  = mutable.Map[String, List[String]]()
@@ -240,46 +287,9 @@ object Context {
                                       errs: ListBuffer[String]
                                   ): Unit = {
 
-        val trefByName = sources.map(s => s.effectiveName -> s).toMap
-        val crefs      = mutable.ListBuffer[ColumnRef]()
-
-        val names = refs.map(_.value).flatMap {
-            case base: Projection.Base => base.expr match {
-                case ac: ColumnRef.AliasedColumn =>
-                    crefs.addOne(ac match {
-                        case a: Alias          => a
-                        case va: VariableAlias => va
-                    })
-                    List(ac.alias())
-                case col: ColumnRef =>
-                    crefs.addOne(col)
-                    List(col.name())
-                case ve: ValueExpr =>
-                    crefs.addAll(ExprTraversal.collectCrefs(ve))
-                    List()
-            }
-
-            case aliased: Projection.Aliased =>
-                crefs.addAll(ExprTraversal.collectCrefs(aliased.expr()))
-                List(aliased.alias())
-
-            case qw: Projection.QualifiedWildcard =>
-                trefByName.get(qw.qualifier()) match {
-                    case Some(src: TableSource.Physical) => loadPhysicalCrefs(src.tref, crefs)
-                    case Some(src: TableSource.Virtual)  => loadVirtualCrefs(src, crefs)
-                    case None => throw SchemaVerificationException(s"Wildcard qualifier '${qw.qualifier()}' refers to non-existent table.")
-                }
-
-            case _: Projection.Wildcard =>
-                sources.flatMap {
-                    case src: TableSource.Physical => loadPhysicalCrefs(src.tref, crefs)
-                    case src: TableSource.Virtual  => loadVirtualCrefs(src, crefs)
-                }
-        }
-
-        if (names.toSet.size != names.size)
-            throw SchemaVerificationException("Duplicate column names or aliases found in context.")
-
+        val crefs = mutable.ListBuffer[ColumnRef]()
+        val names = effectiveProjectionNames(refs, sources, crefs)
+        if names.toSet.size != names.size then throw SchemaVerificationException("Duplicate column names or aliases found in context.")
         for (cref <- crefs.toList) validateCref(cref, physical, virtual, outer, errs)
     }
 
@@ -339,6 +349,44 @@ object Context {
 
             case _: TypeInfo.None => errs.addOne(unsupportedType(cref, javaType))
         }
+        
+    private def effectiveProjectionNames(refs: List[Ref], sources: List[TableSource], crefs: mutable.ListBuffer[ColumnRef] = mutable.ListBuffer[ColumnRef]()): List[String] = {
+        val trefByName = sources.map(s => s.effectiveName -> s).toMap
+        
+        refs.map(_.value).flatMap {
+            case base: Projection.Base => base.expr match {
+                case ac: ColumnRef.AliasedColumn =>
+                    crefs.addOne(ac match {
+                        case a: Alias          => a
+                        case va: VariableAlias => va
+                    })
+                    List(ac.alias())
+                case col: ColumnRef =>
+                    crefs.addOne(col)
+                    List(col.name())
+                case ve: ValueExpr =>
+                    crefs.addAll(ExprTraversal.collectCrefs(ve))
+                    List()
+            }
+
+            case aliased: Projection.Aliased =>
+                crefs.addAll(ExprTraversal.collectCrefs(aliased.expr()))
+                List(aliased.alias())
+
+            case qw: Projection.QualifiedWildcard =>
+                trefByName.get(qw.qualifier()) match {
+                    case Some(src: TableSource.Physical) => loadPhysicalCrefs(src.tref, crefs)
+                    case Some(src: TableSource.Virtual)  => loadVirtualCrefs(src, crefs)
+                    case None => throw SchemaVerificationException(s"Wildcard qualifier '${qw.qualifier()}' refers to non-existent table.")
+                }
+
+            case _: Projection.Wildcard =>
+                sources.flatMap {
+                    case src: TableSource.Physical => loadPhysicalCrefs(src.tref, crefs)
+                    case src: TableSource.Virtual  => loadVirtualCrefs(src, crefs)
+                }
+        }
+    }    
 
     private def loadPhysicalCrefs(tref: TableRef, crefs: mutable.ListBuffer[ColumnRef]): List[String] = {
         val effectiveName = tref match {
@@ -446,6 +494,19 @@ object ContextFactory {
         sources.asScala.toList,
         if where.isPresent then Some(where.get) else None,
         returning.asScala.toList,
+        if outer.isPresent then Some(outer.get) else None
+    )
+    
+    def unionContext(
+                       queries:   java.util.List[Context],
+                       unionType: UnionType,
+                       orderBy:   java.util.List[Expr],
+                       outer:     java.util.Optional[Context]
+                   ): Context.Union = Context.Union(
+        
+        queries.asScala.toList.map(_.asInstanceOf[Context & DQL]),
+        unionType,
+        orderBy.asScala.toList,
         if outer.isPresent then Some(outer.get) else None
     )
 }
