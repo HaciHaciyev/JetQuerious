@@ -12,29 +12,24 @@ import static java.util.Objects.requireNonNull;
 
 public final class CTEBuilder {
     private final List<CTEEntry> entries;
-    
+
     private CTEBuilder(List<CTEEntry> entries) {
         this.entries = List.copyOf(entries);
     }
 
     public CTEBuilder(String name, JQ query) {
-        requireNonNull(name,  "CTE name cannot be null");
-        requireNonNull(query, "CTE query cannot be null");
-        if (name.isBlank()) throw new IllegalArgumentException("CTE name cannot be blank");
-
         var entries = new ArrayList<CTEEntry>();
         entries.add(new CTEEntry.Regular(name, query));
-        
+
         this.entries = List.copyOf(entries);
     }
 
     public CTEBuilder with(String name, JQ query) {
-        requireNonNull(name,  "CTE name cannot be null");
-        requireNonNull(query, "CTE query cannot be null");
-        if (name.isBlank()) throw new IllegalArgumentException("CTE name cannot be blank");
+        var entry = new CTEEntry.Regular(name, query);
+        checkDuplicate(name);
 
         var entries = new ArrayList<>(this.entries);
-        entries.add(new CTEEntry.Regular(name, query));
+        entries.add(entry);
         return new CTEBuilder(entries);
     }
 
@@ -43,14 +38,11 @@ public final class CTEBuilder {
     }
 
     public CTEBuilder withRecursive(String name, JQ.Read base, JQ.Read recursive, UnionType unionType) {
-        requireNonNull(name,      "CTE name cannot be null");
-        requireNonNull(base,      "Base query cannot be null");
-        requireNonNull(recursive, "Recursive query cannot be null");
-        requireNonNull(unionType, "Union type cannot be null");
-        if (name.isBlank()) throw new IllegalArgumentException("CTE name cannot be blank");
+        var entry = new CTEEntry.Recursive(name, base, recursive, unionType);
+        checkDuplicate(name);
 
-        var entries = new ArrayList<CTEEntry>(this.entries);
-        entries.add(new CTEEntry.Recursive(name, base, recursive, unionType));
+        var entries = new ArrayList<>(this.entries);
+        entries.add(entry);
         return new CTEBuilder(entries);
     }
 
@@ -64,5 +56,12 @@ public final class CTEBuilder {
         requireNonNull(finalQuery, "Final query cannot be null");
         var sql = CTESQL.build(entries, finalQuery);
         return new JQ.Write(sql, finalQuery.context());
+    }
+
+    private void checkDuplicate(String name) {
+        var trimmed = name.trim();
+        for (var entry : entries) {
+            if (entry.name().equalsIgnoreCase(trimmed)) throw new IllegalArgumentException("Duplicate CTE name: " + trimmed);
+        }
     }
 }

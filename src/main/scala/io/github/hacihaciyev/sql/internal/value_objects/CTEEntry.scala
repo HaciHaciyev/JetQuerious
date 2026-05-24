@@ -10,10 +10,18 @@ sealed trait CTEEntry {
 
 object CTEEntry {
     case class Regular(name: String, query: JQ) extends CTEEntry {
+        require(name != null && name.nonEmpty && !name.isBlank)
+        require(query != null)
+        
         def sql: String = s"$name AS (${query.sql()})"
     }
     
     case class Recursive(name: String, base: JQ.Read, recursive: JQ.Read, unionType: UnionType) extends CTEEntry {
+        require(name != null && name.nonEmpty && !name.isBlank)
+        require(base != null)
+        require(recursive != null)
+        require(unionType != null)
+    
         def sql: String =
             val keyword = unionType match {
                 case UnionType.UNION     => "UNION"

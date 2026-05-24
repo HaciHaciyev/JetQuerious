@@ -279,7 +279,7 @@ class CTEBuilderTest {
 
         @Test
         void nullName_throws() {
-            assertThrows(NullPointerException.class, () ->
+            assertThrows(IllegalArgumentException.class, () ->
                 new CTEBuilder(null, usersQuery()));
         }
 
@@ -291,13 +291,13 @@ class CTEBuilderTest {
 
         @Test
         void nullQuery_throws() {
-            assertThrows(NullPointerException.class, () ->
+            assertThrows(IllegalArgumentException.class, () ->
                 new CTEBuilder("name", null));
         }
 
         @Test
         void nullWith_name_throws() {
-            assertThrows(NullPointerException.class, () ->
+            assertThrows(IllegalArgumentException.class, () ->
                 new CTEBuilder("a", usersQuery()).with(null, ordersQuery()));
         }
 
@@ -309,13 +309,13 @@ class CTEBuilderTest {
 
         @Test
         void nullWith_query_throws() {
-            assertThrows(NullPointerException.class, () ->
+            assertThrows(IllegalArgumentException.class, () ->
                 new CTEBuilder("a", usersQuery()).with("b", null));
         }
 
         @Test
         void nullRecursive_name_throws() {
-            assertThrows(NullPointerException.class, () ->
+            assertThrows(IllegalArgumentException.class, () ->
                 new CTEBuilder("a", usersQuery()).withRecursive(null, usersQuery(), ordersQuery()));
         }
 
@@ -327,19 +327,19 @@ class CTEBuilderTest {
 
         @Test
         void nullRecursive_base_throws() {
-            assertThrows(NullPointerException.class, () ->
+            assertThrows(IllegalArgumentException.class, () ->
                 new CTEBuilder("a", usersQuery()).withRecursive("b", null, ordersQuery()));
         }
 
         @Test
         void nullRecursive_recursive_throws() {
-            assertThrows(NullPointerException.class, () ->
+            assertThrows(IllegalArgumentException.class, () ->
                 new CTEBuilder("a", usersQuery()).withRecursive("b", usersQuery(), null));
         }
 
         @Test
         void nullRecursive_unionType_throws() {
-            assertThrows(NullPointerException.class, () ->
+            assertThrows(IllegalArgumentException.class, () ->
                 new CTEBuilder("a", usersQuery()).withRecursive("b", usersQuery(), ordersQuery(), null));
         }
 
