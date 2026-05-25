@@ -355,4 +355,73 @@ class CTEBuilderTest {
                 new CTEBuilder("a", usersQuery()).build((JQ.Write) null));
         }
     }
+    
+    @Nested
+    class DuplicateNameValidation {
+    
+        @Test
+        void with_duplicateName_throws() {
+            assertThrows(IllegalArgumentException.class, () ->
+                    new CTEBuilder("cte", usersQuery())
+                            .with("cte", ordersQuery())
+            );
+        }
+    
+        @Test
+        void with_duplicateNameCaseInsensitive_throws() {
+            assertThrows(IllegalArgumentException.class, () ->
+                    new CTEBuilder("CTE", usersQuery())
+                            .with("cte", ordersQuery())
+            );
+        }
+    
+        @Test
+        void withRecursive_duplicateName_throws() {
+            assertThrows(IllegalArgumentException.class, () ->
+                    new CTEBuilder("tree", usersQuery())
+                            .withRecursive("tree", usersQuery(), ordersQuery())
+            );
+        }
+    
+        @Test
+        void withRecursive_duplicatesExistingRegular_throws() {
+            assertThrows(IllegalArgumentException.class, () ->
+                    new CTEBuilder("cte", usersQuery())
+                            .with("other", ordersQuery())
+                            .withRecursive("cte", usersQuery(), ordersQuery())
+            );
+        }
+    
+        @Test
+        void with_differentNames_passes() {
+            assertDoesNotThrow(() ->
+                    new CTEBuilder("cte1", usersQuery())
+                            .with("cte2", ordersQuery())
+                            .build(finalQuery())
+            );
+        }
+    
+        @Test
+        void withRecursive_differentNameFromExisting_passes() {
+            assertDoesNotThrow(() ->
+                    new CTEBuilder("cte", usersQuery())
+                            .withRecursive("tree", usersQuery(), ordersQuery())
+                            .build(finalQuery())
+            );
+        }
+    
+        @Test
+        void with_threeDistinctNames_passes() {
+            var itemsQuery = SelectBuilder.select(new ColumnRef.Base("id"), new ColumnRef.Base("product"))
+                    .from("order_items")
+                    .build();
+    
+            assertDoesNotThrow(() ->
+                    new CTEBuilder("a", usersQuery())
+                            .with("b", ordersQuery())
+                            .with("c", itemsQuery)
+                            .build(finalQuery())
+            );
+        }
+    }
 }
