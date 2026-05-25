@@ -1,5 +1,6 @@
 package io.github.hacihaciyev.sql.builders;
 
+import io.github.hacihaciyev.build_errors.SchemaVerificationException;
 import io.github.hacihaciyev.sql.JQ;
 import io.github.hacihaciyev.sql.expressions.*;
 import io.github.hacihaciyev.sql.value_objects.Limit;
@@ -799,6 +800,243 @@ class SelectBuilderTest {
                     SelectBuilder.select(col("id"))
                             .from("users")
                             .join(new Subquery.Table(sub), null, eq(col("id"), col("id")))
+            );
+        }
+    }
+    
+    @Nested
+    class TableValidation {
+    
+        @Test
+        void nonExistentTable_throws() {
+            assertThrows(SchemaVerificationException.class, () ->
+                    SelectBuilder.select(col("id"))
+                            .from("ghost_table")
+                            .build()
+            );
+        }
+    
+        @Test
+        void nonExistentTableInJoin_throws() {
+            assertThrows(SchemaVerificationException.class, () ->
+                    SelectBuilder.select(col("u", "id"))
+                            .from(new TableRef.AliasedBase("users", "u"))
+                            .join(new TableRef.AliasedBase("ghost_table", "g"),
+                                    eq(col("u", "id"), col("g", "id")))
+                            .build()
+            );
+        }
+    }
+    
+    @Nested
+    class ProjectionValidation {
+    
+        @Test
+        void nonExistentColumn_throws() {
+            assertThrows(SchemaVerificationException.class, () ->
+                    SelectBuilder.select(col("ghost_column"))
+                            .from("users")
+                            .build()
+            );
+        }
+    
+        @Test
+        void validColumn_passes() {
+            assertDoesNotThrow(() ->
+                    SelectBuilder.select(col("id"), col("name"))
+                            .from("users")
+                            .build()
+            );
+        }
+    
+        @Test
+        void ambiguousColumn_fails() {
+            assertThrows(SchemaVerificationException.class, () ->
+                    SelectBuilder.select(col("id"))
+                            .from(new TableRef.AliasedBase("users", "u"))
+                            .join(new TableRef.AliasedBase("orders", "o"),
+                                    eq(col("u", "id"), col("o", "user_id")))
+                            .build()
+            );
+        }
+    
+        @Test
+        void qualifiedColumnsResolveAmbiguity_passes() {
+            assertDoesNotThrow(() ->
+                    SelectBuilder.select(colAs("u", "id", "user_id"), colAs("o", "id", "order_id"))
+                            .from(new TableRef.AliasedBase("users", "u"))
+                            .join(new TableRef.AliasedBase("orders", "o"),
+                                    eq(col("u", "id"), col("o", "user_id")))
+                            .build()
+            );
+        }
+    }
+    
+    @Nested
+    class WhereValidation {
+    
+        @Test
+        void nonExistentColumnInWhere_throws() {
+            assertThrows(SchemaVerificationException.class, () ->
+                    SelectBuilder.select(col("id"))
+                            .from("users")
+                            .where(eq(col("ghost_column"), new Literal.IntLiteral(1)))
+                            .build()
+            );
+        }
+    
+        @Test
+        void validColumnInWhere_passes() {
+            assertDoesNotThrow(() ->
+                    SelectBuilder.select(col("id"))
+                            .from("users")
+                            .where(eq(col("name"), new Literal.StringLiteral("Alice")))
+                            .build()
+            );
+        }
+    
+        @Test
+        void nonExistentColumnInComplexWhere_throws() {
+            var where = new BinaryOp(AND,
+                    eq(col("id"), new Literal.IntLiteral(1)),
+                    eq(col("ghost_column"), new Literal.IntLiteral(2)));
+    
+            assertThrows(SchemaVerificationException.class, () ->
+                    SelectBuilder.select(col("id"))
+                            .from("users")
+                            .where(where)
+                            .build()
+            );
+        }
+    }
+    
+    @Nested
+    class JoinValidation {
+    
+        @Test
+        void nonExistentColumnInJoinOn_throws() {
+            assertThrows(SchemaVerificationException.class, () ->
+                    SelectBuilder.select(colAs("u", "id", "uid"))
+                            .from(new TableRef.AliasedBase("users", "u"))
+                            .join(new TableRef.AliasedBase("orders", "o"),
+                                    eq(col("u", "ghost_column"), col("o", "user_id")))
+                            .build()
+            );
+        }
+    
+        @Test
+        void validJoinOn_passes() {
+            assertDoesNotThrow(() ->
+                    SelectBuilder.select(colAs("u", "id", "uid"), colAs("o", "id", "oid"))
+                            .from(new TableRef.AliasedBase("users", "u"))
+                            .join(new TableRef.AliasedBase("orders", "o"),
+                                    eq(col("u", "id"), col("o", "user_id")))
+                            .build()
+            );
+        }
+    }
+    
+    @Nested
+    class GroupByValidation {
+    
+        @Test
+        void nonExistentColumnInGroupBy_throws() {
+            assertThrows(SchemaVerificationException.class, () ->
+                    SelectBuilder.select(col("status"), new Func.CountAll())
+                            .from("orders")
+                            .groupBy(col("ghost_column"))
+                            .build()
+            );
+        }
+    
+        @Test
+        void validColumnInGroupBy_passes() {
+            assertDoesNotThrow(() ->
+                    SelectBuilder.select(col("status"), new Func.CountAll())
+                            .from("orders")
+                            .groupBy(col("status"))
+                            .build()
+            );
+        }
+    }
+    
+    @Nested
+    class OrderByValidation {
+    
+        @Test
+        void nonExistentColumnInOrderBy_throws() {
+            assertThrows(SchemaVerificationException.class, () ->
+                    SelectBuilder.select(col("id"))
+                            .from("users")
+                            .orderBy(col("ghost_column"))
+                            .build()
+            );
+        }
+    
+        @Test
+        void validColumnInOrderBy_passes() {
+            assertDoesNotThrow(() ->
+                    SelectBuilder.select(col("id"), col("name"))
+                            .from("users")
+                            .orderBy(col("name"))
+                            .build()
+            );
+        }
+    }
+    
+    @Nested
+    class OuterContext {
+    
+        private JQ.Read outerSelect() {
+            return SelectBuilder.select(col("u", "id"), col("u", "name"))
+                    .from(new TableRef.AliasedBase("users", "u"))
+                    .build();
+        }
+    
+        @Test
+        void columnFromOuterContext_passes() {
+            var outer = outerSelect();
+    
+            var sub = SelectBuilder.select(col("o", "id"))
+                    .from(new TableRef.AliasedBase("orders", "o"))
+                    .where(eq(col("o", "user_id"), col("u", "id")))
+                    .build(outer);
+    
+            assertDoesNotThrow(() ->
+                    SelectBuilder.select(col("u", "id"), col("u", "name"))
+                            .from(new TableRef.AliasedBase("users", "u"))
+                            .where(new Exists(new Subquery.Table(sub)))
+                            .build()
+            );
+        }
+    
+        @Test
+        void ghostColumnNotInOuterContext_fails() {
+            var outer = outerSelect();
+    
+            assertThrows(SchemaVerificationException.class, () ->
+                    SelectBuilder.select(col("o", "id"))
+                            .from(new TableRef.AliasedBase("orders", "o"))
+                            .where(eq(col("o", "user_id"), col("u", "ghost_column")))
+                            .build(outer)
+            );
+        }
+    
+        @Test
+        void twoLevelsOuter_columnFromTwoLevelsUp_passes() {
+            var level2 = SelectBuilder.select(col("u", "id"), col("u", "name"))
+                    .from(new TableRef.AliasedBase("users", "u"))
+                    .build();
+    
+            var level1 = SelectBuilder.select(col("o", "id"))
+                    .from(new TableRef.AliasedBase("orders", "o"))
+                    .build(level2);
+    
+            assertDoesNotThrow(() ->
+                    SelectBuilder.select(col("i", "id"))
+                            .from(new TableRef.AliasedBase("order_items", "i"))
+                            .where(eq(col("i", "order_id"), col("o", "id")))
+                            .build(level1)
             );
         }
     }
