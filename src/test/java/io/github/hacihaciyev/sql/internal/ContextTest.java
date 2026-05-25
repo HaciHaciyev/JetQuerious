@@ -50,6 +50,7 @@ class ContextTest {
         return ContextFactory.selectContext(
                 List.of(physical(table)),
                 refs,
+                List.of(),
                 Optional.empty(),
                 List.of(),
                 Optional.empty(),
@@ -64,6 +65,7 @@ class ContextTest {
         assertDoesNotThrow(() -> ContextFactory.selectContext(
             List.of(physical("users")),
             List.of(namedRef("name")),
+            List.of(),
             Optional.empty(),
             List.of(),
             Optional.empty(),
@@ -78,6 +80,7 @@ class ContextTest {
         assertThrows(SchemaVerificationException.class, () -> ContextFactory.selectContext(
             List.of(physical("users")),
             List.of(namedRef("nonexistent")),
+            List.of(),
             Optional.empty(),
             List.of(),
             Optional.empty(),
@@ -92,6 +95,7 @@ class ContextTest {
         assertThrows(SchemaVerificationException.class, () -> ContextFactory.selectContext(
             List.of(physical("users"), physical("orders")),
             List.of(namedRef("id")),
+            List.of(),
             Optional.empty(),
             List.of(),
             Optional.empty(),
@@ -106,6 +110,7 @@ class ContextTest {
         assertDoesNotThrow(() -> ContextFactory.selectContext(
             List.of(physical("users", "u"), physical("orders", "o")),
             List.of(aliasedRef("u", "id", "user_id"), aliasedRef("o", "id", "order_id")),
+            List.of(),
             Optional.empty(),
             List.of(),
             Optional.empty(),
@@ -126,6 +131,7 @@ class ContextTest {
         assertDoesNotThrow(() -> ContextFactory.selectContext(
             List.of(physical("users")),
             List.of(namedRef("id")),
+            List.of(),
             Optional.of(where),
             List.of(),
             Optional.empty(),
@@ -146,6 +152,7 @@ class ContextTest {
         assertThrows(SchemaVerificationException.class, () -> ContextFactory.selectContext(
             List.of(physical("users")),
             List.of(namedRef("id")),
+            List.of(),
             Optional.of(where),
             List.of(),
             Optional.empty(),
@@ -160,6 +167,7 @@ class ContextTest {
         assertDoesNotThrow(() -> ContextFactory.selectContext(
             List.of(physical("orders")),
             List.of(namedRef("status")),
+            List.of(),
             Optional.empty(),
             List.of(new ColumnRef.Base("status")),
             Optional.empty(),
@@ -180,6 +188,7 @@ class ContextTest {
         assertDoesNotThrow(() -> ContextFactory.selectContext(
             List.of(physical("orders")),
             List.of(namedRef("status")),
+            List.of(),
             Optional.empty(),
             List.of(new ColumnRef.Base("status")),
             Optional.of(having),
@@ -194,6 +203,7 @@ class ContextTest {
         assertDoesNotThrow(() -> ContextFactory.selectContext(
             List.of(physical("users")),
             List.of(namedRef("name")),
+            List.of(),
             Optional.empty(),
             List.of(),
             Optional.empty(),
@@ -208,6 +218,7 @@ class ContextTest {
         assertThrows(SchemaVerificationException.class, () -> ContextFactory.selectContext(
             List.of(physical("users")),
             List.of(namedRef("id", String.class)),
+            List.of(),
             Optional.empty(),
             List.of(),
             Optional.empty(),
@@ -222,6 +233,7 @@ class ContextTest {
         assertDoesNotThrow(() -> ContextFactory.selectContext(
             List.of(physical("users")),
             List.of(namedRef("id", Long.class)),
+            List.of(),
             Optional.empty(),
             List.of(),
             Optional.empty(),
@@ -236,6 +248,7 @@ class ContextTest {
         assertThrows(SchemaVerificationException.class, () -> ContextFactory.selectContext(
             List.of(physical("ghost_table")),
             List.of(namedRef("id")),
+            List.of(),
             Optional.empty(),
             List.of(),
             Optional.empty(),
@@ -250,6 +263,7 @@ class ContextTest {
         assertThrows(SchemaVerificationException.class, () -> ContextFactory.selectContext(
             List.of(physical("users"), physical("users")),
             List.of(namedRef("id")),
+            List.of(),
             Optional.empty(),
             List.of(),
             Optional.empty(),
@@ -267,6 +281,7 @@ class ContextTest {
         assertThrows(SchemaVerificationException.class, () -> ContextFactory.selectContext(
                 List.of(physical("users"), physical("orders")),
                 List.of(aliasedRef("users", "id", "user_id")),
+                List.of(),
                 Optional.of(where),
                 List.of(),
                 Optional.empty(),
@@ -281,6 +296,7 @@ class ContextTest {
         assertDoesNotThrow(() -> ContextFactory.selectContext(
                 List.of(physical("users", "u"), physical("orders", "o")),
                 List.of(aliasedRef("u", "name", "user_name"), aliasedRef("o", "status", "order_status")),
+                List.of(),
                 Optional.empty(),
                 List.of(),
                 Optional.empty(),
@@ -297,6 +313,7 @@ class ContextTest {
         assertThrows(SchemaVerificationException.class, () -> ContextFactory.selectContext(
                 List.of(physical("users", "u"), physical("orders", "o")),
                 List.of(aliasedRef("u", "id", "uid")),
+                List.of(),
                 Optional.of(where),
                 List.of(),
                 Optional.empty(),
@@ -313,6 +330,7 @@ class ContextTest {
         assertThrows(SchemaVerificationException.class, () -> ContextFactory.selectContext(
                 List.of(physical("orders")),
                 List.of(namedRef("status")),
+                List.of(),
                 Optional.empty(),
                 List.of(new ColumnRef.Base("status")),
                 Optional.of(having),
@@ -327,6 +345,7 @@ class ContextTest {
         assertThrows(SchemaVerificationException.class, () -> ContextFactory.selectContext(
                 List.of(physical("orders")),
                 List.of(namedRef("status")),
+                List.of(),
                 Optional.empty(),
                 List.of(new ColumnRef.Base("ghost")),
                 Optional.empty(),
@@ -341,6 +360,7 @@ class ContextTest {
         assertThrows(SchemaVerificationException.class, () -> ContextFactory.selectContext(
                 List.of(physical("users")),
                 List.of(namedRef("name")),
+                List.of(),
                 Optional.empty(),
                 List.of(),
                 Optional.empty(),

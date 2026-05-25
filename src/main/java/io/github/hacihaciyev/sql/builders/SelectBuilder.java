@@ -7,10 +7,7 @@ import io.github.hacihaciyev.sql.expressions.Subquery;
 import io.github.hacihaciyev.sql.internal.Context;
 import io.github.hacihaciyev.sql.internal.ContextFactory;
 import io.github.hacihaciyev.sql.internal.builders.SelectSQL;
-import io.github.hacihaciyev.sql.internal.value_objects.FromSource;
-import io.github.hacihaciyev.sql.internal.value_objects.JoinEntry;
-import io.github.hacihaciyev.sql.internal.value_objects.Ref;
-import io.github.hacihaciyev.sql.internal.value_objects.TableSource;
+import io.github.hacihaciyev.sql.internal.value_objects.*;
 import io.github.hacihaciyev.sql.value_objects.Limit;
 import io.github.hacihaciyev.sql.value_objects.Offset;
 import io.github.hacihaciyev.sql.value_objects.Projection;
@@ -576,10 +573,16 @@ public final class SelectBuilder {
             var refs = projections.stream()
                 .map(p -> (Ref) new Ref.Named(p))
                 .toList();
+                
+            var joinsExpressions = joins.stream()
+                .filter(j -> j instanceof JoinedOn)
+                .map(j -> ((JoinedOn) j).on())
+                .toList();
 
             return ContextFactory.selectContext(
                 allSources,
                 refs,
+                joinsExpressions,
                 Optional.ofNullable(where),
                 groupBy,
                 Optional.ofNullable(having),

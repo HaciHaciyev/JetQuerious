@@ -50,6 +50,7 @@ class OuterContextTest {
         return ContextFactory.selectContext(
             List.of(physical(table)),
             refs,
+            List.of(),
             Optional.empty(),
             List.of(),
             Optional.empty(),
@@ -62,6 +63,7 @@ class OuterContextTest {
         return ContextFactory.selectContext(
             List.of(physical(table)),
             List.of(namedRef(col)),
+            List.of(),
             Optional.empty(),
             List.of(),
             Optional.empty(),

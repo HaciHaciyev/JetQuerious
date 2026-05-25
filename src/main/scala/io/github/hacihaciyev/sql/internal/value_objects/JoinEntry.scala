@@ -6,24 +6,29 @@ sealed trait JoinEntry {
     def source: FromSource
 }
 
+sealed trait JoinedOn {
+    def source: FromSource
+    def on: Expr
+}
+
 object JoinEntry {
 
-    case class Inner(source: FromSource, on: Expr) extends JoinEntry {
+    case class Inner(source: FromSource, on: Expr) extends JoinEntry, JoinedOn {
         require(source != null, "JOIN source cannot be null")
         require(on != null,     "JOIN ON condition cannot be null")
     }
 
-    case class Left(source: FromSource, on: Expr) extends JoinEntry {
+    case class Left(source: FromSource, on: Expr) extends JoinEntry, JoinedOn {
         require(source != null, "LEFT JOIN source cannot be null")
         require(on != null,     "LEFT JOIN ON condition cannot be null")
     }
 
-    case class Right(source: FromSource, on: Expr) extends JoinEntry {
+    case class Right(source: FromSource, on: Expr) extends JoinEntry, JoinedOn {
         require(source != null, "RIGHT JOIN source cannot be null")
         require(on != null,     "RIGHT JOIN ON condition cannot be null")
     }
 
-    case class Full(source: FromSource, on: Expr) extends JoinEntry {
+    case class Full(source: FromSource, on: Expr) extends JoinEntry, JoinedOn {
         require(source != null, "FULL JOIN source cannot be null")
         require(on != null,     "FULL JOIN ON condition cannot be null")
     }

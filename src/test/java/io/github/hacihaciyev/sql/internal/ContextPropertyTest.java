@@ -114,6 +114,7 @@ class ContextPropertyTest {
         assertThrows(SchemaVerificationException.class, () -> ContextFactory.selectContext(
             List.of(physical("users")),
             List.of(namedRef(col)),
+            List.of(),
             Optional.empty(),
             List.of(),
             Optional.empty(),
@@ -127,6 +128,7 @@ class ContextPropertyTest {
         assertThrows(SchemaVerificationException.class, () -> ContextFactory.selectContext(
             List.of(physical("users")),
             List.of(namedRef("name")),
+            List.of(),
             Optional.of(eqExpr(col, 1)),
             List.of(),
             Optional.empty(),
@@ -140,6 +142,7 @@ class ContextPropertyTest {
         assertThrows(SchemaVerificationException.class, () -> ContextFactory.selectContext(
             List.of(physical("users")),
             List.of(namedRef("name")),
+            List.of(),
             Optional.empty(),
             List.of(new ColumnRef.Base(col)),
             Optional.empty(),
@@ -153,6 +156,7 @@ class ContextPropertyTest {
         assertThrows(SchemaVerificationException.class, () -> ContextFactory.selectContext(
             List.of(physical("users")),
             List.of(namedRef("name")),
+            List.of(),
             Optional.empty(),
             List.of(),
             Optional.empty(),
@@ -166,6 +170,7 @@ class ContextPropertyTest {
         assertThrows(SchemaVerificationException.class, () -> ContextFactory.selectContext(
             List.of(physical("orders")),
             List.of(namedRef("status")),
+            List.of(),
             Optional.empty(),
             List.of(new ColumnRef.Base("status")),
             Optional.of(eqExpr(col, 1)),
@@ -185,6 +190,7 @@ class ContextPropertyTest {
         assertThrows(SchemaVerificationException.class, () -> ContextFactory.selectContext(
             List.of(physical("users")),
             List.of(namedRef("name")),
+            List.of(),
             Optional.of(nested),
             List.of(),
             Optional.empty(),
@@ -200,6 +206,7 @@ class ContextPropertyTest {
         assertThrows(SchemaVerificationException.class, () -> ContextFactory.selectContext(
             List.of(physical("users")),
             List.of(namedRef("name")),
+            List.of(),
             Optional.of(isNull),
             List.of(),
             Optional.empty(),
@@ -219,6 +226,7 @@ class ContextPropertyTest {
         assertThrows(SchemaVerificationException.class, () -> ContextFactory.selectContext(
             List.of(physical("users")),
             List.of(namedRef("name")),
+            List.of(),
             Optional.of(between),
             List.of(),
             Optional.empty(),
@@ -234,6 +242,7 @@ class ContextPropertyTest {
         assertThrows(SchemaVerificationException.class, () -> ContextFactory.selectContext(
             List.of(physical("users")),
             List.of(namedRef("name")),
+            List.of(),
             Optional.of(new IsNullExpr.IsNotNull(func)),
             List.of(),
             Optional.empty(),
@@ -247,6 +256,7 @@ class ContextPropertyTest {
         assertDoesNotThrow(() -> ContextFactory.selectContext(
             List.of(physical("users")),
             List.of(namedRef(col)),
+            List.of(),
             Optional.empty(),
             List.of(),
             Optional.empty(),
@@ -260,6 +270,7 @@ class ContextPropertyTest {
         assertDoesNotThrow(() -> ContextFactory.selectContext(
             List.of(physical("orders")),
             List.of(namedRef(col)),
+            List.of(),
             Optional.empty(),
             List.of(),
             Optional.empty(),
@@ -278,6 +289,7 @@ class ContextPropertyTest {
         assertDoesNotThrow(() -> ContextFactory.selectContext(
             List.of(physical("users")),
             List.of(namedRef("name")),
+            List.of(),
             Optional.of(where),
             List.of(),
             Optional.empty(),
@@ -294,6 +306,7 @@ class ContextPropertyTest {
         assertDoesNotThrow(() -> ContextFactory.selectContext(
             List.of(physical("users", "u"), physical("orders", "o")),
             List.of(aliasedRef("u", uCol, "u_" + uCol), aliasedRef("o", oCol, "o_" + oCol)),
+            List.of(),
             Optional.empty(),
             List.of(),
             Optional.empty(),
@@ -307,6 +320,7 @@ class ContextPropertyTest {
         assertThrows(SchemaVerificationException.class, () -> ContextFactory.selectContext(
             List.of(physical(table)),
             List.of(namedRef("id")),
+            List.of(),
             Optional.empty(),
             List.of(),
             Optional.empty(),
@@ -320,6 +334,7 @@ class ContextPropertyTest {
         assertThrows(SchemaVerificationException.class, () -> ContextFactory.selectContext(
             List.of(physical("users")),
             List.of(namedRef("id", type)),
+            List.of(),
             Optional.empty(),
             List.of(),
             Optional.empty(),
@@ -333,6 +348,21 @@ class ContextPropertyTest {
         assertDoesNotThrow(() -> ContextFactory.selectContext(
             List.of(physical("users")),
             List.of(namedRef("id", type)),
+            List.of(),
+            Optional.empty(),
+            List.of(),
+            Optional.empty(),
+            List.of(),
+            Optional.empty()
+        ));
+    }
+    
+    @Property(tries = 64)
+    void select_duplicateTableNames_alwaysFails(@ForAll("usersColumns") String col) {
+        assertThrows(SchemaVerificationException.class, () -> ContextFactory.selectContext(
+            List.of(physical("users"), physical("users")),
+            List.of(namedRef(col)),
+            List.of(),
             Optional.empty(),
             List.of(),
             Optional.empty(),
@@ -480,19 +510,6 @@ class ContextPropertyTest {
     void delete_unknownTable_alwaysFails(@ForAll("unknownTableNames") String table) {
         assertThrows(SchemaVerificationException.class, () -> ContextFactory.deleteContext(
             List.of(physical(table)),
-            Optional.empty(),
-            List.of(),
-            Optional.empty()
-        ));
-    }
-
-    @Property(tries = 64)
-    void select_duplicateTableNames_alwaysFails(@ForAll("usersColumns") String col) {
-        assertThrows(SchemaVerificationException.class, () -> ContextFactory.selectContext(
-            List.of(physical("users"), physical("users")),
-            List.of(namedRef(col)),
-            Optional.empty(),
-            List.of(),
             Optional.empty(),
             List.of(),
             Optional.empty()

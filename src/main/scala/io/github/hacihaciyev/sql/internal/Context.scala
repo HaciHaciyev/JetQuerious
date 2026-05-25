@@ -42,6 +42,7 @@ object Context {
     case class Select(
                          sources: List[TableSource],
                          refs: List[Ref],
+                         joins: List[Expr],
                          where: Option[Expr],
                          groupBy: List[Expr],
                          having: Option[Expr],
@@ -49,7 +50,7 @@ object Context {
                          outer: Option[Context] = None
                      ) extends Context, DQL {
 
-        req(sources, refs, where, groupBy, having, orderBy, outer)
+        req(sources, refs, joins, where, groupBy, having, orderBy, outer)
 
         protected def validate(): Unit = {
             validateCommon(sources, refs)
@@ -62,8 +63,9 @@ object Context {
             val groupCrefs  = groupBy.flatMap(ExprTraversal.collectCrefs)
             val havingCrefs = having.toList.flatMap(ExprTraversal.collectCrefs)
             val orderCrefs  = orderBy.flatMap(ExprTraversal.collectCrefs)
+            val joinsCrefs  = joins.flatMap(ExprTraversal.collectCrefs)
 
-            val extraCrefs  = whereCrefs ++ groupCrefs ++ havingCrefs ++ orderCrefs
+            val extraCrefs  = whereCrefs ++ groupCrefs ++ havingCrefs ++ orderCrefs ++ joinsCrefs
 
             for (cref <- extraCrefs) validateCref(cref, physical, virtual, outer, errs)
             throwIfErrors(errs)
@@ -451,6 +453,7 @@ object ContextFactory {
     def selectContext(
                          sources: java.util.List[TableSource],
                          refs: java.util.List[Ref],
+                         joins: java.util.List[Expr],
                          where: java.util.Optional[Expr],
                          groupBy: java.util.List[Expr],
                          having: java.util.Optional[Expr],
@@ -460,6 +463,7 @@ object ContextFactory {
 
         sources.asScala.toList,
         refs.asScala.toList,
+        joins.asScala.toList,
         if where.isPresent then Some(where.get) else None,
         groupBy.asScala.toList,
         if having.isPresent then Some(having.get) else None,
