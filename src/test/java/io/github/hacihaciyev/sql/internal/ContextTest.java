@@ -4,8 +4,7 @@ import io.github.hacihaciyev.build_errors.SchemaVerificationException;
 import io.github.hacihaciyev.sql.expressions.*;
 import io.github.hacihaciyev.sql.internal.value_objects.Ref;
 import io.github.hacihaciyev.sql.internal.value_objects.TableSource;
-import io.github.hacihaciyev.sql.value_objects.Projection;
-import io.github.hacihaciyev.sql.value_objects.TableRef;
+import io.github.hacihaciyev.sql.value_objects.*;
 import io.github.hacihaciyev.util.DBTestContainer;
 
 import org.junit.jupiter.api.*;
@@ -13,6 +12,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.Arrays;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -43,7 +43,21 @@ class ContextTest {
     private static Ref aliasedRef(String table, String col, String alias) {
         return new Ref.Named(new Projection.Base(new ColumnRef.VariableAlias(table, col, alias)));
     }
-
+    
+    private static Context.Select selectCtx(String table, String... cols) {
+        var refs = Arrays.stream(cols).map(c -> (Ref) namedRef(c)).toList();
+                
+        return ContextFactory.selectContext(
+                List.of(physical(table)),
+                refs,
+                Optional.empty(),
+                List.of(),
+                Optional.empty(),
+                List.of(),
+                Optional.empty()
+        );
+    }
+    
     @Test
     @Order(1)
     void select_validColumn_passes() {
@@ -243,9 +257,100 @@ class ContextTest {
             Optional.empty()
         ));
     }
-
+    
     @Test
     @Order(14)
+    void select_whereAmbiguousColumn_fails() {
+        var where = new BinaryOp(BinaryOp.BinaryOperator.EQ,
+                new ColumnRef.Base("id"), new Literal.IntLiteral(1));
+
+        assertThrows(SchemaVerificationException.class, () -> ContextFactory.selectContext(
+                List.of(physical("users"), physical("orders")),
+                List.of(aliasedRef("users", "id", "user_id")),
+                Optional.of(where),
+                List.of(),
+                Optional.empty(),
+                List.of(),
+                Optional.empty()
+        ));
+    }
+
+    @Test
+    @Order(15)
+    void select_joinTable_columnFromJoinedTable_passes() {
+        assertDoesNotThrow(() -> ContextFactory.selectContext(
+                List.of(physical("users", "u"), physical("orders", "o")),
+                List.of(aliasedRef("u", "name", "user_name"), aliasedRef("o", "status", "order_status")),
+                Optional.empty(),
+                List.of(),
+                Optional.empty(),
+                List.of(),
+                Optional.empty()
+        ));
+    }
+
+    @Test
+    @Order(16)
+    void select_joinTable_nonExistentColumnInOn_fails() {
+        var where = new BinaryOp(BinaryOp.BinaryOperator.EQ, new ColumnRef.Base("ghost"), new Literal.IntLiteral(1));
+
+        assertThrows(SchemaVerificationException.class, () -> ContextFactory.selectContext(
+                List.of(physical("users", "u"), physical("orders", "o")),
+                List.of(aliasedRef("u", "id", "uid")),
+                Optional.of(where),
+                List.of(),
+                Optional.empty(),
+                List.of(),
+                Optional.empty()
+        ));
+    }
+
+    @Test
+    @Order(17)
+    void select_having_nonExistentColumn_fails() {
+        var having = new BinaryOp(BinaryOp.BinaryOperator.GT, new ColumnRef.Base("ghost"), new Literal.IntLiteral(0));
+
+        assertThrows(SchemaVerificationException.class, () -> ContextFactory.selectContext(
+                List.of(physical("orders")),
+                List.of(namedRef("status")),
+                Optional.empty(),
+                List.of(new ColumnRef.Base("status")),
+                Optional.of(having),
+                List.of(),
+                Optional.empty()
+        ));
+    }
+
+    @Test
+    @Order(18)
+    void select_groupBy_nonExistentColumn_fails() {
+        assertThrows(SchemaVerificationException.class, () -> ContextFactory.selectContext(
+                List.of(physical("orders")),
+                List.of(namedRef("status")),
+                Optional.empty(),
+                List.of(new ColumnRef.Base("ghost")),
+                Optional.empty(),
+                List.of(),
+                Optional.empty()
+        ));
+    }
+
+    @Test
+    @Order(19)
+    void select_orderBy_nonExistentColumn_fails() {
+        assertThrows(SchemaVerificationException.class, () -> ContextFactory.selectContext(
+                List.of(physical("users")),
+                List.of(namedRef("name")),
+                Optional.empty(),
+                List.of(),
+                Optional.empty(),
+                List.of(new ColumnRef.Base("ghost")),
+                Optional.empty()
+        ));
+    }
+
+    @Test
+    @Order(20)
     void insert_validColumns_passes() {
         assertDoesNotThrow(() -> ContextFactory.insertContext(
             List.of(physical("users")),
@@ -257,7 +362,7 @@ class ContextTest {
     }
 
     @Test
-    @Order(15)
+    @Order(21)
     void insert_nonExistentColumn_fails() {
         assertThrows(SchemaVerificationException.class, () -> ContextFactory.insertContext(
             List.of(physical("users")),
@@ -269,7 +374,7 @@ class ContextTest {
     }
 
     @Test
-    @Order(16)
+    @Order(22)
     void insert_returning_validColumn_passes() {
         assertDoesNotThrow(() -> ContextFactory.insertContext(
             List.of(physical("users")),
@@ -281,7 +386,7 @@ class ContextTest {
     }
 
     @Test
-    @Order(17)
+    @Order(23)
     void insert_returning_nonExistentColumn_fails() {
         assertThrows(SchemaVerificationException.class, () -> ContextFactory.insertContext(
             List.of(physical("users")),
@@ -293,7 +398,7 @@ class ContextTest {
     }
 
     @Test
-    @Order(18)
+    @Order(24)
     void update_validColumn_passes() {
         assertDoesNotThrow(() -> ContextFactory.updateContext(
             List.of(physical("users")),
@@ -306,7 +411,7 @@ class ContextTest {
     }
 
     @Test
-    @Order(19)
+    @Order(25)
     void update_nonExistentColumn_fails() {
         assertThrows(SchemaVerificationException.class, () -> ContextFactory.updateContext(
             List.of(physical("users")),
@@ -319,7 +424,7 @@ class ContextTest {
     }
 
     @Test
-    @Order(20)
+    @Order(26)
     void update_whereWithValidColumn_passes() {
         var where = new BinaryOp(
             BinaryOp.BinaryOperator.EQ,
@@ -338,7 +443,7 @@ class ContextTest {
     }
 
     @Test
-    @Order(21)
+    @Order(27)
     void update_whereWithNonExistentColumn_fails() {
         var where = new BinaryOp(
             BinaryOp.BinaryOperator.EQ,
@@ -357,7 +462,7 @@ class ContextTest {
     }
 
     @Test
-    @Order(22)
+    @Order(28)
     void update_returning_validColumn_passes() {
         assertDoesNotThrow(() -> ContextFactory.updateContext(
             List.of(physical("users")),
@@ -370,7 +475,7 @@ class ContextTest {
     }
 
     @Test
-    @Order(23)
+    @Order(29)
     void update_returning_nonExistentColumn_fails() {
         assertThrows(SchemaVerificationException.class, () -> ContextFactory.updateContext(
             List.of(physical("users")),
@@ -383,7 +488,7 @@ class ContextTest {
     }
 
     @Test
-    @Order(24)
+    @Order(30)
     void delete_noWhere_passes() {
         assertDoesNotThrow(() -> ContextFactory.deleteContext(
             List.of(physical("users")),
@@ -394,7 +499,7 @@ class ContextTest {
     }
 
     @Test
-    @Order(25)
+    @Order(31)
     void delete_whereWithValidColumn_passes() {
         var where = new BinaryOp(
             BinaryOp.BinaryOperator.EQ,
@@ -411,7 +516,7 @@ class ContextTest {
     }
 
     @Test
-    @Order(26)
+    @Order(32)
     void delete_whereWithNonExistentColumn_fails() {
         var where = new BinaryOp(
             BinaryOp.BinaryOperator.EQ,
@@ -428,7 +533,7 @@ class ContextTest {
     }
 
     @Test
-    @Order(27)
+    @Order(33)
     void delete_returning_validColumn_passes() {
         assertDoesNotThrow(() -> ContextFactory.deleteContext(
             List.of(physical("users")),
@@ -439,13 +544,168 @@ class ContextTest {
     }
 
     @Test
-    @Order(28)
+    @Order(34)
     void delete_returning_nonExistentColumn_fails() {
         assertThrows(SchemaVerificationException.class, () -> ContextFactory.deleteContext(
             List.of(physical("users")),
             Optional.empty(),
             List.of(namedRef("ghost")),
             Optional.empty()
+        ));
+    }
+    
+    @Test
+    @Order(35)
+    void union_sameColumnCount_passes() {
+        var q1 = selectCtx("users",  "id", "name");
+        var q2 = selectCtx("orders", "id", "status");
+    
+        assertDoesNotThrow(() -> ContextFactory.unionContext(
+                List.of(q1, q2),
+                UnionType.UNION,
+                List.of(),
+                Optional.empty()
+        ));
+    }
+    
+    @Test
+    @Order(36)
+    void union_differentColumnCounts_fails() {
+        var q1 = selectCtx("users",  "id", "name");
+        var q2 = selectCtx("orders", "id");
+    
+        assertThrows(SchemaVerificationException.class, () -> ContextFactory.unionContext(
+                List.of(q1, q2),
+                UnionType.UNION,
+                List.of(),
+                Optional.empty()
+        ));
+    }
+    
+    @Test
+    @Order(37)
+    void union_threeQueriesDifferentCounts_fails() {
+        var q1 = selectCtx("users",       "id", "name");
+        var q2 = selectCtx("orders",      "id", "status");
+        var q3 = selectCtx("order_items", "id");
+    
+        assertThrows(SchemaVerificationException.class, () -> ContextFactory.unionContext(
+                List.of(q1, q2, q3),
+                UnionType.UNION,
+                List.of(),
+                Optional.empty()
+        ));
+    }
+    
+    @Test
+    @Order(38)
+    void union_orderByColumnInFirstProjection_passes() {
+        var q1 = selectCtx("users",  "id", "name");
+        var q2 = selectCtx("orders", "id", "status");
+    
+        assertDoesNotThrow(() -> ContextFactory.unionContext(
+                List.of(q1, q2),
+                UnionType.UNION,
+                List.of(new ColumnRef.Base("id")),
+                Optional.empty()
+        ));
+    }
+    
+    @Test
+    @Order(39)
+    void union_orderByColumnNotInFirstProjection_fails() {
+        var q1 = selectCtx("users",  "id", "name");
+        var q2 = selectCtx("orders", "id", "status");
+    
+        assertThrows(SchemaVerificationException.class, () -> ContextFactory.unionContext(
+                List.of(q1, q2),
+                UnionType.UNION,
+                List.of(new ColumnRef.Base("status")),
+                Optional.empty()
+        ));
+    }
+    
+    @Test
+    @Order(40)
+    void union_orderByGhostColumn_fails() {
+        var q1 = selectCtx("users",  "id", "name");
+        var q2 = selectCtx("orders", "id", "status");
+    
+        assertThrows(SchemaVerificationException.class, () -> ContextFactory.unionContext(
+                List.of(q1, q2),
+                UnionType.UNION,
+                List.of(new ColumnRef.Base("ghost")),
+                Optional.empty()
+        ));
+    }
+    
+    @Test
+    @Order(41)
+    void union_orderByMultipleColumns_allInFirstProjection_passes() {
+        var q1 = selectCtx("users",  "id", "name");
+        var q2 = selectCtx("orders", "id", "status");
+    
+        assertDoesNotThrow(() -> ContextFactory.unionContext(
+                List.of(q1, q2),
+                UnionType.UNION,
+                List.of(new ColumnRef.Base("id"), new ColumnRef.Base("name")),
+                Optional.empty()
+        ));
+    }
+    
+    @Test
+    @Order(42)
+    void union_orderByMultipleColumns_oneGhost_fails() {
+        var q1 = selectCtx("users",  "id", "name");
+        var q2 = selectCtx("orders", "id", "status");
+    
+        assertThrows(SchemaVerificationException.class, () -> ContextFactory.unionContext(
+                List.of(q1, q2),
+                UnionType.UNION,
+                List.of(new ColumnRef.Base("id"), new ColumnRef.Base("ghost")),
+                Optional.empty()
+        ));
+    }
+    
+    @Test
+    @Order(43)
+    void unionAll_sameColumnCount_passes() {
+        var q1 = selectCtx("users",  "id", "name");
+        var q2 = selectCtx("orders", "id", "status");
+    
+        assertDoesNotThrow(() -> ContextFactory.unionContext(
+                List.of(q1, q2),
+                UnionType.UNION_ALL,
+                List.of(),
+                Optional.empty()
+        ));
+    }
+    
+    @Test
+    @Order(44)
+    void intersect_differentColumnCounts_fails() {
+        var q1 = selectCtx("users",  "id", "name");
+        var q2 = selectCtx("orders", "id");
+    
+        assertThrows(SchemaVerificationException.class, () -> ContextFactory.unionContext(
+                List.of(q1, q2),
+                UnionType.INTERSECT,
+                List.of(),
+                Optional.empty()
+        ));
+    }
+    
+    @Test
+    @Order(45)
+    void except_differentColumnCounts_fails() {
+        var q1 = selectCtx("users",  "id", "name");
+        var q2 = selectCtx("orders", "id");
+    
+        assertThrows(SchemaVerificationException.class, () -> ContextFactory.unionContext(
+                List.of(q1, q2),
+                UnionType.EXCEPT,
+                List.of(),
+                Optional.empty()
         ));
     }
 }
