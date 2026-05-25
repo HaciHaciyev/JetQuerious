@@ -1,8 +1,10 @@
 package io.github.hacihaciyev.sql.builders;
 
+import io.github.hacihaciyev.build_errors.SchemaVerificationException;
 import io.github.hacihaciyev.sql.JQ;
 import io.github.hacihaciyev.sql.value_objects.TableRef;
 import io.github.hacihaciyev.util.DBTestContainer;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
@@ -169,5 +171,90 @@ class InsertBuilderTest {
                 .columns("name", String.class)
                 .returning("ghost_column")
                 .build());
+    }
+    
+    @Nested
+    class OnConflictValidation {
+
+        @Test
+        void onConflict_updateConflictColumn_throws() {
+            assertThrows(Exception.class, () ->
+                    new InsertBuilder("users")
+                            .columns("name", String.class, "email", String.class)
+                            .onConflict("email")
+                            .update("email")
+                            .build()
+            );
+        }
+
+        @Test
+        void onConflict_updateNonConflictColumn_passes() {
+            assertDoesNotThrow(() ->
+                    new InsertBuilder("users")
+                            .columns("name", String.class, "email", String.class)
+                            .onConflict("email")
+                            .update("name")
+                            .build()
+            );
+        }
+
+        @Test
+        void onConflict_updateAll_excludesConflictColumns() {
+            assertThrows(Exception.class, () ->
+                    new InsertBuilder("users")
+                            .columns("email", String.class)
+                            .onConflict("email")
+                            .updateAll()
+                            .build()
+            );
+        }
+
+        @Test
+        void onConflict_multipleConflictCols_updateOneOfThem_throws() {
+            assertThrows(Exception.class, () ->
+                    new InsertBuilder("users")
+                            .columns("name", String.class, "email", String.class)
+                            .onConflict("name", "email")
+                            .update("name")
+                            .build()
+            );
+        }
+
+        @Test
+        void onConflict_caseInsensitiveConflictColumn_throws() {
+            assertThrows(Exception.class, () ->
+                    new InsertBuilder("users")
+                            .columns("name", String.class, "email", String.class)
+                            .onConflict("EMAIL")
+                            .update("email")
+                            .build()
+            );
+        }
+    }
+
+    @Nested
+    class ConflictColumnSchemaValidation {
+
+        @Test
+        void onConflict_nonExistentConflictColumn_throws() {
+            assertThrows(SchemaVerificationException.class, () ->
+                    new InsertBuilder("users")
+                            .columns("name", String.class)
+                            .onConflict("ghost_column")
+                            .doNothing()
+                            .build()
+            );
+        }
+
+        @Test
+        void onConflict_nonExistentUpdateColumn_throws() {
+            assertThrows(SchemaVerificationException.class, () ->
+                    new InsertBuilder("users")
+                            .columns("name", String.class, "email", String.class)
+                            .onConflict("email")
+                            .update("ghost_column")
+                            .build()
+            );
+        }
     }
 }
