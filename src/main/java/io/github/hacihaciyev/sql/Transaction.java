@@ -3,10 +3,8 @@ package io.github.hacihaciyev.sql;
 import static java.util.Objects.requireNonNull;
 
 import io.github.hacihaciyev.jdbc.JetQuerious;
-import io.github.hacihaciyev.jdbc.Transactions;
 
-public record Transaction(JQ[] operations, Savepoint[] savepoints, IsolationLevel isolationLevel, JetQuerious executor)
-    implements Transactions {
+public record Transaction(JQ[] operations, Savepoint[] savepoints, IsolationLevel isolationLevel, JetQuerious executor) {
     
     public Transaction {
         operations = requireNonNull(operations, "Transaction operations cannot be null").clone();
