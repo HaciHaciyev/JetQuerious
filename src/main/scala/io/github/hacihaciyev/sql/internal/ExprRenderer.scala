@@ -76,15 +76,16 @@ object ExprRenderer {
         branches.map(b => s"WHEN ${render(b.condition())} THEN ${render(b.result())}").mkString(" ")
 
     private def renderLiteral(l: Literal): String = l match {
-        case v: Literal.StringLiteral     => s"'${v.value().replace("'", "''")}'"
-        case v: Literal.IntLiteral        => v.value().toString
-        case v: Literal.LongLiteral       => v.value().toString
-        case v: Literal.BooleanLiteral    => v.value().toString.toUpperCase
-        case _: Literal.NullLiteral       => "NULL"
-        case v: Literal.FloatLiteral      => v.value().toString
-        case v: Literal.DoubleLiteral     => v.value().toString
-        case v: Literal.BigDecimalLiteral => v.value().toPlainString
-        case v: Literal.GenericLiteral    => v.value().toString
+        case v: Literal.StringLiteral      => s"'${v.value().replace("'", "''")}'"
+        case v: Literal.IntLiteral         => v.value().toString
+        case v: Literal.LongLiteral        => v.value().toString
+        case v: Literal.BooleanLiteral     => v.value().toString.toUpperCase
+        case _: Literal.NullLiteral        => "NULL"
+        case v: Literal.FloatLiteral       => v.value().toString
+        case v: Literal.DoubleLiteral      => v.value().toString
+        case v: Literal.BigDecimalLiteral  => v.value().toPlainString
+        case v: Literal.GenericLiteral     => v.value().toString
+        case _: Literal.PlaceholderLiteral => "?"
     }
 
     private def renderFunc(f: Func): String = f match {

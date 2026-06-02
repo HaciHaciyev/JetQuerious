@@ -2,6 +2,7 @@ package io.github.hacihaciyev.sql.builders;
 
 import io.github.hacihaciyev.build_errors.SchemaVerificationException;
 import io.github.hacihaciyev.sql.JQ;
+import io.github.hacihaciyev.sql.SQL;
 import io.github.hacihaciyev.sql.expressions.*;
 import io.github.hacihaciyev.sql.value_objects.Limit;
 import io.github.hacihaciyev.sql.value_objects.Offset;
@@ -1037,6 +1038,36 @@ class SelectBuilderTest {
                             .from(new TableRef.AliasedBase("order_items", "i"))
                             .where(eq(col("i", "order_id"), col("o", "id")))
                             .build(level1)
+            );
+        }
+    }
+
+    @Nested
+    class Placeholder {
+    
+        @Test
+        void whereWithPlaceholder() {
+            var q = SelectBuilder.select(col("id"), col("name"))
+                    .from("users")
+                    .where(eq(col("id"), SQL.param(Integer.class)))
+                    .build();
+    
+            assertEquals("SELECT id, name FROM users WHERE (id = ?)", q.sql());
+        }
+    
+        @Test
+        void multipleWhereWithPlaceholders() {
+            var q = SelectBuilder.select(col("id"), col("name"))
+                    .from("users")
+                    .where(and(
+                            eq(col("id"), SQL.param(Integer.class)),
+                            eq(col("name"), SQL.param(String.class))
+                    ))
+                    .build();
+    
+            assertEquals(
+                    "SELECT id, name FROM users WHERE ((id = ?) AND (name = ?))",
+                    q.sql()
             );
         }
     }

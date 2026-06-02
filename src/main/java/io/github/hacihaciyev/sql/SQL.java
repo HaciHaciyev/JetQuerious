@@ -31,6 +31,10 @@ public final class SQL {
     public static ColumnRef.VariableAlias colAs(String table, String name, String alias) {
         return new ColumnRef.VariableAlias(table, name, alias);
     }
+    
+    public static Literal.PlaceholderLiteral param(Class<?> type) {
+        return new Literal.PlaceholderLiteral(type);
+    }
 
     public static Literal.StringLiteral lit(String value) {
         return new Literal.StringLiteral(value);
