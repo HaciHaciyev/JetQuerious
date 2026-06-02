@@ -31,13 +31,47 @@ object ExprTraversal {
     def collectAllCrefs(exprs: List[Expr]): List[ColumnRef] =
         exprs.flatMap(collectCrefs)
 
+    def collectPlaceholders(expr: Expr): List[Class[?]] = expr match {
+        case p: Literal.PlaceholderLiteral => List(p.`type`())
+        case _: Literal                    => List()
+        case _: ColumnRef                  => List()
+        case op: BinaryOp                  => collectPlaceholders(op.left()) ++ collectPlaceholders(op.right())
+        case op: UnaryOp                   => collectPlaceholders(op.expr())
+        case e: IsNullExpr.IsNull          => collectPlaceholders(e.operand())
+        case e: IsNullExpr.IsNotNull       => collectPlaceholders(e.operand())
+        case e: BetweenExpr.Between        => collectPlaceholders(e.operand()) ++ collectPlaceholders(e.low()) ++ collectPlaceholders(e.high())
+        case e: BetweenExpr.NotBetween     => collectPlaceholders(e.operand()) ++ collectPlaceholders(e.low()) ++ collectPlaceholders(e.high())
+        case e: InExpr.In                  => collectPlaceholders(e.operand()) ++ collectPlaceholdersInSource(e.source())
+        case e: InExpr.NotIn               => collectPlaceholders(e.operand()) ++ collectPlaceholdersInSource(e.source())
+        case e: CaseExpr.Case              => collectPlaceholdersBranches(e.branches().asScala.toList)
+        case e: CaseExpr.CaseElse          => collectPlaceholdersBranches(e.branches().asScala.toList) ++ collectPlaceholders(e.elseBranch())
+        case e: CaseExpr.SimpleCase        => collectPlaceholders(e.operand()) ++ collectPlaceholdersBranches(e.branches().asScala.toList)
+        case e: CaseExpr.SimpleCaseElse    => collectPlaceholders(e.operand()) ++ collectPlaceholdersBranches(e.branches().asScala.toList) ++ collectPlaceholders(e.elseBranch())
+        case e: QuantifiedExpr.All         => collectPlaceholders(e.operand())
+        case e: QuantifiedExpr.Any         => collectPlaceholders(e.operand())
+        case _: Exists                     => List()
+        case _: Subquery.Scalar            => List()
+        case f: Func                       => collectPlaceholdersFunc(f)
+    }
+
+    def collectAllPlaceholders(exprs: List[Expr]): List[Class[?]] =
+        exprs.flatMap(collectPlaceholders)
+
     private def collectInSource(src: InExpr.InSource): List[ColumnRef] = src match {
         case vl: InExpr.ValueList     => vl.values().asScala.toList.flatMap(collectCrefs)
         case _: InExpr.SubquerySource => List()
     }
 
+    private def collectPlaceholdersInSource(src: InExpr.InSource): List[Class[?]] = src match {
+        case vl: InExpr.ValueList     => vl.values().asScala.toList.flatMap(collectPlaceholders)
+        case _: InExpr.SubquerySource => List()
+    }
+
     private def collectBranches(branches: List[CaseExpr.WhenThen]): List[ColumnRef] =
         branches.flatMap(b => collectCrefs(b.condition()) ++ collectCrefs(b.result()))
+
+    private def collectPlaceholdersBranches(branches: List[CaseExpr.WhenThen]): List[Class[?]] =
+        branches.flatMap(b => collectPlaceholders(b.condition()) ++ collectPlaceholders(b.result()))
 
     private def collectFunc(f: Func): List[ColumnRef] = f match {
         case e: Func.Count            => collectCrefs(e.expr())
@@ -61,6 +95,33 @@ object ExprTraversal {
         case e: Func.Sqrt             => collectCrefs(e.value())
         case e: Func.Mod              => collectCrefs(e.left()) ++ collectCrefs(e.right())
         case e: Func.Cast             => collectCrefs(e.value())
+        case _: Func.CountAll         => List()
+        case _: Func.CurrentDate      => List()
+        case _: Func.CurrentTimestamp => List()
+    }
+
+    private def collectPlaceholdersFunc(f: Func): List[Class[?]] = f match {
+        case e: Func.Count            => collectPlaceholders(e.expr())
+        case e: Func.Sum              => collectPlaceholders(e.expr())
+        case e: Func.Avg              => collectPlaceholders(e.expr())
+        case e: Func.Min              => collectPlaceholders(e.expr())
+        case e: Func.Max              => collectPlaceholders(e.expr())
+        case e: Func.Upper            => collectPlaceholders(e.value())
+        case e: Func.Lower            => collectPlaceholders(e.value())
+        case e: Func.Trim             => collectPlaceholders(e.value())
+        case e: Func.Length           => collectPlaceholders(e.value())
+        case e: Func.Substring        => collectPlaceholders(e.value()) ++ collectPlaceholders(e.start()) ++ collectPlaceholders(e.length())
+        case e: Func.Extract          => collectPlaceholders(e.source())
+        case e: Func.Coalesce         => e.values().asScala.toList.flatMap(collectPlaceholders)
+        case e: Func.NullIf           => collectPlaceholders(e.first()) ++ collectPlaceholders(e.second())
+        case e: Func.Abs              => collectPlaceholders(e.value())
+        case e: Func.Round            => collectPlaceholders(e.value()) ++ collectPlaceholders(e.precision())
+        case e: Func.Floor            => collectPlaceholders(e.value())
+        case e: Func.Ceil             => collectPlaceholders(e.value())
+        case e: Func.Power            => collectPlaceholders(e.base()) ++ collectPlaceholders(e.exponent())
+        case e: Func.Sqrt             => collectPlaceholders(e.value())
+        case e: Func.Mod              => collectPlaceholders(e.left()) ++ collectPlaceholders(e.right())
+        case e: Func.Cast             => collectPlaceholders(e.value())
         case _: Func.CountAll         => List()
         case _: Func.CurrentDate      => List()
         case _: Func.CurrentTimestamp => List()
