@@ -6,6 +6,8 @@ import mill.scalalib.publish.*
 
 object jetquerious extends ScalaModule with PublishModule {
 
+    def jvmVersion                  = "zulu:25"
+
     def pomSettings                 = PomSettings(
         description     = "JetQuerious is a lightweight, high-performance, and developer-friendly library for working with JDBC and SQL in Java.",
         organization    = "io.github.hacihaciyev",
