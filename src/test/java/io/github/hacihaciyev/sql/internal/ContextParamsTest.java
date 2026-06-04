@@ -11,6 +11,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.UUID;
 
 import static io.github.hacihaciyev.sql.SQL.*;
 import static org.junit.jupiter.api.Assertions.*;
@@ -32,10 +33,9 @@ class ContextParamsTest {
 
     private static List<ParamType> paramTypes(JQ jq) {
         var result = switch (jq) {
-            case JQ.Read(_, var context) -> ((Context) context).paramTypes();
+            case JQ.Read(_, var context)  -> ((Context) context).paramTypes();
             case JQ.Write(_, var context) -> ((Context) context).paramTypes();
         };
-        
         return asJava(result);
     }
 
@@ -54,9 +54,9 @@ class ContextParamsTest {
         void userRegistration() {
             var jq = new InsertBuilder("users")
                 .columns(
-                    "name",     Username.class,
-                    "email",    Email.class,
-                    "active",   Boolean.class
+                    "name",   Username.class,
+                    "email",  Email.class,
+                    "active", Boolean.class
                 )
                 .build();
 
@@ -89,6 +89,34 @@ class ContextParamsTest {
                 .build();
 
             assertTypes(paramTypes(jq), UserId.class, Amount.class, Status.class);
+        }
+
+        @Test
+        void orderItemInsert_allColumns() {
+            var jq = new InsertBuilder("order_items")
+                .columns(
+                    "id",        Integer.class,
+                    "order_id",  OrderId.class,
+                    "product",   Username.class,
+                    "qty",       Quantity.class
+                )
+                .build();
+
+            assertTypes(paramTypes(jq), Integer.class, OrderId.class, Username.class, Quantity.class);
+        }
+
+        @Test
+        void insert_manyColumns_exactOrderVerified() {
+            var jq = new InsertBuilder("orders")
+                .columns(
+                    "user_id", UserId.class,
+                    "total",   Amount.class,
+                    "status",  Status.class,
+                    "amount",  Amount.class
+                )
+                .build();
+
+            assertTypes(paramTypes(jq), UserId.class, Amount.class, Status.class, Amount.class);
         }
     }
 
@@ -142,9 +170,9 @@ class ContextParamsTest {
         void computed_param_computed_interleaving() {
             var jq = new UpdateBuilder("orders")
                 .set(
-                    "total",    multiply(col("total"), param(Amount.class)),
-                    "user_id",  UserId.class,
-                    "status",   add(col("amount"), param(Quantity.class))
+                    "total",   multiply(col("total"), param(Amount.class)),
+                    "user_id", UserId.class,
+                    "status",  add(col("amount"), param(Quantity.class))
                 )
                 .build();
 
@@ -155,8 +183,8 @@ class ContextParamsTest {
         void literalInComputedExpr_noPlaceholder_skipped() {
             var jq = new UpdateBuilder("orders")
                 .set(
-                    "status",  Status.class,
-                    "total",   multiply(col("total"), lit(2))
+                    "status", Status.class,
+                    "total",  multiply(col("total"), lit(2))
                 )
                 .where(eq(col("id"), param(OrderId.class)))
                 .build();
@@ -200,6 +228,58 @@ class ContextParamsTest {
                 .build();
 
             assertTypes(paramTypes(jq), Status.class, UserId.class, UserId.class, UserId.class);
+        }
+
+        @Test
+        void manyMixed_fiveSetParams_twoWhereParams() {
+            var jq = new UpdateBuilder("orders")
+                .set(
+                    "status",  Status.class,
+                    "total",   multiply(col("total"), param(Amount.class)),
+                    "user_id", UserId.class,
+                    "amount",  add(col("amount"), param(Quantity.class))
+                )
+                .where(and(
+                    eq(col("id"),      param(OrderId.class)),
+                    eq(col("user_id"), param(UserId.class))
+                ))
+                .build();
+
+            assertTypes(paramTypes(jq),
+                Status.class, Amount.class, UserId.class, Quantity.class,
+                OrderId.class, UserId.class
+            );
+        }
+
+        @Test
+        void allComputed_withNestedPlaceholders() {
+            var jq = new UpdateBuilder("orders")
+                .set(
+                    "total",  add(multiply(col("total"), param(Amount.class)), param(Amount.class)),
+                    "amount", subtract(col("amount"), param(Quantity.class))
+                )
+                .where(eq(col("id"), param(OrderId.class)))
+                .build();
+
+            assertTypes(paramTypes(jq), Amount.class, Amount.class, Quantity.class, OrderId.class);
+        }
+
+        @Test
+        void alternating_literal_param_param_literal_computed() {
+            var jq = new UpdateBuilder("orders")
+                .set(
+                    "status",  Status.class,
+                    "total",   multiply(col("total"), lit(2)),
+                    "user_id", UserId.class,
+                    "amount",  add(col("amount"), param(Amount.class))
+                )
+                .where(and(
+                    eq(col("id"),     param(OrderId.class)),
+                    eq(col("status"), lit("active"))
+                ))
+                .build();
+
+            assertTypes(paramTypes(jq), Status.class, UserId.class, Amount.class, OrderId.class);
         }
     }
 
@@ -269,6 +349,52 @@ class ContextParamsTest {
 
             assertTypes(paramTypes(jq), UserId.class);
         }
+
+        @Test
+        void deleteManyConditions_mixedLiteralsAndParams() {
+            var jq = new DeleteBuilder("orders")
+                .where(and(
+                    eq(col("status"),  lit("expired")),
+                    eq(col("user_id"), param(UserId.class)),
+                    between(col("total"), param(Amount.class), param(Amount.class)),
+                    in(col("id"),
+                        param(OrderId.class),
+                        param(OrderId.class)
+                    )
+                ))
+                .build();
+
+            assertTypes(paramTypes(jq),
+                UserId.class, Amount.class, Amount.class,
+                OrderId.class, OrderId.class
+            );
+        }
+
+        @Test
+        void deleteComplexNestedAnd_sevenParams() {
+            var jq = new DeleteBuilder("orders")
+                .where(and(
+                    and(
+                        eq(col("user_id"), param(UserId.class)),
+                        eq(col("status"),  param(Status.class))
+                    ),
+                    and(
+                        between(col("total"), param(Amount.class), param(Amount.class)),
+                        in(col("id"),
+                            param(OrderId.class),
+                            param(OrderId.class),
+                            param(OrderId.class)
+                        )
+                    )
+                ))
+                .build();
+
+            assertTypes(paramTypes(jq),
+                UserId.class, Status.class,
+                Amount.class, Amount.class,
+                OrderId.class, OrderId.class, OrderId.class
+            );
+        }
     }
 
     @Nested
@@ -313,8 +439,8 @@ class ContextParamsTest {
                 .from(tAs("users", "u"))
                 .join(tAs("orders", "o"),
                     and(
-                        eq(col("u", "id"),     col("o", "user_id")),
-                        gt(col("o", "total"),  param(Amount.class))
+                        eq(col("u", "id"),    col("o", "user_id")),
+                        gt(col("o", "total"), param(Amount.class))
                     ))
                 .where(eq(col("u", "email"), param(Email.class)))
                 .build();
@@ -337,8 +463,8 @@ class ContextParamsTest {
                     ))
                 .join(tAs("order_items", "i"),
                     and(
-                        eq(col("o", "id"),   col("i", "order_id")),
-                        eq(col("i", "qty"),  param(Quantity.class))
+                        eq(col("o", "id"),  col("i", "order_id")),
+                        eq(col("i", "qty"), param(Quantity.class))
                     ))
                 .where(eq(col("u", "email"), param(Email.class)))
                 .build();
@@ -383,6 +509,72 @@ class ContextParamsTest {
                 .build();
 
             assertTypes(paramTypes(jq), Status.class, Status.class);
+        }
+
+        @Test
+        void twoJoins_complexOnConditions_complexWhere_eightParams() {
+            var jq = SelectBuilder
+                .select(
+                    colAs("u", "id", "uid"),
+                    colAs("o", "id", "oid"),
+                    colAs("i", "id", "iid"))
+                .from(tAs("users", "u"))
+                .join(tAs("orders", "o"),
+                    and(
+                        eq(col("u", "id"),    col("o", "user_id")),
+                        gt(col("o", "total"), param(Amount.class)),
+                        eq(col("o", "status"), param(Status.class))
+                    ))
+                .join(tAs("order_items", "i"),
+                    and(
+                        eq(col("o", "id"),    col("i", "order_id")),
+                        gt(col("i", "qty"),   param(Quantity.class)),
+                        lt(col("i", "qty"),   param(Quantity.class))
+                    ))
+                .where(and(
+                    eq(col("u", "email"),  param(Email.class)),
+                    eq(col("u", "active"), lit(true)),
+                    between(col("o", "total"), param(Amount.class), param(Amount.class))
+                ))
+                .build();
+
+            assertTypes(paramTypes(jq),
+                Amount.class, Status.class,
+                Quantity.class, Quantity.class,
+                Email.class, Amount.class, Amount.class
+            );
+        }
+
+        @Test
+        void joinWhereGroupByHaving_sixParams() {
+            var jq = SelectBuilder
+                .select(colAs("u", "id", "uid"), colAs("o", "id", "oid"), sum(col("o", "total")))
+                .from(tAs("users", "u"))
+                .join(tAs("orders", "o"),
+                    and(
+                        eq(col("u", "id"),     col("o", "user_id")),
+                        gt(col("o", "total"),  param(Amount.class))
+                    ))
+                .where(and(
+                    eq(col("u", "email"),  param(Email.class)),
+                    eq(col("u", "active"), lit(true)),
+                    in(col("o", "status"),
+                        param(Status.class),
+                        param(Status.class)
+                    )
+                ))
+                .groupBy(col("u", "id"), col("o", "id"))
+                .having(and(
+                    gt(sum(col("o", "total")), param(Amount.class)),
+                    lt(sum(col("o", "total")), param(Amount.class))
+                ))
+                .build();
+
+            assertTypes(paramTypes(jq),
+                Amount.class,
+                Email.class, Status.class, Status.class,
+                Amount.class, Amount.class
+            );
         }
     }
 
@@ -489,6 +681,45 @@ class ContextParamsTest {
             var jq = new UnionBuilder(UnionType.UNION_ALL, first, second).build();
 
             assertTypes(paramTypes(jq), Email.class, UserId.class);
+        }
+
+        @Test
+        void threeQueries_manyParamsEach_tenTotal() {
+            var q1 = SelectBuilder.select(col("id"), col("name"))
+                .from("users")
+                .where(and(
+                    eq(col("id"),    param(UserId.class)),
+                    eq(col("email"), param(Email.class)),
+                    eq(col("name"),  param(Username.class))
+                ))
+                .build();
+
+            var q2 = SelectBuilder.select(col("id"), col("status"))
+                .from("orders")
+                .where(and(
+                    between(col("total"), param(Amount.class), param(Amount.class)),
+                    eq(col("user_id"),   param(UserId.class))
+                ))
+                .build();
+
+            var q3 = SelectBuilder.select(col("id"), col("product"))
+                .from("order_items")
+                .where(and(
+                    in(col("id"),
+                        param(ProductId.class),
+                        param(ProductId.class)
+                    ),
+                    between(col("qty"), param(Quantity.class), param(Quantity.class))
+                ))
+                .build();
+
+            var jq = new UnionBuilder(UnionType.UNION_ALL, q1, q2).add(q3).build();
+
+            assertTypes(paramTypes(jq),
+                UserId.class, Email.class, Username.class,
+                Amount.class, Amount.class, UserId.class,
+                ProductId.class, ProductId.class, Quantity.class, Quantity.class
+            );
         }
     }
 }
