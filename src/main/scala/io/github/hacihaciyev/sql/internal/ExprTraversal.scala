@@ -1,10 +1,25 @@
 package io.github.hacihaciyev.sql.internal
 
 import io.github.hacihaciyev.sql.expressions.*
+import io.github.hacihaciyev.sql.value_objects.Projection
+import io.github.hacihaciyev.sql.internal.value_objects.Ref
 
 import scala.jdk.CollectionConverters.*
 
 object ExprTraversal {
+
+    def refsToExprsExcludingWildcards(refs: List[Ref]): List[Expr] =
+        refs.flatMap {
+            case rn: Ref.Named      => resolveProjection(rn.value)
+            case ri: Ref.Indexed    => resolveProjection(ri.value)
+        }
+    
+    private def resolveProjection(proj: Projection): List[Expr] = proj match {
+        case pb: Projection.Base              => List(pb.expr)
+        case pa: Projection.Aliased           => List(pa.expr)
+        case _ : Projection.Wildcard          => List()
+        case _ : Projection.QualifiedWildcard => List()
+    }
 
     def collectCrefs(expr: Expr): List[ColumnRef] = expr match {
         case col: ColumnRef              => List(col)

@@ -6,7 +6,7 @@ import io.github.hacihaciyev.sql.value_objects.{Projection, TableRef}
 import io.github.hacihaciyev.sql.expressions.{ColumnRef, Expr, ValueExpr}
 import io.github.hacihaciyev.sql.expressions.ColumnRef.*
 import io.github.hacihaciyev.sql.internal.schema.{Column, SchemaResolver, Table}
-import io.github.hacihaciyev.sql.internal.value_objects.{Ref, TableSource, OnConflict}
+import io.github.hacihaciyev.sql.internal.value_objects.{Ref, TableSource, OnConflict, ParamType}
 import io.github.hacihaciyev.types.SQLType
 import io.github.hacihaciyev.util.{Err, Ok}
 import io.github.hacihaciyev.types.internal.{TypeInfo, TypeInfoOk, TypeRegistry}
@@ -16,11 +16,13 @@ import scala.annotation.tailrec
 import scala.jdk.CollectionConverters.*
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
+import io.github.hacihaciyev.sql.expressions.Literal
 
 sealed trait Context {
     def sources: List[TableSource]
     def refs: List[Ref]
     def outer: Option[Context]
+    def paramTypes: List[ParamType]
 
     require(sources != null)
     require(refs != null)
@@ -52,6 +54,15 @@ object Context {
 
         req(sources, refs, joins, where, groupBy, having, orderBy, outer)
 
+        def paramTypes: List[ParamType] = withPositions(ExprTraversal.collectAllPlaceholders(
+            ExprTraversal.refsToExprsExcludingWildcards(refs) ++
+            joins                                             ++
+            where.toList                                      ++
+            groupBy                                           ++
+            having.toList                                     ++
+            orderBy
+        ))
+
         protected def validate(): Unit = {
             validateCommon(sources, refs)
             val (physical, virtual) = resolve(sources)
@@ -82,6 +93,8 @@ object Context {
 
         req(sources, refs, conflict, returning, outer)
 
+        def paramTypes: List[ParamType] = withPositions(collectRefTypes(refs))
+
         protected def validate(): Unit = {
             validateCommon(sources, refs)
             val (physical, virtual) = resolve(sources)
@@ -107,6 +120,23 @@ object Context {
                      ) extends Context, DML {
 
         req(sources, refs, setExprs, where, returning, outer)
+
+        def paramTypes: List[ParamType] = {
+            var setExprIdx = 0
+            val setTypes = refs.flatMap {
+                case Ref.Named(pb: Projection.Base) if pb.expr.isInstanceOf[ColumnRef] =>
+                    pb.expr.asInstanceOf[ColumnRef].typeClass() match {
+                        case t: ColumnRef.Type.Some => List(t.value())
+                        case _: ColumnRef.Type.None =>
+                            val types = ExprTraversal.collectPlaceholders(setExprs(setExprIdx))
+                            setExprIdx += 1
+                            types
+                    }
+
+                case _ => List()
+            }
+            withPositions(setTypes ++ ExprTraversal.collectAllPlaceholders(where.toList))
+        }
 
         protected def validate(): Unit = {
             validateCommon(sources, refs)
@@ -135,6 +165,8 @@ object Context {
         
         override def refs: List[Ref] = List.empty
 
+        def paramTypes: List[ParamType] = withPositions(ExprTraversal.collectAllPlaceholders(where.toList))
+
         protected def validate(): Unit = {
             validateCommon(sources, refs)
             val (physical, virtual) = resolve(sources)
@@ -160,6 +192,11 @@ object Context {
     
         override def sources: List[TableSource] = queries.head.sources
         override def refs: List[Ref]            = queries.head.refs
+
+        def paramTypes: List[ParamType] = withPositions(
+            queries.flatMap(_.paramTypes.map(_._type)) ++
+            ExprTraversal.collectAllPlaceholders(orderBy)
+        )
     
         protected def validate(): Unit = {
             validateColumnCounts()
@@ -194,6 +231,18 @@ object Context {
         }
     }
     
+    private def collectRefTypes(refs: List[Ref]): List[Class[?]] =
+        refs.flatMap {
+            case Ref.Named(pb: Projection.Base) if pb.expr.isInstanceOf[ColumnRef] =>
+                pb.expr.asInstanceOf[ColumnRef].typeClass() match {
+                    case t: ColumnRef.Type.Some => List(t.value())
+                    case _: ColumnRef.Type.None => List()
+                }
+            case _ => List()
+        }
+
+    private def withPositions(types: List[Class[?]]): List[ParamType] = types.zipWithIndex.map((t, i) => ParamType(i + 1, t))
+
     private def resolve(sources: List[TableSource]): (Map[TableRef, Table], Map[String, List[String]]) = {
         val physical = mutable.Map[TableRef, Table]()
         val virtual  = mutable.Map[String, List[String]]()
