@@ -40,7 +40,7 @@ object jetquerious extends ScalaModule with PublishModule {
     
         os.proc(
             sys.props("java.home") + "/bin/java",
-            "-Djetquerious.packages=io.github.hacihaciyev.types",
+            "-Djetquerious.packages=io.github.hacihaciyev.types;io.github.hacihaciyev.sql.internal",
             s"-Djetquerious.output_dir=${mainClasses}",
             "-cp", cp,
             "io.github.hacihaciyev.types.internal.MetaGen",
@@ -72,7 +72,7 @@ object jetquerious extends ScalaModule with PublishModule {
         override def forkArgs       = Task {
             Seq(
                 s"-Djetquerious.output_dir=${jetquerious.compile().classes.path}",
-                "-Djetquerious.packages=io.github.hacihaciyev.types"
+                "-Djetquerious.packages=io.github.hacihaciyev.types;io.github.hacihaciyev.sql.internal"
             )
         }
 

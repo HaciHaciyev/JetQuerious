@@ -21,11 +21,11 @@ import java.util.stream.Stream;
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 class MetaRegistryTest {
 
-    record Person(String name, int age) {}
-    record Empty() {}
-    record AllPrimitives(int i, long l, double d, float f, boolean z, byte b, char c, short s) {}
-    record Mixed(String str, int num, List<String> list, int[] array) {}
-    record Nested(Person person, String extra) {}
+    public record Person(String name, int age) {}
+    public record Empty() {}
+    public record AllPrimitives(int i, long l, double d, float f, boolean z, byte b, char c, short s) {}
+    public record Mixed(String str, int num, List<String> list, int[] array) {}
+    public record Nested(Person person, String extra) {}
 
     @Test
     @Order(1)

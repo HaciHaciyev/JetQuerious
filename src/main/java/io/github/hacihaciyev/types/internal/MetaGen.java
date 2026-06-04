@@ -14,6 +14,7 @@ import java.lang.classfile.CodeModel;
 import java.lang.classfile.MethodModel;
 import java.lang.classfile.attribute.RecordAttribute;
 import java.lang.classfile.attribute.RecordComponentInfo;
+import java.lang.classfile.attribute.InnerClassesAttribute;
 import java.lang.constant.ClassDesc;
 import java.lang.constant.ConstantDesc;
 import java.lang.constant.ConstantDescs;
@@ -96,6 +97,8 @@ public final class MetaGen {
     private static void metaGen(byte[] type) {
         var classFile = ClassFile.of();
         var classModel = classFile.parse(type);
+
+        if (isInaccessible(classModel)) return;
 
         var attribute = recordAttribute(classModel);
         if (attribute.isEmpty()) return;
@@ -328,6 +331,23 @@ public final class MetaGen {
 
     private static MethodTypeDesc factoryActualSignature(ClassDesc cd) {
         return MethodTypeDesc.of(cd, CD_Object.arrayType());
+    }
+
+    private static boolean isInaccessible(ClassModel classModel) {
+        var thisClass = classModel.thisClass().asSymbol();
+    
+        for (var attr : classModel.attributes()) {
+            if (!(attr instanceof InnerClassesAttribute ica)) continue;
+    
+            for (var info : ica.classes()) {
+                if (!info.innerClass().asSymbol().equals(thisClass)) continue;
+    
+                int flags = info.flagsMask();
+                return (flags & ClassFile.ACC_PUBLIC) == 0;
+            }
+        }
+    
+        return false;
     }
 
     private static class MetaRegistryAlter {

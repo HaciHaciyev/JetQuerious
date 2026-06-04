@@ -244,9 +244,9 @@ class TypeRegistryTest {
         verify(stmt).setString(1, "42");
     }
 
-    record UserId(UUID id) {}
-    record UserName(String name) {}
-    record InvalidRecord(String a, String b) {}
+    public record UserId(UUID id) {}
+    public record UserName(String name) {}
+    public record InvalidRecord(String a, String b) {}
 
     @Test
     void shouldUnwrapSingleValueRecord() throws Exception {
