@@ -3,7 +3,7 @@ package io.github.hacihaciyev.sql.internal.builders
 import io.github.hacihaciyev.sql.expressions.Expr
 import io.github.hacihaciyev.sql.internal.ExprRenderer
 import io.github.hacihaciyev.sql.internal.value_objects.{FromSource, JoinEntry, ForUpdate}
-import io.github.hacihaciyev.sql.value_objects.{Limit, Offset, Projection}
+import io.github.hacihaciyev.sql.value_objects.{Limit, Offset, Projection, TableRef}
 
 import scala.jdk.CollectionConverters.*
 
@@ -53,7 +53,7 @@ object SelectSQL {
         if limit.isPresent  then sb ++= s" LIMIT ${limit.get.value()}"
         if offset.isPresent then sb ++= s" OFFSET ${offset.get.value()}"
 
-        if forUpdate.isPresent then sb ++= forUpdate.get().sqlSuffix
+        renderForUpdate(sb, forUpdate)
 
         sb.toString
     }
@@ -63,5 +63,37 @@ object SelectSQL {
         case aliased: Projection.Aliased      => s"${ExprRenderer.render(aliased.expr())} AS ${aliased.alias()}"
         case _: Projection.Wildcard           => "*"
         case qw: Projection.QualifiedWildcard => s"${qw.qualifier()}.*"
+    }
+
+    private def renderForUpdate(sb: StringBuilder, forUpdate: java.util.Optional[ForUpdate]): Unit = {
+        if forUpdate.isEmpty then return
+        forUpdate.get match {
+            case ForUpdate.Simple => sb ++= " FOR UPDATE"
+    
+            case ForUpdate.NoWait => sb ++= " FOR UPDATE NOWAIT"
+    
+            case ForUpdate.SkipLocked => sb ++= " FOR UPDATE SKIP LOCKED"
+    
+            case ForUpdate.Of(tables) => 
+                val tableNames = tables.map {
+                    case aliased: TableRef.Aliased => aliased.alias()
+                    case base => base.name()
+                }.mkString(", ")
+                sb ++= s" FOR UPDATE OF $tableNames"
+    
+            case ForUpdate.OfNoWait(tables) =>
+                val tableNames = tables.map {
+                    case aliased: TableRef.Aliased => aliased.alias()
+                    case base => base.name()
+                }.mkString(", ")
+                sb ++= s" FOR UPDATE OF $tableNames NOWAIT"
+    
+            case ForUpdate.OfSkipLocked(tables) =>
+                val tableNames = tables.map {
+                    case aliased: TableRef.Aliased => aliased.alias()
+                    case base => base.name()
+                }.mkString(", ")
+                sb ++= s" FOR UPDATE OF $tableNames SKIP LOCKED"
+        }
     }
 }

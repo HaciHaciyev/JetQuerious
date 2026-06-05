@@ -1121,12 +1121,12 @@ class SelectBuilderTest {
         }
     
         @Test
-        void forUpdateOfSpecificColumns() {
+        void forUpdateOfSpecificTables() {
             var q = SelectBuilder.select(col("u", "name"), col("o", "total"))
                     .from(new TableRef.AliasedBase("users", "u"))
                     .join(new TableRef.AliasedBase("orders", "o"), eq(col("u", "id"), col("o", "user_id")))
                     .where(eq(col("u", "active"), new Literal.BooleanLiteral(true)))
-                    .forUpdateOf("users", "orders")
+                    .forUpdateOf(new TableRef.AliasedBase("users", "u"), new TableRef.AliasedBase("orders", "o"))
                     .build();
     
             assertEquals(
@@ -1134,7 +1134,7 @@ class SelectBuilderTest {
                     SELECT u.name, o.total FROM users AS u \
                     JOIN orders AS o ON (u.id = o.user_id) \
                     WHERE (u.active = TRUE) \
-                    FOR UPDATE OF users, orders""",
+                    FOR UPDATE OF u, o""",
                     q.sql()
             );
         }
@@ -1207,7 +1207,7 @@ class SelectBuilderTest {
         }
     
         @Test
-        void forUpdateAfterBuildStage() {
+        void forUpdateAfterWhereStage() {
             var q = SelectBuilder.select(col("id"), col("total"))
                     .from("orders")
                     .where(eq(col("status"), lit("pending")))

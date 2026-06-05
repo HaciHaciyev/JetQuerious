@@ -196,19 +196,34 @@ public final class SelectBuilder {
                 Optional.of(ForUpdate.skipLocked()));
         }
 
-        public BuildStage forUpdateOf(String... columns) {
+        public BuildStage forUpdateOf(String... tables) {
             return new BuildStage(projections, distinct, from, List.of(), null, List.of(), null, List.of(), null, null,
-                Optional.of(ForUpdate.of(java.util.List.of(columns))));
+                Optional.of(ForUpdate.of(toTableRefs(tables))));
         }
 
-        public BuildStage forUpdateOfNoWait(String... columns) {
+        public BuildStage forUpdateOf(TableRef... tables) {
             return new BuildStage(projections, distinct, from, List.of(), null, List.of(), null, List.of(), null, null,
-                Optional.of(ForUpdate.ofNoWait(java.util.List.of(columns))));
+                Optional.of(ForUpdate.of(List.of(tables))));
         }
 
-        public BuildStage forUpdateOfSkipLocked(String... columns) {
+        public BuildStage forUpdateOfNoWait(String... tables) {
             return new BuildStage(projections, distinct, from, List.of(), null, List.of(), null, List.of(), null, null,
-                Optional.of(ForUpdate.ofSkipLocked(java.util.List.of(columns))));
+                Optional.of(ForUpdate.ofNoWait(toTableRefs(tables))));
+        }
+
+        public BuildStage forUpdateOfNoWait(TableRef... tables) {
+            return new BuildStage(projections, distinct, from, List.of(), null, List.of(), null, List.of(), null, null,
+                Optional.of(ForUpdate.ofNoWait(List.of(tables))));
+        }
+
+        public BuildStage forUpdateOfSkipLocked(String... tables) {
+            return new BuildStage(projections, distinct, from, List.of(), null, List.of(), null, List.of(), null, null,
+                Optional.of(ForUpdate.ofSkipLocked(toTableRefs(tables))));
+        }
+
+        public BuildStage forUpdateOfSkipLocked(TableRef... tables) {
+            return new BuildStage(projections, distinct, from, List.of(), null, List.of(), null, List.of(), null, null,
+                Optional.of(ForUpdate.ofSkipLocked(List.of(tables))));
         }
 
         public JQ.Read build() {
@@ -333,19 +348,34 @@ public final class SelectBuilder {
                 Optional.of(ForUpdate.skipLocked()));
         }
 
-        public BuildStage forUpdateOf(String... columns) {
+        public BuildStage forUpdateOf(String... tables) {
             return new BuildStage(projections, distinct, from, joins, null, List.of(), null, List.of(), null, null,
-                Optional.of(ForUpdate.of(java.util.List.of(columns))));
+                Optional.of(ForUpdate.of(toTableRefs(tables))));
         }
 
-        public BuildStage forUpdateOfNoWait(String... columns) {
+        public BuildStage forUpdateOf(TableRef... tables) {
             return new BuildStage(projections, distinct, from, joins, null, List.of(), null, List.of(), null, null,
-                Optional.of(ForUpdate.ofNoWait(java.util.List.of(columns))));
+                Optional.of(ForUpdate.of(List.of(tables))));
         }
 
-        public BuildStage forUpdateOfSkipLocked(String... columns) {
+        public BuildStage forUpdateOfNoWait(String... tables) {
             return new BuildStage(projections, distinct, from, joins, null, List.of(), null, List.of(), null, null,
-                Optional.of(ForUpdate.ofSkipLocked(java.util.List.of(columns))));
+                Optional.of(ForUpdate.ofNoWait(toTableRefs(tables))));
+        }
+
+        public BuildStage forUpdateOfNoWait(TableRef... tables) {
+            return new BuildStage(projections, distinct, from, joins, null, List.of(), null, List.of(), null, null,
+                Optional.of(ForUpdate.ofNoWait(List.of(tables))));
+        }
+
+        public BuildStage forUpdateOfSkipLocked(String... tables) {
+            return new BuildStage(projections, distinct, from, joins, null, List.of(), null, List.of(), null, null,
+                Optional.of(ForUpdate.ofSkipLocked(toTableRefs(tables))));
+        }
+
+        public BuildStage forUpdateOfSkipLocked(TableRef... tables) {
+            return new BuildStage(projections, distinct, from, joins, null, List.of(), null, List.of(), null, null,
+                Optional.of(ForUpdate.ofSkipLocked(List.of(tables))));
         }
 
         public JQ.Read build() {
@@ -415,19 +445,34 @@ public final class SelectBuilder {
                 Optional.of(ForUpdate.skipLocked()));
         }
 
-        public BuildStage forUpdateOf(String... columns) {
+        public BuildStage forUpdateOf(String... tables) {
             return new BuildStage(projections, distinct, from, joins, where, List.of(), null, List.of(), null, null,
-                Optional.of(ForUpdate.of(java.util.List.of(columns))));
+                Optional.of(ForUpdate.of(toTableRefs(tables))));
         }
 
-        public BuildStage forUpdateOfNoWait(String... columns) {
+        public BuildStage forUpdateOf(TableRef... tables) {
             return new BuildStage(projections, distinct, from, joins, where, List.of(), null, List.of(), null, null,
-                Optional.of(ForUpdate.ofNoWait(java.util.List.of(columns))));
+                Optional.of(ForUpdate.of(List.of(tables))));
         }
 
-        public BuildStage forUpdateOfSkipLocked(String... columns) {
+        public BuildStage forUpdateOfNoWait(String... tables) {
             return new BuildStage(projections, distinct, from, joins, where, List.of(), null, List.of(), null, null,
-                Optional.of(ForUpdate.ofSkipLocked(java.util.List.of(columns))));
+                Optional.of(ForUpdate.ofNoWait(toTableRefs(tables))));
+        }
+
+        public BuildStage forUpdateOfNoWait(TableRef... tables) {
+            return new BuildStage(projections, distinct, from, joins, where, List.of(), null, List.of(), null, null,
+                Optional.of(ForUpdate.ofNoWait(List.of(tables))));
+        }
+
+        public BuildStage forUpdateOfSkipLocked(String... tables) {
+            return new BuildStage(projections, distinct, from, joins, where, List.of(), null, List.of(), null, null,
+                Optional.of(ForUpdate.ofSkipLocked(toTableRefs(tables))));
+        }
+
+        public BuildStage forUpdateOfSkipLocked(TableRef... tables) {
+            return new BuildStage(projections, distinct, from, joins, where, List.of(), null, List.of(), null, null,
+                Optional.of(ForUpdate.ofSkipLocked(List.of(tables))));
         }
 
         public JQ.Read build() {
@@ -492,19 +537,34 @@ public final class SelectBuilder {
                 Optional.of(ForUpdate.skipLocked()));
         }
 
-        public BuildStage forUpdateOf(String... columns) {
+        public BuildStage forUpdateOf(String... tables) {
             return new BuildStage(projections, distinct, from, joins, where, groupBy, null, List.of(), null, null,
-                Optional.of(ForUpdate.of(java.util.List.of(columns))));
+                Optional.of(ForUpdate.of(toTableRefs(tables))));
         }
 
-        public BuildStage forUpdateOfNoWait(String... columns) {
+        public BuildStage forUpdateOf(TableRef... tables) {
             return new BuildStage(projections, distinct, from, joins, where, groupBy, null, List.of(), null, null,
-                Optional.of(ForUpdate.ofNoWait(java.util.List.of(columns))));
+                Optional.of(ForUpdate.of(List.of(tables))));
         }
 
-        public BuildStage forUpdateOfSkipLocked(String... columns) {
+        public BuildStage forUpdateOfNoWait(String... tables) {
             return new BuildStage(projections, distinct, from, joins, where, groupBy, null, List.of(), null, null,
-                Optional.of(ForUpdate.ofSkipLocked(java.util.List.of(columns))));
+                Optional.of(ForUpdate.ofNoWait(toTableRefs(tables))));
+        }
+
+        public BuildStage forUpdateOfNoWait(TableRef... tables) {
+            return new BuildStage(projections, distinct, from, joins, where, groupBy, null, List.of(), null, null,
+                Optional.of(ForUpdate.ofNoWait(List.of(tables))));
+        }
+
+        public BuildStage forUpdateOfSkipLocked(String... tables) {
+            return new BuildStage(projections, distinct, from, joins, where, groupBy, null, List.of(), null, null,
+                Optional.of(ForUpdate.ofSkipLocked(toTableRefs(tables))));
+        }
+
+        public BuildStage forUpdateOfSkipLocked(TableRef... tables) {
+            return new BuildStage(projections, distinct, from, joins, where, groupBy, null, List.of(), null, null,
+                Optional.of(ForUpdate.ofSkipLocked(List.of(tables))));
         }
 
         public JQ.Read build() {
@@ -564,19 +624,34 @@ public final class SelectBuilder {
                 Optional.of(ForUpdate.skipLocked()));
         }
 
-        public BuildStage forUpdateOf(String... columns) {
+        public BuildStage forUpdateOf(String... tables) {
             return new BuildStage(projections, distinct, from, joins, where, groupBy, having, List.of(), null, null,
-                Optional.of(ForUpdate.of(java.util.List.of(columns))));
+                Optional.of(ForUpdate.of(toTableRefs(tables))));
         }
 
-        public BuildStage forUpdateOfNoWait(String... columns) {
+        public BuildStage forUpdateOf(TableRef... tables) {
             return new BuildStage(projections, distinct, from, joins, where, groupBy, having, List.of(), null, null,
-                Optional.of(ForUpdate.ofNoWait(java.util.List.of(columns))));
+                Optional.of(ForUpdate.of(List.of(tables))));
         }
 
-        public BuildStage forUpdateOfSkipLocked(String... columns) {
+        public BuildStage forUpdateOfNoWait(String... tables) {
             return new BuildStage(projections, distinct, from, joins, where, groupBy, having, List.of(), null, null,
-                Optional.of(ForUpdate.ofSkipLocked(java.util.List.of(columns))));
+                Optional.of(ForUpdate.ofNoWait(toTableRefs(tables))));
+        }
+
+        public BuildStage forUpdateOfNoWait(TableRef... tables) {
+            return new BuildStage(projections, distinct, from, joins, where, groupBy, having, List.of(), null, null,
+                Optional.of(ForUpdate.ofNoWait(List.of(tables))));
+        }
+
+        public BuildStage forUpdateOfSkipLocked(String... tables) {
+            return new BuildStage(projections, distinct, from, joins, where, groupBy, having, List.of(), null, null,
+                Optional.of(ForUpdate.ofSkipLocked(toTableRefs(tables))));
+        }
+
+        public BuildStage forUpdateOfSkipLocked(TableRef... tables) {
+            return new BuildStage(projections, distinct, from, joins, where, groupBy, having, List.of(), null, null,
+                Optional.of(ForUpdate.ofSkipLocked(List.of(tables))));
         }
 
         public JQ.Read build() {
@@ -632,19 +707,34 @@ public final class SelectBuilder {
                 Optional.of(ForUpdate.skipLocked()));
         }
 
-        public BuildStage forUpdateOf(String... columns) {
+        public BuildStage forUpdateOf(String... tables) {
             return new BuildStage(projections, distinct, from, joins, where, groupBy, having, orderBy, null, null,
-                Optional.of(ForUpdate.of(java.util.List.of(columns))));
+                Optional.of(ForUpdate.of(toTableRefs(tables))));
         }
 
-        public BuildStage forUpdateOfNoWait(String... columns) {
+        public BuildStage forUpdateOf(TableRef... tables) {
             return new BuildStage(projections, distinct, from, joins, where, groupBy, having, orderBy, null, null,
-                Optional.of(ForUpdate.ofNoWait(java.util.List.of(columns))));
+                Optional.of(ForUpdate.of(List.of(tables))));
         }
 
-        public BuildStage forUpdateOfSkipLocked(String... columns) {
+        public BuildStage forUpdateOfNoWait(String... tables) {
             return new BuildStage(projections, distinct, from, joins, where, groupBy, having, orderBy, null, null,
-                Optional.of(ForUpdate.ofSkipLocked(java.util.List.of(columns))));
+                Optional.of(ForUpdate.ofNoWait(toTableRefs(tables))));
+        }
+
+        public BuildStage forUpdateOfNoWait(TableRef... tables) {
+            return new BuildStage(projections, distinct, from, joins, where, groupBy, having, orderBy, null, null,
+                Optional.of(ForUpdate.ofNoWait(List.of(tables))));
+        }
+
+        public BuildStage forUpdateOfSkipLocked(String... tables) {
+            return new BuildStage(projections, distinct, from, joins, where, groupBy, having, orderBy, null, null,
+                Optional.of(ForUpdate.ofSkipLocked(toTableRefs(tables))));
+        }
+
+        public BuildStage forUpdateOfSkipLocked(TableRef... tables) {
+            return new BuildStage(projections, distinct, from, joins, where, groupBy, having, orderBy, null, null,
+                Optional.of(ForUpdate.ofSkipLocked(List.of(tables))));
         }
 
         public JQ.Read build() {
@@ -700,19 +790,34 @@ public final class SelectBuilder {
                 Optional.of(ForUpdate.skipLocked()));
         }
 
-        public BuildStage forUpdateOf(String... columns) {
+        public BuildStage forUpdateOf(String... tables) {
             return new BuildStage(projections, distinct, from, joins, where, groupBy, having, orderBy, limit, null,
-                Optional.of(ForUpdate.of(java.util.List.of(columns))));
+                Optional.of(ForUpdate.of(toTableRefs(tables))));
         }
 
-        public BuildStage forUpdateOfNoWait(String... columns) {
+        public BuildStage forUpdateOf(TableRef... tables) {
             return new BuildStage(projections, distinct, from, joins, where, groupBy, having, orderBy, limit, null,
-                Optional.of(ForUpdate.ofNoWait(java.util.List.of(columns))));
+                Optional.of(ForUpdate.of(List.of(tables))));
         }
 
-        public BuildStage forUpdateOfSkipLocked(String... columns) {
+        public BuildStage forUpdateOfNoWait(String... tables) {
             return new BuildStage(projections, distinct, from, joins, where, groupBy, having, orderBy, limit, null,
-                Optional.of(ForUpdate.ofSkipLocked(java.util.List.of(columns))));
+                Optional.of(ForUpdate.ofNoWait(toTableRefs(tables))));
+        }
+
+        public BuildStage forUpdateOfNoWait(TableRef... tables) {
+            return new BuildStage(projections, distinct, from, joins, where, groupBy, having, orderBy, limit, null,
+                Optional.of(ForUpdate.ofNoWait(List.of(tables))));
+        }
+
+        public BuildStage forUpdateOfSkipLocked(String... tables) {
+            return new BuildStage(projections, distinct, from, joins, where, groupBy, having, orderBy, limit, null,
+                Optional.of(ForUpdate.ofSkipLocked(toTableRefs(tables))));
+        }
+
+        public BuildStage forUpdateOfSkipLocked(TableRef... tables) {
+            return new BuildStage(projections, distinct, from, joins, where, groupBy, having, orderBy, limit, null,
+                Optional.of(ForUpdate.ofSkipLocked(List.of(tables))));
         }
 
         public JQ.Read build() {
@@ -769,19 +874,34 @@ public final class SelectBuilder {
                 Optional.of(ForUpdate.skipLocked()));
         }
 
-        public BuildStage forUpdateOf(String... columns) {
+        public BuildStage forUpdateOf(String... tables) {
             return new BuildStage(projections, distinct, from, joins, where, groupBy, having, orderBy, limit, offset,
-                Optional.of(ForUpdate.of(java.util.List.of(columns))));
+                Optional.of(ForUpdate.of(toTableRefs(tables))));
         }
 
-        public BuildStage forUpdateOfNoWait(String... columns) {
+        public BuildStage forUpdateOf(TableRef... tables) {
             return new BuildStage(projections, distinct, from, joins, where, groupBy, having, orderBy, limit, offset,
-                Optional.of(ForUpdate.ofNoWait(java.util.List.of(columns))));
+                Optional.of(ForUpdate.of(List.of(tables))));
         }
 
-        public BuildStage forUpdateOfSkipLocked(String... columns) {
+        public BuildStage forUpdateOfNoWait(String... tables) {
             return new BuildStage(projections, distinct, from, joins, where, groupBy, having, orderBy, limit, offset,
-                Optional.of(ForUpdate.ofSkipLocked(java.util.List.of(columns))));
+                Optional.of(ForUpdate.ofNoWait(toTableRefs(tables))));
+        }
+
+        public BuildStage forUpdateOfNoWait(TableRef... tables) {
+            return new BuildStage(projections, distinct, from, joins, where, groupBy, having, orderBy, limit, offset,
+                Optional.of(ForUpdate.ofNoWait(List.of(tables))));
+        }
+
+        public BuildStage forUpdateOfSkipLocked(String... tables) {
+            return new BuildStage(projections, distinct, from, joins, where, groupBy, having, orderBy, limit, offset,
+                Optional.of(ForUpdate.ofSkipLocked(toTableRefs(tables))));
+        }
+
+        public BuildStage forUpdateOfSkipLocked(TableRef... tables) {
+            return new BuildStage(projections, distinct, from, joins, where, groupBy, having, orderBy, limit, offset,
+                Optional.of(ForUpdate.ofSkipLocked(List.of(tables))));
         }
 
         public JQ.Read build() {
@@ -830,6 +950,7 @@ public final class SelectBuilder {
                 groupBy,
                 Optional.ofNullable(having),
                 orderBy,
+                forUpdate,
                 outer
             );
         }
@@ -845,6 +966,12 @@ public final class SelectBuilder {
         return Arrays.stream(columns)
             .map(ColumnRef.Base::new)
             .toArray(Expr[]::new);
+    }
+
+    private static List<TableRef> toTableRefs(String... tables) {
+        return Arrays.stream(tables)
+            .map(t -> (TableRef) new TableRef.Base(t))
+            .toList();
     }
 
     private static Projection[] toQW(String... qualifiedWildcards) {

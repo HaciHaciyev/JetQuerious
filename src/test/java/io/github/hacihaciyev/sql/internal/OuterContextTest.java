@@ -55,6 +55,7 @@ class OuterContextTest {
             List.of(),
             Optional.empty(),
             List.of(),
+            Optional.empty(),
             Optional.empty()
         );
     }
@@ -68,6 +69,7 @@ class OuterContextTest {
             List.of(),
             Optional.empty(),
             List.of(),
+            Optional.empty(),
             Optional.of((Context) outer.context())
         );
     }

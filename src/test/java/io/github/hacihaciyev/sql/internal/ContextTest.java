@@ -55,6 +55,7 @@ class ContextTest {
                 List.of(),
                 Optional.empty(),
                 List.of(),
+                Optional.empty(),
                 Optional.empty()
         );
     }
@@ -70,6 +71,7 @@ class ContextTest {
             List.of(),
             Optional.empty(),
             List.of(),
+            Optional.empty(),
             Optional.empty()
         ));
     }
@@ -85,6 +87,7 @@ class ContextTest {
             List.of(),
             Optional.empty(),
             List.of(),
+            Optional.empty(),
             Optional.empty()
         ));
     }
@@ -100,6 +103,7 @@ class ContextTest {
             List.of(),
             Optional.empty(),
             List.of(),
+            Optional.empty(),
             Optional.empty()
         ));
     }
@@ -115,6 +119,7 @@ class ContextTest {
             List.of(),
             Optional.empty(),
             List.of(),
+            Optional.empty(),
             Optional.empty()
         ));
     }
@@ -136,6 +141,7 @@ class ContextTest {
             List.of(),
             Optional.empty(),
             List.of(),
+            Optional.empty(),
             Optional.empty()
         ));
     }
@@ -157,6 +163,7 @@ class ContextTest {
             List.of(),
             Optional.empty(),
             List.of(),
+            Optional.empty(),
             Optional.empty()
         ));
     }
@@ -172,6 +179,7 @@ class ContextTest {
             List.of(new ColumnRef.Base("status")),
             Optional.empty(),
             List.of(),
+            Optional.empty(),
             Optional.empty()
         ));
     }
@@ -193,6 +201,7 @@ class ContextTest {
             List.of(new ColumnRef.Base("status")),
             Optional.of(having),
             List.of(),
+            Optional.empty(),
             Optional.empty()
         ));
     }
@@ -208,6 +217,7 @@ class ContextTest {
             List.of(),
             Optional.empty(),
             List.of(new ColumnRef.Base("email")),
+            Optional.empty(),
             Optional.empty()
         ));
     }
@@ -223,6 +233,7 @@ class ContextTest {
             List.of(),
             Optional.empty(),
             List.of(),
+            Optional.empty(),
             Optional.empty()
         ));
     }
@@ -238,6 +249,7 @@ class ContextTest {
             List.of(),
             Optional.empty(),
             List.of(),
+            Optional.empty(),
             Optional.empty()
         ));
     }
@@ -253,7 +265,7 @@ class ContextTest {
             List.of(),
             Optional.empty(),
             List.of(),
-            Optional.empty()
+            Optional.empty(), Optional.empty()
         ));
     }
 
@@ -268,7 +280,7 @@ class ContextTest {
             List.of(),
             Optional.empty(),
             List.of(),
-            Optional.empty()
+            Optional.empty(), Optional.empty()
         ));
     }
     
@@ -286,7 +298,7 @@ class ContextTest {
                 List.of(),
                 Optional.empty(),
                 List.of(),
-                Optional.empty()
+                Optional.empty(), Optional.empty()
         ));
     }
 
@@ -301,7 +313,7 @@ class ContextTest {
                 List.of(),
                 Optional.empty(),
                 List.of(),
-                Optional.empty()
+                Optional.empty(), Optional.empty()
         ));
     }
 
@@ -318,7 +330,7 @@ class ContextTest {
                 List.of(),
                 Optional.empty(),
                 List.of(),
-                Optional.empty()
+                Optional.empty(), Optional.empty()
         ));
     }
 
@@ -335,7 +347,7 @@ class ContextTest {
                 List.of(new ColumnRef.Base("status")),
                 Optional.of(having),
                 List.of(),
-                Optional.empty()
+                Optional.empty(), Optional.empty()
         ));
     }
 
@@ -350,7 +362,7 @@ class ContextTest {
                 List.of(new ColumnRef.Base("ghost")),
                 Optional.empty(),
                 List.of(),
-                Optional.empty()
+                Optional.empty(), Optional.empty()
         ));
     }
 
@@ -365,7 +377,7 @@ class ContextTest {
                 List.of(),
                 Optional.empty(),
                 List.of(new ColumnRef.Base("ghost")),
-                Optional.empty()
+                Optional.empty(), Optional.empty()
         ));
     }
 

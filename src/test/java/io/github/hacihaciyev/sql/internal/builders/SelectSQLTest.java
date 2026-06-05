@@ -1,5 +1,6 @@
 package io.github.hacihaciyev.sql.internal.builders;
 
+import io.github.hacihaciyev.sql.SQL;
 import io.github.hacihaciyev.sql.expressions.*;
 import io.github.hacihaciyev.sql.internal.value_objects.FromSource;
 import io.github.hacihaciyev.sql.internal.value_objects.JoinEntry;
@@ -639,7 +640,7 @@ class SelectSQLTest {
                     eq(col("u", "id"), col("o", "user_id")))),
                 Optional.empty(), List.of(), Optional.empty(), List.of(),
                 Optional.empty(), Optional.empty(),
-                Optional.of(ForUpdate.of(java.util.List.of("users", "orders")))
+                Optional.of(ForUpdate.of(List.of(SQL.t("users"), SQL.t("orders"))))
             );
             assertEquals(
                 "SELECT u.name, o.total FROM users AS u JOIN orders AS o ON (u.id = o.user_id) FOR UPDATE OF users, orders",
@@ -654,7 +655,7 @@ class SelectSQLTest {
                 false, from("orders"), List.of(),
                 Optional.empty(), List.of(), Optional.empty(), List.of(),
                 Optional.empty(), Optional.empty(),
-                Optional.of(ForUpdate.ofNoWait(java.util.List.of("orders")))
+                Optional.of(ForUpdate.ofNoWait(List.of(SQL.t("orders"))))
             );
             assertEquals("SELECT id FROM orders FOR UPDATE OF orders NOWAIT", sql);
         }
@@ -666,7 +667,7 @@ class SelectSQLTest {
                 false, from("orders"), List.of(),
                 Optional.empty(), List.of(), Optional.empty(), List.of(),
                 Optional.empty(), Optional.empty(),
-                Optional.of(ForUpdate.ofSkipLocked(java.util.List.of("orders")))
+                Optional.of(ForUpdate.ofSkipLocked(List.of(SQL.t("orders"))))
             );
             assertEquals("SELECT id FROM orders FOR UPDATE OF orders SKIP LOCKED", sql);
         }

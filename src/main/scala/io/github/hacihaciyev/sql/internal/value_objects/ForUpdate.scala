@@ -1,38 +1,38 @@
 package io.github.hacihaciyev.sql.internal.value_objects
 
+import io.github.hacihaciyev.sql.expressions.*
+import io.github.hacihaciyev.sql.value_objects.TableRef
 import scala.jdk.CollectionConverters.*
+import scala.annotation.targetName
 
 sealed trait ForUpdate {
-    def sqlSuffix: String
+    def tables: List[TableRef]
 }
 
 object ForUpdate {
     
     case object Simple extends ForUpdate {
-        override def sqlSuffix: String = " FOR UPDATE"
+        override def tables: List[TableRef] = List.empty
     }
     
     case object NoWait extends ForUpdate {
-        override def sqlSuffix: String = " FOR UPDATE NOWAIT"
+        override def tables: List[TableRef] = List.empty
     }
     
     case object SkipLocked extends ForUpdate {
-        override def sqlSuffix: String = " FOR UPDATE SKIP LOCKED"
+        override def tables: List[TableRef] = List.empty
     }
     
-    case class Of(columns: List[String]) extends ForUpdate {
-        require(columns.nonEmpty, "At least one column required for FOR UPDATE OF")
-        override def sqlSuffix: String = s" FOR UPDATE OF ${columns.mkString(", ")}"
+    case class Of(tables: List[TableRef]) extends ForUpdate {
+        require(tables.nonEmpty, "At least one table required for FOR UPDATE OF")
     }
     
-    case class OfNoWait(columns: List[String]) extends ForUpdate {
-        require(columns.nonEmpty, "At least one column required for FOR UPDATE OF")
-        override def sqlSuffix: String = s" FOR UPDATE OF ${columns.mkString(", ")} NOWAIT"
+    case class OfNoWait(tables: List[TableRef]) extends ForUpdate {
+        require(tables.nonEmpty, "At least one table required for FOR UPDATE OF")
     }
     
-    case class OfSkipLocked(columns: List[String]) extends ForUpdate {
-        require(columns.nonEmpty, "At least one column required for FOR UPDATE OF")
-        override def sqlSuffix: String = s" FOR UPDATE OF ${columns.mkString(", ")} SKIP LOCKED"
+    case class OfSkipLocked(tables: List[TableRef]) extends ForUpdate {
+        require(tables.nonEmpty, "At least one table required for FOR UPDATE OF")
     }
     
     def simple(): ForUpdate = Simple
@@ -41,15 +41,15 @@ object ForUpdate {
     
     def skipLocked(): ForUpdate = SkipLocked
     
-    def of(columns: java.util.List[String]): ForUpdate = Of(columns.asScala.toList)
+    def of(tables: java.util.List[TableRef]): ForUpdate = Of(tables.asScala.toList)
     
-    def ofNoWait(columns: java.util.List[String]): ForUpdate = OfNoWait(columns.asScala.toList)
+    def ofNoWait(tables: java.util.List[TableRef]): ForUpdate = OfNoWait(tables.asScala.toList)
     
-    def ofSkipLocked(columns: java.util.List[String]): ForUpdate = OfSkipLocked(columns.asScala.toList)
+    def ofSkipLocked(tables: java.util.List[TableRef]): ForUpdate = OfSkipLocked(tables.asScala.toList)
     
-    def of(column: String, more: String*): ForUpdate = Of((column +: more).toList)
+    def of(table: TableRef, more: TableRef*): ForUpdate = Of((table +: more).toList)
     
-    def ofNoWait(column: String, more: String*): ForUpdate = OfNoWait((column +: more).toList)
+    def ofNoWait(table: TableRef, more: TableRef*): ForUpdate = OfNoWait((table +: more).toList)
     
-    def ofSkipLocked(column: String, more: String*): ForUpdate = OfSkipLocked((column +: more).toList)
+    def ofSkipLocked(table: TableRef, more: TableRef*): ForUpdate = OfSkipLocked((table +: more).toList)
 }

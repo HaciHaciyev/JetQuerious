@@ -119,7 +119,7 @@ class ContextPropertyTest {
             List.of(),
             Optional.empty(),
             List.of(),
-            Optional.empty()
+            Optional.empty(),Optional.empty()
         ));
     }
 
@@ -133,7 +133,7 @@ class ContextPropertyTest {
             List.of(),
             Optional.empty(),
             List.of(),
-            Optional.empty()
+            Optional.empty(),Optional.empty()
         ));
     }
 
@@ -147,7 +147,7 @@ class ContextPropertyTest {
             List.of(new ColumnRef.Base(col)),
             Optional.empty(),
             List.of(),
-            Optional.empty()
+            Optional.empty(),Optional.empty()
         ));
     }
 
@@ -161,7 +161,7 @@ class ContextPropertyTest {
             List.of(),
             Optional.empty(),
             List.of(new ColumnRef.Base(col)),
-            Optional.empty()
+            Optional.empty(),Optional.empty()
         ));
     }
 
@@ -175,7 +175,7 @@ class ContextPropertyTest {
             List.of(new ColumnRef.Base("status")),
             Optional.of(eqExpr(col, 1)),
             List.of(),
-            Optional.empty()
+            Optional.empty(),Optional.empty()
         ));
     }
 
@@ -195,7 +195,7 @@ class ContextPropertyTest {
             List.of(),
             Optional.empty(),
             List.of(),
-            Optional.empty()
+            Optional.empty(),Optional.empty()
         ));
     }
 
@@ -211,7 +211,7 @@ class ContextPropertyTest {
             List.of(),
             Optional.empty(),
             List.of(),
-            Optional.empty()
+            Optional.empty(),Optional.empty()
         ));
     }
 
@@ -231,7 +231,7 @@ class ContextPropertyTest {
             List.of(),
             Optional.empty(),
             List.of(),
-            Optional.empty()
+            Optional.empty(),Optional.empty()
         ));
     }
 
@@ -247,7 +247,7 @@ class ContextPropertyTest {
             List.of(),
             Optional.empty(),
             List.of(),
-            Optional.empty()
+            Optional.empty(),Optional.empty()
         ));
     }
 
@@ -261,7 +261,7 @@ class ContextPropertyTest {
             List.of(),
             Optional.empty(),
             List.of(),
-            Optional.empty()
+            Optional.empty(),Optional.empty()
         ));
     }
 
@@ -275,7 +275,7 @@ class ContextPropertyTest {
             List.of(),
             Optional.empty(),
             List.of(),
-            Optional.empty()
+            Optional.empty(),Optional.empty()
         ));
     }
 
@@ -294,7 +294,7 @@ class ContextPropertyTest {
             List.of(),
             Optional.empty(),
             List.of(),
-            Optional.empty()
+            Optional.empty(),Optional.empty()
         ));
     }
 
@@ -311,7 +311,7 @@ class ContextPropertyTest {
             List.of(),
             Optional.empty(),
             List.of(),
-            Optional.empty()
+            Optional.empty(),Optional.empty()
         ));
     }
 
@@ -325,7 +325,7 @@ class ContextPropertyTest {
             List.of(),
             Optional.empty(),
             List.of(),
-            Optional.empty()
+            Optional.empty(),Optional.empty()
         ));
     }
 
@@ -339,7 +339,7 @@ class ContextPropertyTest {
             List.of(),
             Optional.empty(),
             List.of(),
-            Optional.empty()
+            Optional.empty(),Optional.empty()
         ));
     }
 
@@ -353,7 +353,7 @@ class ContextPropertyTest {
             List.of(),
             Optional.empty(),
             List.of(),
-            Optional.empty()
+            Optional.empty(),Optional.empty()
         ));
     }
     
@@ -367,7 +367,7 @@ class ContextPropertyTest {
             List.of(),
             Optional.empty(),
             List.of(),
-            Optional.empty()
+            Optional.empty(),Optional.empty()
         ));
     }
 

@@ -6,7 +6,7 @@ import io.github.hacihaciyev.sql.value_objects.{Projection, TableRef}
 import io.github.hacihaciyev.sql.expressions.{ColumnRef, Expr, ValueExpr}
 import io.github.hacihaciyev.sql.expressions.ColumnRef.*
 import io.github.hacihaciyev.sql.internal.schema.{Column, SchemaResolver, Table}
-import io.github.hacihaciyev.sql.internal.value_objects.{Ref, TableSource, OnConflict, ParamType}
+import io.github.hacihaciyev.sql.internal.value_objects.{Ref, TableSource, OnConflict, ParamType, ForUpdate}
 import io.github.hacihaciyev.types.SQLType
 import io.github.hacihaciyev.util.{Err, Ok}
 import io.github.hacihaciyev.types.internal.{TypeInfo, TypeInfoOk, TypeRegistry}
@@ -49,6 +49,7 @@ object Context {
                          groupBy: List[Expr],
                          having: Option[Expr],
                          orderBy: List[Expr],
+                         forUpdate: List[TableRef] = List.empty,
                          outer: Option[Context] = None
                      ) extends Context, DQL {
 
@@ -70,6 +71,8 @@ object Context {
 
             validateProjection(sources, refs, physical, virtual, outer, errs)
 
+            validateForUpdateTables(physical, errs)
+
             val whereCrefs  = where.toList.flatMap(ExprTraversal.collectCrefs)
             val groupCrefs  = groupBy.flatMap(ExprTraversal.collectCrefs)
             val havingCrefs = having.toList.flatMap(ExprTraversal.collectCrefs)
@@ -80,6 +83,16 @@ object Context {
 
             for (cref <- extraCrefs) validateCref(cref, physical, virtual, outer, errs)
             throwIfErrors(errs)
+        }
+
+        private def validateForUpdateTables(physical: Map[TableRef, Table], errs: ListBuffer[String]): Unit = {
+            if forUpdate.isEmpty then return
+
+            val physicalTableRefs = physical.keys.toSet
+
+            forUpdate.foreach { tableRef =>
+                if !physicalTableRefs.exists(_.equals(tableRef)) then errs.addOne(s"Table '$tableRef' in FOR UPDATE OF not found in sources")
+            }
         }
     }
 
@@ -102,9 +115,9 @@ object Context {
 
             validateNamedOnly(refs, errs)
             validateProjection(sources, refs, physical, virtual, outer, errs)
-            
+
             conflict.foreach(c => validateConflict(c, physical, virtual, errs))
-            
+
             if returning.nonEmpty then validateProjection(sources, returning, physical, virtual, outer, errs)
             throwIfErrors(errs)
         }
@@ -162,7 +175,7 @@ object Context {
                      ) extends Context, DML {
 
         req(sources, where, returning, outer)
-        
+
         override def refs: List[Ref] = List.empty
 
         def paramTypes: List[ParamType] = withPositions(ExprTraversal.collectAllPlaceholders(where.toList))
@@ -179,17 +192,17 @@ object Context {
             throwIfErrors(errs)
         }
     }
-    
+
     case class Union(
                        queries:   List[Context & DQL],
                        unionType: UnionType,
                        orderBy:   List[Expr],
                        outer:     Option[Context] = None
                    ) extends Context, DQL {
-    
+
         req(queries, unionType, orderBy, outer)
         require(queries.size >= 2, "UNION requires at least two queries")
-    
+
         override def sources: List[TableSource] = queries.head.sources
         override def refs: List[Ref]            = queries.head.refs
 
@@ -197,40 +210,40 @@ object Context {
             queries.flatMap(_.paramTypes.map(_._type)) ++
             ExprTraversal.collectAllPlaceholders(orderBy)
         )
-    
+
         protected def validate(): Unit = {
             validateColumnCounts()
             validateOrderBy()
         }
-    
+
         private def validateColumnCounts(): Unit = {
             val firstSize = effectiveProjectionNames(queries.head.refs, queries.head.sources).size +
                             queries.head.refs.count(_.isInstanceOf[Ref.Indexed])
-    
+
             queries.tail.foreach { q =>
                 val size = effectiveProjectionNames(q.refs, q.sources).size + q.refs.count(_.isInstanceOf[Ref.Indexed])
-                
+
                 if (size != firstSize) {
                     throw SchemaVerificationException(s"All queries in UNION must have the same number of columns. First query has $firstSize, but another has $size")
                 }
             }
         }
-    
+
         private def validateOrderBy(): Unit = {
             if orderBy.isEmpty then return
-    
+
             val known      = effectiveProjectionNames(queries.head.refs, queries.head.sources).map(_.toLowerCase).toSet
             val errs       = mutable.ListBuffer[String]()
             val orderCrefs = orderBy.flatMap(ExprTraversal.collectCrefs)
-    
+
             for (cref <- orderCrefs) {
                 if !known.exists(_.equalsIgnoreCase(cref.name())) then errs.addOne(s"ORDER BY column '$cref' not found in UNION projection")
             }
-    
+
             throwIfErrors(errs)
         }
     }
-    
+
     private def collectRefTypes(refs: List[Ref]): List[Class[?]] =
         refs.flatMap {
             case Ref.Named(pb: Projection.Base) if pb.expr.isInstanceOf[ColumnRef] =>
@@ -292,10 +305,10 @@ object Context {
             case ok: Ok[Table, SchemaVerificationException] => List.from(ok.value().columns().map(_.name()))
             case err: Err[Table, SchemaVerificationException] => throw err.err()
         }
-        
+
     private def effectiveProjectionNames(refs: List[Ref], sources: List[TableSource], crefs: mutable.ListBuffer[ColumnRef] = mutable.ListBuffer[ColumnRef]()): List[String] = {
         val trefByName = sources.map(s => s.effectiveName -> s).toMap
-        
+
         refs.map(_.value).flatMap {
             case base: Projection.Base => base.expr match {
                 case ac: ColumnRef.AliasedColumn =>
@@ -329,7 +342,7 @@ object Context {
                     case src: TableSource.Virtual  => loadVirtualCrefs(src, crefs)
                 }
         }
-    }        
+    }
 
     private def validateCommon(sources: List[TableSource], refs: List[Ref]): Unit = {
         if (sources.isEmpty) {
@@ -358,7 +371,7 @@ object Context {
                                     virtual: Map[String, List[String]],
                                     errs: ListBuffer[String]
                                 ): Unit = {
-        
+
         for (cref <- conflict.conflictCrefs) validateCref(cref, physical, virtual, None, errs)
 
         conflict match {
@@ -472,7 +485,7 @@ object Context {
 
     private def unsupportedType(cref: ColumnRef, javaType: Class[?]): String =
         s"Unsupported Java type '${javaType.getName}' for column '$cref'"
-        
+
     private def req(values: Any*): Unit =
         values.foreach {
             case null            => require(false, "null value")
@@ -507,6 +520,7 @@ object ContextFactory {
                          groupBy: java.util.List[Expr],
                          having: java.util.Optional[Expr],
                          orderBy: java.util.List[Expr],
+                         forUpdate: java.util.Optional[ForUpdate],
                          outer: java.util.Optional[Context]
                      ): Context.Select = Context.Select(
 
@@ -517,6 +531,7 @@ object ContextFactory {
         groupBy.asScala.toList,
         if having.isPresent then Some(having.get) else None,
         orderBy.asScala.toList,
+        if forUpdate.isPresent then forUpdate.get.tables else List.empty,
         if outer.isPresent then Some(outer.get) else None
     )
 
@@ -549,14 +564,14 @@ object ContextFactory {
         returning.asScala.toList,
         if outer.isPresent then Some(outer.get) else None
     )
-    
+
     def unionContext(
                        queries:   java.util.List[Context],
                        unionType: UnionType,
                        orderBy:   java.util.List[Expr],
                        outer:     java.util.Optional[Context]
                    ): Context.Union = Context.Union(
-        
+
         queries.asScala.toList.map(_.asInstanceOf[Context & DQL]),
         unionType,
         orderBy.asScala.toList,
