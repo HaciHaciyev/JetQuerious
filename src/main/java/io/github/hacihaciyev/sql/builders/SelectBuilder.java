@@ -181,12 +181,42 @@ public final class SelectBuilder {
             return new LimitStage(projections, distinct, from, List.of(), null, List.of(), null, List.of(), new Limit(limit));
         }
 
+        public BuildStage forUpdate() {
+            return new BuildStage(projections, distinct, from, List.of(), null, List.of(), null, List.of(), null, null,
+                Optional.of(ForUpdate.simple()));
+        }
+
+        public BuildStage forUpdateNoWait() {
+            return new BuildStage(projections, distinct, from, List.of(), null, List.of(), null, List.of(), null, null,
+                Optional.of(ForUpdate.noWait()));
+        }
+
+        public BuildStage forUpdateSkipLocked() {
+            return new BuildStage(projections, distinct, from, List.of(), null, List.of(), null, List.of(), null, null,
+                Optional.of(ForUpdate.skipLocked()));
+        }
+
+        public BuildStage forUpdateOf(String... columns) {
+            return new BuildStage(projections, distinct, from, List.of(), null, List.of(), null, List.of(), null, null,
+                Optional.of(ForUpdate.of(java.util.List.of(columns))));
+        }
+
+        public BuildStage forUpdateOfNoWait(String... columns) {
+            return new BuildStage(projections, distinct, from, List.of(), null, List.of(), null, List.of(), null, null,
+                Optional.of(ForUpdate.ofNoWait(java.util.List.of(columns))));
+        }
+
+        public BuildStage forUpdateOfSkipLocked(String... columns) {
+            return new BuildStage(projections, distinct, from, List.of(), null, List.of(), null, List.of(), null, null,
+                Optional.of(ForUpdate.ofSkipLocked(java.util.List.of(columns))));
+        }
+
         public JQ.Read build() {
-            return new BuildStage(projections, distinct, from, List.of(), null, List.of(), null, List.of(), null, null).build();
+            return new BuildStage(projections, distinct, from, List.of(), null, List.of(), null, List.of(), null, null, Optional.empty()).build();
         }
 
         public JQ.Read build(JQ.Read outer) {
-            return new BuildStage(projections, distinct, from, List.of(), null, List.of(), null, List.of(), null, null).build(outer);
+            return new BuildStage(projections, distinct, from, List.of(), null, List.of(), null, List.of(), null, null, Optional.empty()).build(outer);
         }
     }
 
@@ -288,12 +318,42 @@ public final class SelectBuilder {
             return new LimitStage(projections, distinct, from, joins, null, List.of(), null, List.of(), new Limit(limit));
         }
 
+        public BuildStage forUpdate() {
+            return new BuildStage(projections, distinct, from, joins, null, List.of(), null, List.of(), null, null,
+                Optional.of(ForUpdate.simple()));
+        }
+
+        public BuildStage forUpdateNoWait() {
+            return new BuildStage(projections, distinct, from, joins, null, List.of(), null, List.of(), null, null,
+                Optional.of(ForUpdate.noWait()));
+        }
+
+        public BuildStage forUpdateSkipLocked() {
+            return new BuildStage(projections, distinct, from, joins, null, List.of(), null, List.of(), null, null,
+                Optional.of(ForUpdate.skipLocked()));
+        }
+
+        public BuildStage forUpdateOf(String... columns) {
+            return new BuildStage(projections, distinct, from, joins, null, List.of(), null, List.of(), null, null,
+                Optional.of(ForUpdate.of(java.util.List.of(columns))));
+        }
+
+        public BuildStage forUpdateOfNoWait(String... columns) {
+            return new BuildStage(projections, distinct, from, joins, null, List.of(), null, List.of(), null, null,
+                Optional.of(ForUpdate.ofNoWait(java.util.List.of(columns))));
+        }
+
+        public BuildStage forUpdateOfSkipLocked(String... columns) {
+            return new BuildStage(projections, distinct, from, joins, null, List.of(), null, List.of(), null, null,
+                Optional.of(ForUpdate.ofSkipLocked(java.util.List.of(columns))));
+        }
+
         public JQ.Read build() {
-            return new BuildStage(projections, distinct, from, joins, null, List.of(), null, List.of(), null, null).build();
+            return new BuildStage(projections, distinct, from, joins, null, List.of(), null, List.of(), null, null, Optional.empty()).build();
         }
 
         public JQ.Read build(JQ.Read outer) {
-            return new BuildStage(projections, distinct, from, joins, null, List.of(), null, List.of(), null, null).build(outer);
+            return new BuildStage(projections, distinct, from, joins, null, List.of(), null, List.of(), null, null, Optional.empty()).build(outer);
         }
 
         private JoinStage addJoin(JoinEntry entry) {
@@ -340,12 +400,42 @@ public final class SelectBuilder {
             return new LimitStage(projections, distinct, from, joins, where, List.of(), null, List.of(), new Limit(limit));
         }
 
+        public BuildStage forUpdate() {
+            return new BuildStage(projections, distinct, from, joins, where, List.of(), null, List.of(), null, null,
+                Optional.of(ForUpdate.simple()));
+        }
+
+        public BuildStage forUpdateNoWait() {
+            return new BuildStage(projections, distinct, from, joins, where, List.of(), null, List.of(), null, null,
+                Optional.of(ForUpdate.noWait()));
+        }
+
+        public BuildStage forUpdateSkipLocked() {
+            return new BuildStage(projections, distinct, from, joins, where, List.of(), null, List.of(), null, null,
+                Optional.of(ForUpdate.skipLocked()));
+        }
+
+        public BuildStage forUpdateOf(String... columns) {
+            return new BuildStage(projections, distinct, from, joins, where, List.of(), null, List.of(), null, null,
+                Optional.of(ForUpdate.of(java.util.List.of(columns))));
+        }
+
+        public BuildStage forUpdateOfNoWait(String... columns) {
+            return new BuildStage(projections, distinct, from, joins, where, List.of(), null, List.of(), null, null,
+                Optional.of(ForUpdate.ofNoWait(java.util.List.of(columns))));
+        }
+
+        public BuildStage forUpdateOfSkipLocked(String... columns) {
+            return new BuildStage(projections, distinct, from, joins, where, List.of(), null, List.of(), null, null,
+                Optional.of(ForUpdate.ofSkipLocked(java.util.List.of(columns))));
+        }
+
         public JQ.Read build() {
-            return new BuildStage(projections, distinct, from, joins, where, List.of(), null, List.of(), null, null).build();
+            return new BuildStage(projections, distinct, from, joins, where, List.of(), null, List.of(), null, null, Optional.empty()).build();
         }
 
         public JQ.Read build(JQ.Read outer) {
-            return new BuildStage(projections, distinct, from, joins, where, List.of(), null, List.of(), null, null).build(outer);
+            return new BuildStage(projections, distinct, from, joins, where, List.of(), null, List.of(), null, null, Optional.empty()).build(outer);
         }
     }
 
@@ -387,12 +477,42 @@ public final class SelectBuilder {
             return new LimitStage(projections, distinct, from, joins, where, groupBy, null, List.of(), new Limit(limit));
         }
 
+        public BuildStage forUpdate() {
+            return new BuildStage(projections, distinct, from, joins, where, groupBy, null, List.of(), null, null,
+                Optional.of(ForUpdate.simple()));
+        }
+
+        public BuildStage forUpdateNoWait() {
+            return new BuildStage(projections, distinct, from, joins, where, groupBy, null, List.of(), null, null,
+                Optional.of(ForUpdate.noWait()));
+        }
+
+        public BuildStage forUpdateSkipLocked() {
+            return new BuildStage(projections, distinct, from, joins, where, groupBy, null, List.of(), null, null,
+                Optional.of(ForUpdate.skipLocked()));
+        }
+
+        public BuildStage forUpdateOf(String... columns) {
+            return new BuildStage(projections, distinct, from, joins, where, groupBy, null, List.of(), null, null,
+                Optional.of(ForUpdate.of(java.util.List.of(columns))));
+        }
+
+        public BuildStage forUpdateOfNoWait(String... columns) {
+            return new BuildStage(projections, distinct, from, joins, where, groupBy, null, List.of(), null, null,
+                Optional.of(ForUpdate.ofNoWait(java.util.List.of(columns))));
+        }
+
+        public BuildStage forUpdateOfSkipLocked(String... columns) {
+            return new BuildStage(projections, distinct, from, joins, where, groupBy, null, List.of(), null, null,
+                Optional.of(ForUpdate.ofSkipLocked(java.util.List.of(columns))));
+        }
+
         public JQ.Read build() {
-            return new BuildStage(projections, distinct, from, joins, where, groupBy, null, List.of(), null, null).build();
+            return new BuildStage(projections, distinct, from, joins, where, groupBy, null, List.of(), null, null, Optional.empty()).build();
         }
 
         public JQ.Read build(JQ.Read outer) {
-            return new BuildStage(projections, distinct, from, joins, where, groupBy, null, List.of(), null, null).build(outer);
+            return new BuildStage(projections, distinct, from, joins, where, groupBy, null, List.of(), null, null, Optional.empty()).build(outer);
         }
     }
 
@@ -429,12 +549,42 @@ public final class SelectBuilder {
             return new LimitStage(projections, distinct, from, joins, where, groupBy, having, List.of(), new Limit(limit));
         }
 
+        public BuildStage forUpdate() {
+            return new BuildStage(projections, distinct, from, joins, where, groupBy, having, List.of(), null, null,
+                Optional.of(ForUpdate.simple()));
+        }
+
+        public BuildStage forUpdateNoWait() {
+            return new BuildStage(projections, distinct, from, joins, where, groupBy, having, List.of(), null, null,
+                Optional.of(ForUpdate.noWait()));
+        }
+
+        public BuildStage forUpdateSkipLocked() {
+            return new BuildStage(projections, distinct, from, joins, where, groupBy, having, List.of(), null, null,
+                Optional.of(ForUpdate.skipLocked()));
+        }
+
+        public BuildStage forUpdateOf(String... columns) {
+            return new BuildStage(projections, distinct, from, joins, where, groupBy, having, List.of(), null, null,
+                Optional.of(ForUpdate.of(java.util.List.of(columns))));
+        }
+
+        public BuildStage forUpdateOfNoWait(String... columns) {
+            return new BuildStage(projections, distinct, from, joins, where, groupBy, having, List.of(), null, null,
+                Optional.of(ForUpdate.ofNoWait(java.util.List.of(columns))));
+        }
+
+        public BuildStage forUpdateOfSkipLocked(String... columns) {
+            return new BuildStage(projections, distinct, from, joins, where, groupBy, having, List.of(), null, null,
+                Optional.of(ForUpdate.ofSkipLocked(java.util.List.of(columns))));
+        }
+
         public JQ.Read build() {
-            return new BuildStage(projections, distinct, from, joins, where, groupBy, having, List.of(), null, null).build();
+            return new BuildStage(projections, distinct, from, joins, where, groupBy, having, List.of(), null, null, Optional.empty()).build();
         }
 
         public JQ.Read build(JQ.Read outer) {
-            return new BuildStage(projections, distinct, from, joins, where, groupBy, having, List.of(), null, null).build(outer);
+            return new BuildStage(projections, distinct, from, joins, where, groupBy, having, List.of(), null, null, Optional.empty()).build(outer);
         }
     }
 
@@ -467,12 +617,42 @@ public final class SelectBuilder {
             return new LimitStage(projections, distinct, from, joins, where, groupBy, having, orderBy, new Limit(limit));
         }
 
+        public BuildStage forUpdate() {
+            return new BuildStage(projections, distinct, from, joins, where, groupBy, having, orderBy, null, null,
+                Optional.of(ForUpdate.simple()));
+        }
+
+        public BuildStage forUpdateNoWait() {
+            return new BuildStage(projections, distinct, from, joins, where, groupBy, having, orderBy, null, null,
+                Optional.of(ForUpdate.noWait()));
+        }
+
+        public BuildStage forUpdateSkipLocked() {
+            return new BuildStage(projections, distinct, from, joins, where, groupBy, having, orderBy, null, null,
+                Optional.of(ForUpdate.skipLocked()));
+        }
+
+        public BuildStage forUpdateOf(String... columns) {
+            return new BuildStage(projections, distinct, from, joins, where, groupBy, having, orderBy, null, null,
+                Optional.of(ForUpdate.of(java.util.List.of(columns))));
+        }
+
+        public BuildStage forUpdateOfNoWait(String... columns) {
+            return new BuildStage(projections, distinct, from, joins, where, groupBy, having, orderBy, null, null,
+                Optional.of(ForUpdate.ofNoWait(java.util.List.of(columns))));
+        }
+
+        public BuildStage forUpdateOfSkipLocked(String... columns) {
+            return new BuildStage(projections, distinct, from, joins, where, groupBy, having, orderBy, null, null,
+                Optional.of(ForUpdate.ofSkipLocked(java.util.List.of(columns))));
+        }
+
         public JQ.Read build() {
-            return new BuildStage(projections, distinct, from, joins, where, groupBy, having, orderBy, null, null).build();
+            return new BuildStage(projections, distinct, from, joins, where, groupBy, having, orderBy, null, null, Optional.empty()).build();
         }
 
         public JQ.Read build(JQ.Read outer) {
-            return new BuildStage(projections, distinct, from, joins, where, groupBy, having, orderBy, null, null).build(outer);
+            return new BuildStage(projections, distinct, from, joins, where, groupBy, having, orderBy, null, null, Optional.empty()).build(outer);
         }
     }
 
@@ -501,34 +681,65 @@ public final class SelectBuilder {
             this.limit       = requireNonNull(limit, "Limit cannot be null");
         }
 
-        public JQ.Read offset(int offset) {
-            return new BuildStage(projections, distinct, from, joins, where, groupBy, having, orderBy, limit, new Offset(offset)).build();
+        public BuildStage offset(int offset) {
+            return new BuildStage(projections, distinct, from, joins, where, groupBy, having, orderBy, limit, new Offset(offset), Optional.empty());
+        }
+
+        public BuildStage forUpdate() {
+            return new BuildStage(projections, distinct, from, joins, where, groupBy, having, orderBy, limit, null, 
+                Optional.of(ForUpdate.simple()));
+        }
+
+        public BuildStage forUpdateNoWait() {
+            return new BuildStage(projections, distinct, from, joins, where, groupBy, having, orderBy, limit, null,
+                Optional.of(ForUpdate.noWait()));
+        }
+
+        public BuildStage forUpdateSkipLocked() {
+            return new BuildStage(projections, distinct, from, joins, where, groupBy, having, orderBy, limit, null,
+                Optional.of(ForUpdate.skipLocked()));
+        }
+
+        public BuildStage forUpdateOf(String... columns) {
+            return new BuildStage(projections, distinct, from, joins, where, groupBy, having, orderBy, limit, null,
+                Optional.of(ForUpdate.of(java.util.List.of(columns))));
+        }
+
+        public BuildStage forUpdateOfNoWait(String... columns) {
+            return new BuildStage(projections, distinct, from, joins, where, groupBy, having, orderBy, limit, null,
+                Optional.of(ForUpdate.ofNoWait(java.util.List.of(columns))));
+        }
+
+        public BuildStage forUpdateOfSkipLocked(String... columns) {
+            return new BuildStage(projections, distinct, from, joins, where, groupBy, having, orderBy, limit, null,
+                Optional.of(ForUpdate.ofSkipLocked(java.util.List.of(columns))));
         }
 
         public JQ.Read build() {
-            return new BuildStage(projections, distinct, from, joins, where, groupBy, having, orderBy, limit, null).build();
+            return new BuildStage(projections, distinct, from, joins, where, groupBy, having, orderBy, limit, null, Optional.empty()).build();
         }
 
         public JQ.Read build(JQ.Read outer) {
-            return new BuildStage(projections, distinct, from, joins, where, groupBy, having, orderBy, limit, null).build(outer);
+            return new BuildStage(projections, distinct, from, joins, where, groupBy, having, orderBy, limit, null, Optional.empty()).build(outer);
         }
     }
 
     public final class BuildStage {
-        private final List<Projection> projections;
-        private final boolean          distinct;
-        private final FromSource       from;
-        private final List<JoinEntry>  joins;
-        private final Expr             where;
-        private final List<Expr>       groupBy;
-        private final Expr             having;
-        private final List<Expr>       orderBy;
-        private final Limit            limit;
-        private final Offset           offset;
+        private final List<Projection>    projections;
+        private final boolean             distinct;
+        private final FromSource          from;
+        private final List<JoinEntry>     joins;
+        private final Expr                where;
+        private final List<Expr>          groupBy;
+        private final Expr                having;
+        private final List<Expr>          orderBy;
+        private final Limit               limit;
+        private final Offset              offset;
+        private final Optional<ForUpdate> forUpdate;
 
         BuildStage(List<Projection> projections, boolean distinct, FromSource from,
                    List<JoinEntry> joins, Expr where, List<Expr> groupBy, Expr having,
-                   List<Expr> orderBy, Limit limit, Offset offset) {
+                   List<Expr> orderBy, Limit limit, Offset offset, Optional<ForUpdate> forUpdate) {
             
             this.projections = projections;
             this.distinct    = distinct;
@@ -540,6 +751,37 @@ public final class SelectBuilder {
             this.orderBy     = orderBy;
             this.limit       = limit;
             this.offset      = offset;
+            this.forUpdate   = forUpdate;
+        }
+
+        public BuildStage forUpdate() {
+            return new BuildStage(projections, distinct, from, joins, where, groupBy, having, orderBy, limit, offset,
+                Optional.of(ForUpdate.simple()));
+        }
+
+        public BuildStage forUpdateNoWait() {
+            return new BuildStage(projections, distinct, from, joins, where, groupBy, having, orderBy, limit, offset,
+                Optional.of(ForUpdate.noWait()));
+        }
+
+        public BuildStage forUpdateSkipLocked() {
+            return new BuildStage(projections, distinct, from, joins, where, groupBy, having, orderBy, limit, offset,
+                Optional.of(ForUpdate.skipLocked()));
+        }
+
+        public BuildStage forUpdateOf(String... columns) {
+            return new BuildStage(projections, distinct, from, joins, where, groupBy, having, orderBy, limit, offset,
+                Optional.of(ForUpdate.of(java.util.List.of(columns))));
+        }
+
+        public BuildStage forUpdateOfNoWait(String... columns) {
+            return new BuildStage(projections, distinct, from, joins, where, groupBy, having, orderBy, limit, offset,
+                Optional.of(ForUpdate.ofNoWait(java.util.List.of(columns))));
+        }
+
+        public BuildStage forUpdateOfSkipLocked(String... columns) {
+            return new BuildStage(projections, distinct, from, joins, where, groupBy, having, orderBy, limit, offset,
+                Optional.of(ForUpdate.ofSkipLocked(java.util.List.of(columns))));
         }
 
         public JQ.Read build() {
@@ -561,7 +803,8 @@ public final class SelectBuilder {
                 Optional.ofNullable(having),
                 orderBy,
                 Optional.ofNullable(limit),
-                Optional.ofNullable(offset)
+                Optional.ofNullable(offset),
+                forUpdate
             );
         }
 

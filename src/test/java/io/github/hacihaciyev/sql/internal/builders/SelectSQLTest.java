@@ -3,6 +3,7 @@ package io.github.hacihaciyev.sql.internal.builders;
 import io.github.hacihaciyev.sql.expressions.*;
 import io.github.hacihaciyev.sql.internal.value_objects.FromSource;
 import io.github.hacihaciyev.sql.internal.value_objects.JoinEntry;
+import io.github.hacihaciyev.sql.internal.value_objects.ForUpdate;
 import io.github.hacihaciyev.sql.value_objects.*;
 import io.github.hacihaciyev.util.DBTestContainer;
 import org.junit.jupiter.api.Nested;
@@ -67,7 +68,8 @@ class SelectSQLTest {
                 List.of(new Projection.Base(col("id"))),
                 false, from("users"), List.of(),
                 Optional.empty(), List.of(), Optional.empty(), List.of(),
-                Optional.empty(), Optional.empty()
+                Optional.empty(), Optional.empty(),
+                Optional.empty()
             );
             assertEquals("SELECT id FROM users", sql);
         }
@@ -78,7 +80,8 @@ class SelectSQLTest {
                 List.of(new Projection.Base(col("id")), new Projection.Base(col("name"))),
                 false, from("users"), List.of(),
                 Optional.empty(), List.of(), Optional.empty(), List.of(),
-                Optional.empty(), Optional.empty()
+                Optional.empty(), Optional.empty(),
+                Optional.empty()
             );
             assertEquals("SELECT id, name FROM users", sql);
         }
@@ -89,7 +92,8 @@ class SelectSQLTest {
                 List.of(new Projection.Aliased(new Func.Count(col("id"), false), "total")),
                 false, from("users"), List.of(),
                 Optional.empty(), List.of(), Optional.empty(), List.of(),
-                Optional.empty(), Optional.empty()
+                Optional.empty(), Optional.empty(),
+                Optional.empty()
             );
             assertEquals("SELECT COUNT(id) AS total FROM users", sql);
         }
@@ -100,7 +104,8 @@ class SelectSQLTest {
                 List.of(new Projection.Wildcard()),
                 false, from("users"), List.of(),
                 Optional.empty(), List.of(), Optional.empty(), List.of(),
-                Optional.empty(), Optional.empty()
+                Optional.empty(), Optional.empty(),
+                Optional.empty()
             );
             assertEquals("SELECT * FROM users", sql);
         }
@@ -111,7 +116,8 @@ class SelectSQLTest {
                 List.of(new Projection.QualifiedWildcard("u")),
                 false, from(new TableRef.AliasedBase("users", "u")), List.of(),
                 Optional.empty(), List.of(), Optional.empty(), List.of(),
-                Optional.empty(), Optional.empty()
+                Optional.empty(), Optional.empty(),
+                Optional.empty()
             );
             assertEquals("SELECT u.* FROM users AS u", sql);
         }
@@ -122,7 +128,8 @@ class SelectSQLTest {
                 List.of(new Projection.Base(col("status"))),
                 true, from("orders"), List.of(),
                 Optional.empty(), List.of(), Optional.empty(), List.of(),
-                Optional.empty(), Optional.empty()
+                Optional.empty(), Optional.empty(),
+                Optional.empty()
             );
             assertEquals("SELECT DISTINCT status FROM orders", sql);
         }
@@ -133,7 +140,8 @@ class SelectSQLTest {
                 List.of(new Projection.Base(new Func.CountAll())),
                 false, from("users"), List.of(),
                 Optional.empty(), List.of(), Optional.empty(), List.of(),
-                Optional.empty(), Optional.empty()
+                Optional.empty(), Optional.empty(),
+                Optional.empty()
             );
             assertEquals("SELECT COUNT(*) FROM users", sql);
         }
@@ -144,7 +152,8 @@ class SelectSQLTest {
                 List.of(new Projection.Base(new Func.Sum(col("total"), false))),
                 false, from("orders"), List.of(),
                 Optional.empty(), List.of(), Optional.empty(), List.of(),
-                Optional.empty(), Optional.empty()
+                Optional.empty(), Optional.empty(),
+                Optional.empty()
             );
             assertEquals("SELECT SUM(total) FROM orders", sql);
         }
@@ -158,7 +167,8 @@ class SelectSQLTest {
                 List.of(new Projection.Base(new CaseExpr.CaseElse(branches, lit("Other")))),
                 false, from("orders"), List.of(),
                 Optional.empty(), List.of(), Optional.empty(), List.of(),
-                Optional.empty(), Optional.empty()
+                Optional.empty(), Optional.empty(),
+                Optional.empty()
             );
             assertEquals(
                 "SELECT CASE WHEN (status = 'active') THEN 'Active' ELSE 'Other' END FROM orders",
@@ -176,7 +186,8 @@ class SelectSQLTest {
                 List.of(new Projection.Base(col("u", "id"))),
                 false, from(new TableRef.AliasedBase("users", "u")), List.of(),
                 Optional.empty(), List.of(), Optional.empty(), List.of(),
-                Optional.empty(), Optional.empty()
+                Optional.empty(), Optional.empty(),
+                Optional.empty()
             );
             assertEquals("SELECT u.id FROM users AS u", sql);
         }
@@ -187,7 +198,8 @@ class SelectSQLTest {
                 List.of(new Projection.Base(col("id"))),
                 false, from(new TableRef.WithSchema("public", "users")), List.of(),
                 Optional.empty(), List.of(), Optional.empty(), List.of(),
-                Optional.empty(), Optional.empty()
+                Optional.empty(), Optional.empty(),
+                Optional.empty()
             );
             assertEquals("SELECT id FROM public.users", sql);
         }
@@ -204,7 +216,8 @@ class SelectSQLTest {
                 List.of(JoinEntry.inner(from(new TableRef.AliasedBase("orders", "o")),
                     eq(col("u", "id"), col("o", "user_id")))),
                 Optional.empty(), List.of(), Optional.empty(), List.of(),
-                Optional.empty(), Optional.empty()
+                Optional.empty(), Optional.empty(),
+                Optional.empty()
             );
             assertEquals(
                 "SELECT u.name, o.total FROM users AS u JOIN orders AS o ON (u.id = o.user_id)",
@@ -220,7 +233,8 @@ class SelectSQLTest {
                 List.of(JoinEntry.left(from(new TableRef.AliasedBase("orders", "o")),
                     eq(col("u", "id"), col("o", "user_id")))),
                 Optional.empty(), List.of(), Optional.empty(), List.of(),
-                Optional.empty(), Optional.empty()
+                Optional.empty(), Optional.empty(),
+                Optional.empty()
             );
             assertEquals(
                 "SELECT u.name, o.total FROM users AS u LEFT JOIN orders AS o ON (u.id = o.user_id)",
@@ -236,7 +250,8 @@ class SelectSQLTest {
                 List.of(JoinEntry.right(from(new TableRef.AliasedBase("orders", "o")),
                     eq(col("u", "id"), col("o", "user_id")))),
                 Optional.empty(), List.of(), Optional.empty(), List.of(),
-                Optional.empty(), Optional.empty()
+                Optional.empty(), Optional.empty(),
+                Optional.empty()
             );
             assertEquals(
                 "SELECT u.name, o.total FROM users AS u RIGHT JOIN orders AS o ON (u.id = o.user_id)",
@@ -252,7 +267,8 @@ class SelectSQLTest {
                 List.of(JoinEntry.full(from(new TableRef.AliasedBase("orders", "o")),
                     eq(col("u", "id"), col("o", "user_id")))),
                 Optional.empty(), List.of(), Optional.empty(), List.of(),
-                Optional.empty(), Optional.empty()
+                Optional.empty(), Optional.empty(),
+                Optional.empty()
             );
             assertEquals(
                 "SELECT u.name, o.total FROM users AS u FULL JOIN orders AS o ON (u.id = o.user_id)",
@@ -269,7 +285,8 @@ class SelectSQLTest {
                 false, from(new TableRef.AliasedBase("users", "u")),
                 List.of(JoinEntry.cross(from(new TableRef.AliasedBase("orders", "o")))),
                 Optional.empty(), List.of(), Optional.empty(), List.of(),
-                Optional.empty(), Optional.empty()
+                Optional.empty(), Optional.empty(),
+                Optional.empty()
             );
             assertEquals(
                 "SELECT u.id AS user_id, o.id AS order_id FROM users AS u CROSS JOIN orders AS o",
@@ -291,7 +308,8 @@ class SelectSQLTest {
                     JoinEntry.inner(from(new TableRef.AliasedBase("order_items", "i")),
                         eq(col("o", "id"), col("i", "order_id")))),
                 Optional.empty(), List.of(), Optional.empty(), List.of(),
-                Optional.empty(), Optional.empty()
+                Optional.empty(), Optional.empty(),
+                Optional.empty()
             );
             assertEquals(
                 """
@@ -313,7 +331,8 @@ class SelectSQLTest {
                 false, from("users"), List.of(),
                 Optional.of(eq(col("id"), lit(1))),
                 List.of(), Optional.empty(), List.of(),
-                Optional.empty(), Optional.empty()
+                Optional.empty(), Optional.empty(),
+                Optional.empty()
             );
             assertEquals("SELECT id FROM users WHERE (id = 1)", sql);
         }
@@ -327,7 +346,8 @@ class SelectSQLTest {
                     eq(col("active"), new Literal.BooleanLiteral(true)),
                     gt(col("id"), lit(0)))),
                 List.of(), Optional.empty(), List.of(),
-                Optional.empty(), Optional.empty()
+                Optional.empty(), Optional.empty(),
+                Optional.empty()
             );
             assertEquals("SELECT id FROM users WHERE ((active = TRUE) AND (id > 0))", sql);
         }
@@ -339,7 +359,8 @@ class SelectSQLTest {
                 false, from("users"), List.of(),
                 Optional.of(new IsNullExpr.IsNull(col("email"))),
                 List.of(), Optional.empty(), List.of(),
-                Optional.empty(), Optional.empty()
+                Optional.empty(), Optional.empty(),
+                Optional.empty()
             );
             assertEquals("SELECT id FROM users WHERE email IS NULL", sql);
         }
@@ -352,7 +373,8 @@ class SelectSQLTest {
                 Optional.of(new InExpr.In(col("status"),
                     new InExpr.ValueList(List.of(lit("active"), lit("pending"))))),
                 List.of(), Optional.empty(), List.of(),
-                Optional.empty(), Optional.empty()
+                Optional.empty(), Optional.empty(),
+                Optional.empty()
             );
             assertEquals("SELECT id FROM orders WHERE status IN ('active', 'pending')", sql);
         }
@@ -364,7 +386,8 @@ class SelectSQLTest {
                 false, from("orders"), List.of(),
                 Optional.of(new BetweenExpr.Between(col("total"), lit(100), lit(500))),
                 List.of(), Optional.empty(), List.of(),
-                Optional.empty(), Optional.empty()
+                Optional.empty(), Optional.empty(),
+                Optional.empty()
             );
             assertEquals("SELECT id FROM orders WHERE total BETWEEN 100 AND 500", sql);
         }
@@ -376,7 +399,8 @@ class SelectSQLTest {
                 false, from("users"), List.of(),
                 Optional.of(new BinaryOp(LIKE, col("name"), lit("John%"))),
                 List.of(), Optional.empty(), List.of(),
-                Optional.empty(), Optional.empty()
+                Optional.empty(), Optional.empty(),
+                Optional.empty()
             );
             assertEquals("SELECT id FROM users WHERE (name LIKE 'John%')", sql);
         }
@@ -393,7 +417,8 @@ class SelectSQLTest {
                 Optional.empty(),
                 List.of(col("status")),
                 Optional.empty(), List.of(),
-                Optional.empty(), Optional.empty()
+                Optional.empty(), Optional.empty(),
+                Optional.empty()
             );
             assertEquals("SELECT status, COUNT(*) FROM orders GROUP BY status", sql);
         }
@@ -406,7 +431,8 @@ class SelectSQLTest {
                 Optional.empty(),
                 List.of(col("status"), col("user_id")),
                 Optional.empty(), List.of(),
-                Optional.empty(), Optional.empty()
+                Optional.empty(), Optional.empty(),
+                Optional.empty()
             );
             assertEquals("SELECT status, user_id, COUNT(*) FROM orders GROUP BY status, user_id", sql);
         }
@@ -420,7 +446,8 @@ class SelectSQLTest {
                 List.of(col("status")),
                 Optional.of(gt(new Func.CountAll(), lit(10))),
                 List.of(),
-                Optional.empty(), Optional.empty()
+                Optional.empty(), Optional.empty(),
+                Optional.empty()
             );
             assertEquals(
                 "SELECT status, COUNT(*) FROM orders GROUP BY status HAVING (COUNT(*) > 10)",
@@ -437,7 +464,8 @@ class SelectSQLTest {
                 List.of(col("status")),
                 Optional.of(gt(new Func.CountAll(), lit(5))),
                 List.of(),
-                Optional.empty(), Optional.empty()
+                Optional.empty(), Optional.empty(),
+                Optional.empty()
             );
             assertEquals(
                 """
@@ -460,7 +488,8 @@ class SelectSQLTest {
                 false, from("users"), List.of(),
                 Optional.empty(), List.of(), Optional.empty(),
                 List.of(col("name")),
-                Optional.empty(), Optional.empty()
+                Optional.empty(), Optional.empty(),
+                Optional.empty()
             );
             assertEquals("SELECT id, name FROM users ORDER BY name", sql);
         }
@@ -472,7 +501,8 @@ class SelectSQLTest {
                 false, from("users"), List.of(),
                 Optional.empty(), List.of(), Optional.empty(),
                 List.of(col("age"), col("name")),
-                Optional.empty(), Optional.empty()
+                Optional.empty(), Optional.empty(),
+                Optional.empty()
             );
             assertEquals("SELECT id, name, age FROM users ORDER BY age, name", sql);
         }
@@ -486,7 +516,8 @@ class SelectSQLTest {
                 List.of(col("status")),
                 Optional.empty(),
                 List.of(new Func.CountAll()),
-                Optional.empty(), Optional.empty()
+                Optional.empty(), Optional.empty(),
+                Optional.empty()
             );
             assertEquals("SELECT id, COUNT(*) FROM orders GROUP BY status ORDER BY COUNT(*)", sql);
         }
@@ -502,6 +533,7 @@ class SelectSQLTest {
                 false, from("users"), List.of(),
                 Optional.empty(), List.of(), Optional.empty(), List.of(),
                 Optional.of(new Limit(10)),
+                Optional.empty(),
                 Optional.empty()
             );
             assertEquals("SELECT id FROM users LIMIT 10", sql);
@@ -514,7 +546,8 @@ class SelectSQLTest {
                 false, from("users"), List.of(),
                 Optional.empty(), List.of(), Optional.empty(), List.of(),
                 Optional.of(new Limit(10)),
-                Optional.of(new Offset(20))
+                Optional.of(new Offset(20)),
+                Optional.empty()
             );
             assertEquals("SELECT id FROM users LIMIT 10 OFFSET 20", sql);
         }
@@ -540,7 +573,8 @@ class SelectSQLTest {
                 Optional.of(gt(new Func.CountAll(), lit(5))),
                 List.of(col("u", "name")),
                 Optional.of(new Limit(10)),
-                Optional.of(new Offset(0))
+                Optional.of(new Offset(0)),
+                Optional.empty()
             );
             assertEquals(
                 """
@@ -551,6 +585,170 @@ class SelectSQLTest {
                 HAVING (COUNT(*) > 5) \
                 ORDER BY u.name \
                 LIMIT 10 OFFSET 0""",
+                sql
+            );
+        }
+    }
+
+    @Nested
+    class ForUpdateTest {
+    
+        @Test
+        void simpleForUpdate() {
+            var sql = SelectSQL.build(
+                List.of(new Projection.Base(col("id")), new Projection.Base(col("total"))),
+                false, from("orders"), List.of(),
+                Optional.empty(), List.of(), Optional.empty(), List.of(),
+                Optional.empty(), Optional.empty(),
+                Optional.of(ForUpdate.simple())
+            );
+            assertEquals("SELECT id, total FROM orders FOR UPDATE", sql);
+        }
+    
+        @Test
+        void forUpdateNoWait() {
+            var sql = SelectSQL.build(
+                List.of(new Projection.Base(col("id"))),
+                false, from("orders"), List.of(),
+                Optional.empty(), List.of(), Optional.empty(), List.of(),
+                Optional.empty(), Optional.empty(),
+                Optional.of(ForUpdate.noWait())
+            );
+            assertEquals("SELECT id FROM orders FOR UPDATE NOWAIT", sql);
+        }
+    
+        @Test
+        void forUpdateSkipLocked() {
+            var sql = SelectSQL.build(
+                List.of(new Projection.Base(col("id"))),
+                false, from("orders"), List.of(),
+                Optional.empty(), List.of(), Optional.empty(), List.of(),
+                Optional.empty(), Optional.empty(),
+                Optional.of(ForUpdate.skipLocked())
+            );
+            assertEquals("SELECT id FROM orders FOR UPDATE SKIP LOCKED", sql);
+        }
+    
+        @Test
+        void forUpdateOf() {
+            var sql = SelectSQL.build(
+                List.of(new Projection.Base(col("u", "name")), new Projection.Base(col("o", "total"))),
+                false, from(new TableRef.AliasedBase("users", "u")),
+                List.of(JoinEntry.inner(
+                    from(new TableRef.AliasedBase("orders", "o")),
+                    eq(col("u", "id"), col("o", "user_id")))),
+                Optional.empty(), List.of(), Optional.empty(), List.of(),
+                Optional.empty(), Optional.empty(),
+                Optional.of(ForUpdate.of(java.util.List.of("users", "orders")))
+            );
+            assertEquals(
+                "SELECT u.name, o.total FROM users AS u JOIN orders AS o ON (u.id = o.user_id) FOR UPDATE OF users, orders",
+                sql
+            );
+        }
+    
+        @Test
+        void forUpdateOfNoWait() {
+            var sql = SelectSQL.build(
+                List.of(new Projection.Base(col("id"))),
+                false, from("orders"), List.of(),
+                Optional.empty(), List.of(), Optional.empty(), List.of(),
+                Optional.empty(), Optional.empty(),
+                Optional.of(ForUpdate.ofNoWait(java.util.List.of("orders")))
+            );
+            assertEquals("SELECT id FROM orders FOR UPDATE OF orders NOWAIT", sql);
+        }
+    
+        @Test
+        void forUpdateOfSkipLocked() {
+            var sql = SelectSQL.build(
+                List.of(new Projection.Base(col("id"))),
+                false, from("orders"), List.of(),
+                Optional.empty(), List.of(), Optional.empty(), List.of(),
+                Optional.empty(), Optional.empty(),
+                Optional.of(ForUpdate.ofSkipLocked(java.util.List.of("orders")))
+            );
+            assertEquals("SELECT id FROM orders FOR UPDATE OF orders SKIP LOCKED", sql);
+        }
+    
+        @Test
+        void forUpdateWithWhere() {
+            var sql = SelectSQL.build(
+                List.of(new Projection.Base(col("id"))),
+                false, from("orders"), List.of(),
+                Optional.of(eq(col("status"), lit("pending"))),
+                List.of(), Optional.empty(), List.of(),
+                Optional.empty(), Optional.empty(),
+                Optional.of(ForUpdate.simple())
+            );
+            assertEquals("SELECT id FROM orders WHERE (status = 'pending') FOR UPDATE", sql);
+        }
+    
+        @Test
+        void forUpdateWithOrderBy() {
+            var sql = SelectSQL.build(
+                List.of(new Projection.Base(col("id"))),
+                false, from("orders"), List.of(),
+                Optional.empty(), List.of(), Optional.empty(),
+                List.of(col("created_at")),
+                Optional.empty(), Optional.empty(),
+                Optional.of(ForUpdate.simple())
+            );
+            assertEquals("SELECT id FROM orders ORDER BY created_at FOR UPDATE", sql);
+        }
+    
+        @Test
+        void forUpdateWithLimit() {
+            var sql = SelectSQL.build(
+                List.of(new Projection.Base(col("id"))),
+                false, from("orders"), List.of(),
+                Optional.empty(), List.of(), Optional.empty(), List.of(),
+                Optional.of(new Limit(10)),
+                Optional.empty(),
+                Optional.of(ForUpdate.simple())
+            );
+            assertEquals("SELECT id FROM orders LIMIT 10 FOR UPDATE", sql);
+        }
+    
+        @Test
+        void forUpdateWithLimitAndOffset() {
+            var sql = SelectSQL.build(
+                List.of(new Projection.Base(col("id"))),
+                false, from("orders"), List.of(),
+                Optional.empty(), List.of(), Optional.empty(), List.of(),
+                Optional.of(new Limit(10)),
+                Optional.of(new Offset(20)),
+                Optional.of(ForUpdate.noWait())
+            );
+            assertEquals("SELECT id FROM orders LIMIT 10 OFFSET 20 FOR UPDATE NOWAIT", sql);
+        }
+    
+        @Test
+        void forUpdateWithAllClauses() {
+            var sql = SelectSQL.build(
+                List.of(new Projection.Base(col("u", "name")), new Projection.Base(col("o", "total"))),
+                false,
+                from(new TableRef.AliasedBase("users", "u")),
+                List.of(JoinEntry.inner(
+                    from(new TableRef.AliasedBase("orders", "o")),
+                    eq(col("u", "id"), col("o", "user_id")))),
+                Optional.of(eq(col("u", "active"), new Literal.BooleanLiteral(true))),
+                List.of(col("u", "name")),
+                Optional.of(gt(new Func.CountAll(), lit(5))),
+                List.of(col("u", "name")),
+                Optional.of(new Limit(10)),
+                Optional.of(new Offset(0)),
+                Optional.of(ForUpdate.skipLocked())
+            );
+            assertEquals(
+                """
+                SELECT u.name, o.total FROM users AS u \
+                JOIN orders AS o ON (u.id = o.user_id) \
+                WHERE (u.active = TRUE) \
+                GROUP BY u.name \
+                HAVING (COUNT(*) > 5) \
+                ORDER BY u.name \
+                LIMIT 10 OFFSET 0 FOR UPDATE SKIP LOCKED""",
                 sql
             );
         }

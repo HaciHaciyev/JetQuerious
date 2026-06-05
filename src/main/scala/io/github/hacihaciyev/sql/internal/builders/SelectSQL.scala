@@ -2,7 +2,7 @@ package io.github.hacihaciyev.sql.internal.builders
 
 import io.github.hacihaciyev.sql.expressions.Expr
 import io.github.hacihaciyev.sql.internal.ExprRenderer
-import io.github.hacihaciyev.sql.internal.value_objects.{FromSource, JoinEntry}
+import io.github.hacihaciyev.sql.internal.value_objects.{FromSource, JoinEntry, ForUpdate}
 import io.github.hacihaciyev.sql.value_objects.{Limit, Offset, Projection}
 
 import scala.jdk.CollectionConverters.*
@@ -19,7 +19,8 @@ object SelectSQL {
         having:      java.util.Optional[Expr],
         orderBy:     java.util.List[Expr],
         limit:       java.util.Optional[Limit],
-        offset:      java.util.Optional[Offset]
+        offset:      java.util.Optional[Offset],
+        forUpdate:   java.util.Optional[ForUpdate]
     ): String = {
 
         val sb = new StringBuilder
@@ -51,6 +52,8 @@ object SelectSQL {
 
         if limit.isPresent  then sb ++= s" LIMIT ${limit.get.value()}"
         if offset.isPresent then sb ++= s" OFFSET ${offset.get.value()}"
+
+        if forUpdate.isPresent then sb ++= forUpdate.get().sqlSuffix
 
         sb.toString
     }

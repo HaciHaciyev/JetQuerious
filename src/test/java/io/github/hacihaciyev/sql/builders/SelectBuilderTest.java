@@ -635,7 +635,8 @@ class SelectBuilderTest {
             var q = SelectBuilder.select(col("id"))
                     .from("users")
                     .limit(10)
-                    .offset(20);
+                    .offset(20)
+                    .build();
 
             assertEquals("SELECT id FROM users LIMIT 10 OFFSET 20", q.sql());
         }
@@ -647,7 +648,8 @@ class SelectBuilderTest {
                     .where(eq(col("active"), new Literal.BooleanLiteral(true)))
                     .orderBy(col("name"))
                     .limit(25)
-                    .offset(50);
+                    .offset(50)
+                    .build();
 
             assertEquals(
                     "SELECT id, name FROM users WHERE (active = TRUE) ORDER BY name LIMIT 25 OFFSET 50",
@@ -669,7 +671,8 @@ class SelectBuilderTest {
                     .having(gt(new Func.CountAll(), lit(5)))
                     .orderBy(col("u", "name"))
                     .limit(10)
-                    .offset(0);
+                    .offset(0)
+                    .build();
 
             assertEquals(
                     """
@@ -1068,6 +1071,218 @@ class SelectBuilderTest {
             assertEquals(
                     "SELECT id, name FROM users WHERE ((id = ?) AND (name = ?))",
                     q.sql()
+            );
+        }
+    }
+
+    @Nested
+    class ForUpdate {
+    
+        @Test
+        void simpleForUpdate() {
+            var q = SelectBuilder.select(col("id"), col("total"))
+                    .from("orders")
+                    .where(eq(col("status"), lit("pending")))
+                    .forUpdate()
+                    .build();
+    
+            assertEquals(
+                    "SELECT id, total FROM orders WHERE (status = 'pending') FOR UPDATE",
+                    q.sql()
+            );
+        }
+    
+        @Test
+        void forUpdateNoWait() {
+            var q = SelectBuilder.select(col("id"), col("total"))
+                    .from("orders")
+                    .where(eq(col("status"), lit("pending")))
+                    .forUpdateNoWait()
+                    .build();
+    
+            assertEquals(
+                    "SELECT id, total FROM orders WHERE (status = 'pending') FOR UPDATE NOWAIT",
+                    q.sql()
+            );
+        }
+    
+        @Test
+        void forUpdateSkipLocked() {
+            var q = SelectBuilder.select(col("id"), col("total"))
+                    .from("orders")
+                    .where(eq(col("status"), lit("pending")))
+                    .forUpdateSkipLocked()
+                    .build();
+    
+            assertEquals(
+                    "SELECT id, total FROM orders WHERE (status = 'pending') FOR UPDATE SKIP LOCKED",
+                    q.sql()
+            );
+        }
+    
+        @Test
+        void forUpdateOfSpecificColumns() {
+            var q = SelectBuilder.select(col("u", "name"), col("o", "total"))
+                    .from(new TableRef.AliasedBase("users", "u"))
+                    .join(new TableRef.AliasedBase("orders", "o"), eq(col("u", "id"), col("o", "user_id")))
+                    .where(eq(col("u", "active"), new Literal.BooleanLiteral(true)))
+                    .forUpdateOf("users", "orders")
+                    .build();
+    
+            assertEquals(
+                    """
+                    SELECT u.name, o.total FROM users AS u \
+                    JOIN orders AS o ON (u.id = o.user_id) \
+                    WHERE (u.active = TRUE) \
+                    FOR UPDATE OF users, orders""",
+                    q.sql()
+            );
+        }
+    
+        @Test
+        void forUpdateOfNoWait() {
+            var q = SelectBuilder.select(col("id"))
+                    .from("orders")
+                    .forUpdateOfNoWait("orders")
+                    .build();
+    
+            assertEquals(
+                    "SELECT id FROM orders FOR UPDATE OF orders NOWAIT",
+                    q.sql()
+            );
+        }
+    
+        @Test
+        void forUpdateOfSkipLocked() {
+            var q = SelectBuilder.select(col("id"))
+                    .from("orders")
+                    .forUpdateOfSkipLocked("orders")
+                    .build();
+    
+            assertEquals(
+                    "SELECT id FROM orders FOR UPDATE OF orders SKIP LOCKED",
+                    q.sql()
+            );
+        }
+    
+        @Test
+        void forUpdateWithLimit() {
+            var q = SelectBuilder.select(col("id"), col("total"))
+                    .from("orders")
+                    .where(eq(col("status"), lit("pending")))
+                    .orderBy(col("amount"))
+                    .limit(10)
+                    .forUpdate()
+                    .build();
+    
+            assertEquals(
+                    """
+                    SELECT id, total FROM orders \
+                    WHERE (status = 'pending') \
+                    ORDER BY amount \
+                    LIMIT 10 FOR UPDATE""",
+                    q.sql()
+            );
+        }
+    
+        @Test
+        void forUpdateWithLimitAndOffset() {
+            var q = SelectBuilder.select(col("id"), col("total"))
+                    .from("orders")
+                    .where(eq(col("status"), lit("pending")))
+                    .orderBy(col("amount"))
+                    .limit(10)
+                    .offset(20)
+                    .forUpdateNoWait()
+                    .build();
+    
+            assertEquals(
+                    """
+                    SELECT id, total FROM orders \
+                    WHERE (status = 'pending') \
+                    ORDER BY amount \
+                    LIMIT 10 OFFSET 20 FOR UPDATE NOWAIT""",
+                    q.sql()
+            );
+        }
+    
+        @Test
+        void forUpdateAfterBuildStage() {
+            var q = SelectBuilder.select(col("id"), col("total"))
+                    .from("orders")
+                    .where(eq(col("status"), lit("pending")))
+                    .forUpdate()
+                    .build();
+    
+            assertEquals(
+                    "SELECT id, total FROM orders WHERE (status = 'pending') FOR UPDATE",
+                    q.sql()
+            );
+        }
+    
+        @Test
+        void forUpdateNoWaitAfterBuildStage() {
+            var q = SelectBuilder.select(col("id"), col("total"))
+                    .from("orders")
+                    .where(eq(col("status"), lit("pending")))
+                    .limit(5)
+                    .forUpdateNoWait()
+                    .build();
+    
+            assertEquals(
+                    "SELECT id, total FROM orders WHERE (status = 'pending') LIMIT 5 FOR UPDATE NOWAIT",
+                    q.sql()
+            );
+        }
+    
+        @Test
+        void forUpdateOfAfterBuildStage() {
+            var q = SelectBuilder.select(col("id"), col("total"))
+                    .from("orders")
+                    .forUpdateOf("orders")
+                    .build();
+    
+            assertEquals(
+                    "SELECT id, total FROM orders FOR UPDATE OF orders",
+                    q.sql()
+            );
+        }
+    
+        @Test
+        void chainedForUpdateMethods() {
+            var q = SelectBuilder.select(col("id"))
+                    .from("orders")
+                    .forUpdate()
+                    .forUpdateNoWait()
+                    .build();
+    
+            assertEquals(
+                    "SELECT id FROM orders FOR UPDATE NOWAIT",
+                    q.sql()
+            );
+        }
+    }
+    
+    @Nested
+    class ForUpdateValidation {
+    
+        @Test
+        void forUpdateOfWithNonExistentTable_throws() {
+            assertThrows(SchemaVerificationException.class, () ->
+                    SelectBuilder.select(col("id"))
+                            .from("orders")
+                            .forUpdateOf("ghost_table")
+                            .build()
+            );
+        }
+    
+        @Test
+        void forUpdateOfWithValidTable_passes() {
+            assertDoesNotThrow(() ->
+                    SelectBuilder.select(col("id"))
+                            .from("orders")
+                            .forUpdateOf("orders")
+                            .build()
             );
         }
     }
