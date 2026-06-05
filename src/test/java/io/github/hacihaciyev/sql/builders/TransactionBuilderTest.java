@@ -507,6 +507,107 @@ class TransactionBuilderTest {
     }
 
     @Nested
+    class ForUpdateTransaction {
+        
+        private static JQ.Read selectBalanceForUpdate() {
+            return select(col("total"))
+                .from("orders")
+                .where(eq(col("id"), param(Long.class)))
+                .forUpdate()
+                .build();
+        }
+        
+        private static JQ.Read selectBalanceForUpdateNoWait() {
+            return select(col("total"))
+                .from("orders")
+                .where(eq(col("id"), param(Long.class)))
+                .forUpdateNoWait()
+                .build();
+        }
+        
+        private static JQ.Read selectBalanceForUpdateSkipLocked() {
+            return select(col("total"))
+                .from("orders")
+                .where(eq(col("id"), param(Long.class)))
+                .forUpdateSkipLocked()
+                .build();
+        }
+        
+        private static JQ.Read selectOrderWithUserForUpdate() {
+            return select(col("o", "total"), col("u", "active"))
+                .from(tAs("orders", "o"))
+                .join(tAs("users", "u"), eq(col("o", "user_id"), col("u", "id")))
+                .where(eq(col("o", "id"), param(Long.class)))
+                .forUpdateOf(tAs("orders", "o"), tAs("users", "u"))
+                .build();
+        }
+        
+        @Test
+        void transferWithRowLock() {
+            var tx = transaction()
+                .add(selectBalanceForUpdate())
+                .savepoint("locked")
+                .add(debitBalance())
+                .add(creditBalance())
+                .build();
+            
+            assertEquals(3, tx.operations().length);
+            assertEquals(1, tx.savepoints().length);
+        }
+        
+        @Test
+        void transferWithNoWait() {
+            var tx = transaction()
+                .add(selectBalanceForUpdateNoWait())
+                .add(debitBalance())
+                .add(creditBalance())
+                .build();
+            
+            assertEquals(3, tx.operations().length);
+        }
+        
+        @Test
+        void transferWithJoinLock() {
+            var tx = transaction()
+                .add(selectOrderWithUserForUpdate())
+                .add(debitBalance())
+                .add(creditBalance())
+                .build();
+            
+            assertEquals(3, tx.operations().length);
+        }
+        
+        @Test
+        void optimisticLockThenUpdate() {
+            var tx = transaction()
+                .add(selectBalanceForUpdate())
+                .add(update("orders")
+                    .set("status", lit("processed"))
+                    .where(eq(col("id"), param(Long.class)))
+                    .build())
+                .build();
+            
+            assertEquals(2, tx.operations().length);
+        }
+        
+        @Test
+        void complexTransferWithSavepointsAndLock() {
+            var tx = transaction()
+                .isolationLevel(IsolationLevel.REPEATABLE_READ)
+                .add(selectBalanceForUpdate())
+                .savepoint("balance_locked")
+                .add(debitBalance())
+                .savepoint("debited")
+                .add(selectBalanceForUpdate())
+                .add(creditBalance())
+                .build();
+            
+            assertEquals(4, tx.operations().length);
+            assertEquals(2, tx.savepoints().length);
+        }
+    }
+
+    @Nested
     class Validation {
 
         @Test
