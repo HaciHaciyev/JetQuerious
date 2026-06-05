@@ -1,5 +1,7 @@
 package io.github.hacihaciyev.jdbc;
 
+import static java.util.Objects.requireNonNull;
+
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Stream;
@@ -26,14 +28,26 @@ public class JetQuerious implements ReadOperations, WriteOperations, Transaction
         return null;
     }
     
-    public Result<Integer, Exception> write(JQ jq, Object... args) {
+    public Result<Integer, Exception> write(JQ.Write jq, Object... args) {
+        return null;
+    }
+
+    public <T> Result<T, Exception> writeOne(JQ.Write jq, ResultSetExtractor<T> rst, Object... params) {
         return null;
     }
     
-    public Result<Integer, Exception> writeArrayOf(JQ jq, String arrayDef, Object[] array, Object... args) {
+    public <T> Result<List<T>, Exception> writeMany(JQ.Write jq, ResultSetExtractor<T> rst, Object... params) {
+        return null;
+    }
+
+    public <T> Result<Stream<T>, Exception> writeStream(JQ.Write jq, ResultSetExtractor<T> rst, Object... params) {
         return null;
     }
     
+    public Result<Integer, Exception> writeArray(JQ jq, String arrayDef, Object[] array, Object... args) {
+        return null;
+    }
+
     public Result<int[], Exception> writeBatch(JQ jq, List<Object[]> batchArgs) {
         return null;
     }
@@ -46,11 +60,11 @@ public class JetQuerious implements ReadOperations, WriteOperations, Transaction
         return null;
     }
     
-    public <T> Result<T, Exception> object(JQ jq, Class<T> type, Object... params) {
+    public <T> Result<T, Exception> read(JQ jq, Class<T> type, Object... params) {
         return null;
     }
     
-    public <T> Result<T, Exception> object(JQ jq, Class<T> type, ResultSetType rsType, Object... params) {
+    public <T> Result<T, Exception> read(JQ jq, Class<T> type, ResultSetType rsType, Object... params) {
         return null;
     }
     

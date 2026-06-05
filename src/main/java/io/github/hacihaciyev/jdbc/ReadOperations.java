@@ -13,9 +13,9 @@ public interface ReadOperations {
     
     <T> Result<T, Exception> read(JQ jq, ResultSetExtractor<T> extractor, ResultSetType rsType, Object... params);
     
-    <T> Result<T, Exception> object(JQ jq, Class<T> type, Object... params);
+    <T> Result<T, Exception> read(JQ jq, Class<T> type, Object... params);
     
-    <T> Result<T, Exception> object(JQ jq, Class<T> type, ResultSetType rsType, Object... params);
+    <T> Result<T, Exception> read(JQ jq, Class<T> type, ResultSetType rsType, Object... params);
     
     <T> Result<Optional<T>, Exception> option(JQ jq, ResultSetExtractor<T> extractor, Object... params);
     
