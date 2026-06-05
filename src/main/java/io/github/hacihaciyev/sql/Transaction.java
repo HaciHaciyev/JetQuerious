@@ -25,6 +25,14 @@ public record Transaction(JQ[] operations, Savepoint[] savepoints, IsolationLeve
     public Transaction(JQ[] operations, Savepoint[] savepoints) {
         this(operations, savepoints, IsolationLevel.DEFAULT, JetQuerious.defaultInstance());
     }
+
+    public JQ[] operations() {
+        return operations.clone();
+    }
+
+    public Savepoint[] savepoints() {
+        return savepoints.clone();
+    }
     
     public record Savepoint(int position, String name) {
         public Savepoint {
