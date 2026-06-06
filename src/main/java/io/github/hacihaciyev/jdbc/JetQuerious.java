@@ -44,51 +44,51 @@ public class JetQuerious implements ReadOperations, WriteOperations, Transaction
         return null;
     }
     
-    public Result<Integer, Exception> writeArray(JQ jq, String arrayDef, Object[] array, Object... args) {
+    public Result<Integer, Exception> writeArray(JQ.Write jq, String arrayDef, Object[] array, Object... args) {
         return null;
     }
 
-    public Result<int[], Exception> writeBatch(JQ jq, List<Object[]> batchArgs) {
+    public Result<int[], Exception> writeBatch(JQ.Write jq, List<Object[]> batchArgs) {
         return null;
     }
     
-    public <T> Result<T, Exception> read(JQ jq, ResultSetExtractor<T> extractor, Object... params) {
+    public <T> Result<T, Exception> read(JQ.Read jq, ResultSetExtractor<T> extractor, Object... params) {
         return null;
     }
     
-    public <T> Result<T, Exception> read(JQ jq, ResultSetExtractor<T> extractor, ResultSetType rsType, Object... params) {
+    public <T> Result<T, Exception> read(JQ.Read jq, ResultSetExtractor<T> extractor, ResultSetType rsType, Object... params) {
         return null;
     }
     
-    public <T> Result<T, Exception> read(JQ jq, Class<T> type, Object... params) {
+    public <T> Result<T, Exception> read(JQ.Read jq, Class<T> type, Object... params) {
         return null;
     }
     
-    public <T> Result<T, Exception> read(JQ jq, Class<T> type, ResultSetType rsType, Object... params) {
+    public <T> Result<T, Exception> read(JQ.Read jq, Class<T> type, ResultSetType rsType, Object... params) {
         return null;
     }
     
-    public <T> Result<Optional<T>, Exception> option(JQ jq, ResultSetExtractor<T> extractor, Object... params) {
+    public <T> Result<Optional<T>, Exception> option(JQ.Read jq, ResultSetExtractor<T> extractor, Object... params) {
         return null;
     }
     
-    public <T> Result<Optional<T>, Exception> option(JQ jq, ResultSetExtractor<T> extractor, ResultSetType rsType, Object... params) {
+    public <T> Result<Optional<T>, Exception> option(JQ.Read jq, ResultSetExtractor<T> extractor, ResultSetType rsType, Object... params) {
         return null;
     }
     
-    public <T> Result<List<T>, Exception> list(JQ jq, ResultSetExtractor<T> extractor, Object... params) {
+    public <T> Result<List<T>, Exception> list(JQ.Read jq, ResultSetExtractor<T> extractor, Object... params) {
         return null;
     }
     
-    public <T> Result<List<T>, Exception> list(JQ jq, ResultSetExtractor<T> extractor, ResultSetType rsType, Object... params) {
+    public <T> Result<List<T>, Exception> list(JQ.Read jq, ResultSetExtractor<T> extractor, ResultSetType rsType, Object... params) {
         return null;
     }
     
-    public <T> Result<Stream<T>, Exception> stream(JQ jq, ResultSetExtractor<T> extractor, Object... params) {
+    public <T> Result<Stream<T>, Exception> stream(JQ.Read jq, ResultSetExtractor<T> extractor, Object... params) {
         return null;
     }
     
-    public <T> Result<Stream<T>, Exception> stream(JQ jq, ResultSetExtractor<T> extractor, ResultSetType rsType, Object... params) {
+    public <T> Result<Stream<T>, Exception> stream(JQ.Read jq, ResultSetExtractor<T> extractor, ResultSetType rsType, Object... params) {
         return null;
     }
 }

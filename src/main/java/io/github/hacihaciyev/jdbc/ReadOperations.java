@@ -9,23 +9,23 @@ import io.github.hacihaciyev.util.Result;
 
 public interface ReadOperations {
 
-    <T> Result<T, Exception> read(JQ jq, ResultSetExtractor<T> extractor, Object... params);
+    <T> Result<T, Exception> read(JQ.Read jq, ResultSetExtractor<T> extractor, Object... params);
     
-    <T> Result<T, Exception> read(JQ jq, ResultSetExtractor<T> extractor, ResultSetType rsType, Object... params);
+    <T> Result<T, Exception> read(JQ.Read jq, ResultSetExtractor<T> extractor, ResultSetType rsType, Object... params);
     
-    <T> Result<T, Exception> read(JQ jq, Class<T> type, Object... params);
+    <T> Result<T, Exception> read(JQ.Read jq, Class<T> type, Object... params);
     
-    <T> Result<T, Exception> read(JQ jq, Class<T> type, ResultSetType rsType, Object... params);
+    <T> Result<T, Exception> read(JQ.Read jq, Class<T> type, ResultSetType rsType, Object... params);
     
-    <T> Result<Optional<T>, Exception> option(JQ jq, ResultSetExtractor<T> extractor, Object... params);
+    <T> Result<Optional<T>, Exception> option(JQ.Read jq, ResultSetExtractor<T> extractor, Object... params);
     
-    <T> Result<Optional<T>, Exception> option(JQ jq, ResultSetExtractor<T> extractor, ResultSetType rsType, Object... params);
+    <T> Result<Optional<T>, Exception> option(JQ.Read jq, ResultSetExtractor<T> extractor, ResultSetType rsType, Object... params);
     
-    <T> Result<List<T>, Exception> list(JQ jq, ResultSetExtractor<T> extractor, Object... params);
+    <T> Result<List<T>, Exception> list(JQ.Read jq, ResultSetExtractor<T> extractor, Object... params);
     
-    <T> Result<List<T>, Exception> list(JQ jq, ResultSetExtractor<T> extractor, ResultSetType rsType, Object... params);
+    <T> Result<List<T>, Exception> list(JQ.Read jq, ResultSetExtractor<T> extractor, ResultSetType rsType, Object... params);
     
-    <T> Result<Stream<T>, Exception> stream(JQ jq, ResultSetExtractor<T> extractor, Object... params);
+    <T> Result<Stream<T>, Exception> stream(JQ.Read jq, ResultSetExtractor<T> extractor, Object... params);
     
-    <T> Result<Stream<T>, Exception> stream(JQ jq, ResultSetExtractor<T> extractor, ResultSetType rsType, Object... params);
+    <T> Result<Stream<T>, Exception> stream(JQ.Read jq, ResultSetExtractor<T> extractor, ResultSetType rsType, Object... params);
 }

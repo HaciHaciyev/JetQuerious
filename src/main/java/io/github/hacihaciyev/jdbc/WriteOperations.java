@@ -16,7 +16,7 @@ public interface WriteOperations {
 
     <T> Result<Stream<T>, Exception> writeStream(JQ.Write jq, ResultSetExtractor<T> rst, Object... params);
     
-    Result<Integer, Exception> writeArray(JQ jq, String arrayDef, Object[] array, Object... args);
+    Result<Integer, Exception> writeArray(JQ.Write jq, String arrayDef, Object[] array, Object... args);
 
-    Result<int[], Exception> writeBatch(JQ jq, List<Object[]> batchArgs);
+    Result<int[], Exception> writeBatch(JQ.Write jq, List<Object[]> batchArgs);
 }
