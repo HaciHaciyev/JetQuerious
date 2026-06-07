@@ -345,12 +345,6 @@ public final class TypeRegistry {
                     io.github.hacihaciyev.types.SQLType.NULL, io.github.hacihaciyev.types.SQLType.CURSOR, io.github.hacihaciyev.types.SQLType.TABLE_TYPE
             );
 
-        if (type == Array.class)
-            return info(
-                (stmt, p, i) -> stmt.setArray(i, (Array) p),
-                SQLType.ARRAY
-            );
-
         return TypeInfo.NONE;
     }
 
