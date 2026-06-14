@@ -2,17 +2,18 @@ package io.github.hacihaciyev.jdbc;
 
 import io.github.hacihaciyev.sql.JQ;
 import io.github.hacihaciyev.sql.Transaction;
-import io.github.hacihaciyev.sql_error_translation.SQLErrorTranslation;
 import io.github.hacihaciyev.sql.internal.Context;
+import io.github.hacihaciyev.sql_error_translation.SQLErrorTranslation;
 import io.github.hacihaciyev.util.Err;
 import io.github.hacihaciyev.util.Ok;
 import io.github.hacihaciyev.util.Result;
 
 import javax.sql.DataSource;
 import java.sql.Connection;
-import java.sql.SQLException;
 import java.sql.Savepoint;
+import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 
 import static java.util.Objects.requireNonNull;
@@ -42,89 +43,105 @@ public final class BoundTransaction {
     }
 
     public Result<int[], Exception> execute() {
-        try (var conn = ds.getConnection()) {
-            var prevAutoCommit = conn.getAutoCommit();
+        var ops    = tx.operations();
+        var needed = countNeeded(ops);
+
+        if (bindings.size() != needed) {
+            return new Err<>(new IllegalArgumentException("Expected " + needed + " bind() calls but got " + bindings.size()));
+        }
+
+        Connection conn           = null;
+        boolean    prevAutoCommit = true;
+        
+        try {
+            conn           = ds.getConnection();
+            prevAutoCommit = conn.getAutoCommit();
             conn.setAutoCommit(false);
 
-            if (tx.isolationLevel() != Transaction.IsolationLevel.DEFAULT) {
-                conn.setTransactionIsolation(isolationLevel(tx.isolationLevel()));
-            }
+            if (tx.isolationLevel() != Transaction.IsolationLevel.DEFAULT) conn.setTransactionIsolation(isolationLevel(tx.isolationLevel()));
 
-            try {
-                var results  = run(conn);
-                conn.commit();
-                conn.setAutoCommit(prevAutoCommit);
-                return new Ok<>(results);
-            } catch (SQLException e) {
-                conn.rollback();
-                conn.setAutoCommit(prevAutoCommit);
-                return SQLErrorTranslation.handleSQLException(e);
-            } catch (IllegalArgumentException e) {
-                conn.rollback();
-                conn.setAutoCommit(prevAutoCommit);
-                return new Err<>(e);
-            }
+            var results = run(conn, ops);
+            conn.commit();
+            conn.setAutoCommit(prevAutoCommit);
+            return new Ok<>(results);
         } catch (SQLException e) {
+            rollback(conn, prevAutoCommit);
             return SQLErrorTranslation.handleSQLException(e);
+        } catch (IllegalArgumentException e) {
+            rollback(conn, prevAutoCommit);
+            return new Err<>(e);
+        } finally {
+            closeQuietly(conn);
         }
     }
 
-    private int[] run(Connection conn) throws SQLException {
-        var ops      = tx.operations();
-        var results  = new int[ops.length];
-        var savepts  = tx.savepoints();
-        var bindIdx  = 0;
-
-        validateBindings(ops);
-
-        var jdbcSavepoints = new java.util.HashMap<String, Savepoint>();
+    private int[] run(Connection conn, JQ[] ops) throws SQLException {
+        var results    = new int[ops.length];
+        var savepts    = tx.savepoints();
+        var bindIdx    = 0;
+        var jdbcSpts   = new HashMap<String, Savepoint>();
 
         for (int i = 0; i < ops.length; i++) {
-            var op    = ops[i];
-            var types = StatementBinder.paramTypes(op);
-
             for (var sp : savepts) {
-                if (sp.position() == i) jdbcSavepoints.put(sp.name(), conn.setSavepoint(sp.name()));
+                if (sp.position() == i) jdbcSpts.put(sp.name(), conn.setSavepoint(sp.name()));
             }
 
-            Object[] args = types.isEmpty() ? new Object[0] : bindings.get(bindIdx++);
-            results[i] = execute(conn, op, args);
+            var op    = ops[i];
+            var types = StatementBinder.paramTypes(op);
+            var args  = types.isEmpty() ? new Object[0] : bindings.get(bindIdx++);
+
+            results[i] = executeOp(conn, op, args);
         }
 
         for (var sp : savepts) {
-            if (sp.position() == ops.length) jdbcSavepoints.put(sp.name(), conn.setSavepoint(sp.name()));
+            if (sp.position() == ops.length) jdbcSpts.put(sp.name(), conn.setSavepoint(sp.name()));
         }
 
         return results;
     }
 
-    private int execute(Connection conn, JQ jq, Object[] args) throws SQLException {
-        var sql  = jq.sql();
-        var ctx  = switch (jq) {
+    private int executeOp(Connection conn, JQ jq, Object[] args) throws SQLException {
+        var ctx = switch (jq) {
             case JQ.Read(_, var c)  -> (Context) c;
             case JQ.Write(_, var c) -> (Context) c;
         };
 
-        try (var stmt = conn.prepareStatement(sql)) {
+        try (var stmt = conn.prepareStatement(jq.sql())) {
             StatementBinder.bind(stmt, ctx, args);
             if (jq instanceof JQ.Read) {
                 stmt.execute();
                 return 0;
-            } else {
-                return stmt.executeUpdate();
             }
+            return stmt.executeUpdate();
         }
     }
 
-    private void validateBindings(JQ[] ops) {
-        var needed = 0;
+    private int countNeeded(JQ[] ops) {
+        var count = 0;
         for (var op : ops) {
-            if (!StatementBinder.paramTypes(op).isEmpty()) needed++;
+            if (!StatementBinder.paramTypes(op).isEmpty()) count++;
         }
+        return count;
+    }
 
-        if (bindings.size() != needed) {
-            throw new IllegalArgumentException("Expected " + needed + " bind() calls for operations with parameters, but got " + bindings.size());
-        }
+    private static void rollback(Connection conn, boolean prevAutoCommit) {
+        if (conn == null) return;
+
+        try { 
+            conn.rollback();
+        } catch (SQLException _) {}
+       
+        try {
+            conn.setAutoCommit(prevAutoCommit);
+        } catch (SQLException _) {}
+    }
+
+    private static void closeQuietly(Connection conn) {
+        if (conn == null) return;
+
+        try { 
+            conn.close();
+        } catch (SQLException _) {}
     }
 
     private static int isolationLevel(Transaction.IsolationLevel level) {
