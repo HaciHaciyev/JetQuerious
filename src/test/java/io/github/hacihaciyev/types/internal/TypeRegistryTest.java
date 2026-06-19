@@ -29,7 +29,7 @@ import static io.github.hacihaciyev.types.internal.TypeInfo.Some;
 import static io.github.hacihaciyev.types.internal.TypeInfo.WithFactory;
 
 class TypeRegistryTest {
-    
+
     @Test
     void shouldReturnNoneForNull() {
         assertThat(TypeRegistry.info(null)).isInstanceOf(None.class);
@@ -42,7 +42,7 @@ class TypeRegistryTest {
 
     @Test
     void shouldCacheTypeInfo() {
-        var first = TypeRegistry.info(String.class);
+        var first  = TypeRegistry.info(String.class);
         var second = TypeRegistry.info(String.class);
         assertThat(first).isSameAs(second);
     }
@@ -51,6 +51,13 @@ class TypeRegistryTest {
     @MethodSource("allSupportedTypes")
     void shouldRecognizeAsSupported(Class<?> type) {
         assertThat(TypeRegistry.info(type)).isInstanceOf(Some.class);
+    }
+
+    @ParameterizedTest
+    @MethodSource("allSupportedTypes")
+    void shouldHaveNonNullGetter(Class<?> type) {
+        var info = (Some) TypeRegistry.info(type);
+        assertThat(info.getter()).isNotNull();
     }
 
     static Stream<Class<?>> allSupportedTypes() {
@@ -77,15 +84,15 @@ class TypeRegistryTest {
             byte[].class, Blob.class, Clob.class, Void.class
         );
     }
-    
+
     @ParameterizedTest
     @MethodSource("setterTestCases")
     void shouldCallCorrectSetterMethod(Object value, SetterAssertion assertion) throws Exception {
         var stmt = mock(PreparedStatement.class);
         var info = (Some) TypeRegistry.info(value.getClass());
-        
+
         info.setter().set(stmt, value, 1);
-        
+
         assertion.verify(stmt);
     }
 
@@ -124,8 +131,196 @@ class TypeRegistryTest {
     }
 
     @ParameterizedTest
+    @MethodSource("getterTestCases")
+    void shouldCallCorrectGetterMethod(Class<?> type, GetterStub stub, Object expected) throws Exception {
+        var rs   = mock(ResultSet.class);
+        stub.stub(rs);
+        var info = (Some) TypeRegistry.info(type);
+
+        var result = info.getter().get(rs, "col");
+
+        assertThat(result).isEqualTo(expected);
+    }
+
+    static Stream<Arguments> getterTestCases() {
+        return Stream.of(
+            getterTest(int.class,        rs -> when(rs.getInt("col")).thenReturn(42), 42),
+            getterTest(Integer.class,    rs -> when(rs.getInt("col")).thenReturn(42), 42),
+            getterTest(long.class,       rs -> when(rs.getLong("col")).thenReturn(42L), 42L),
+            getterTest(Long.class,       rs -> when(rs.getLong("col")).thenReturn(42L), 42L),
+            getterTest(short.class,      rs -> when(rs.getShort("col")).thenReturn((short) 7), (short) 7),
+            getterTest(byte.class,       rs -> when(rs.getByte("col")).thenReturn((byte) 3), (byte) 3),
+            getterTest(double.class,     rs -> when(rs.getDouble("col")).thenReturn(1.5), 1.5),
+            getterTest(float.class,      rs -> when(rs.getFloat("col")).thenReturn(1.5f), 1.5f),
+            getterTest(boolean.class,    rs -> when(rs.getBoolean("col")).thenReturn(true), true),
+            getterTest(Boolean.class,    rs -> when(rs.getBoolean("col")).thenReturn(true), true),
+
+            getterTest(String.class, rs -> when(rs.getString("col")).thenReturn("hello"), "hello"),
+
+            getterTest(BigDecimal.class,
+                rs -> when(rs.getBigDecimal("col")).thenReturn(new BigDecimal("123.45")),
+                new BigDecimal("123.45")),
+
+            getterTest(BigInteger.class,
+                rs -> when(rs.getBigDecimal("col")).thenReturn(new BigDecimal("12345")),
+                new BigInteger("12345")),
+
+            getterTest(byte[].class,
+                rs -> when(rs.getBytes("col")).thenReturn(new byte[]{1, 2, 3}),
+                new byte[]{1, 2, 3})
+        );
+    }
+
+    @Test
+    void shouldReadUUIDViaGetter() throws Exception {
+        var rs   = mock(ResultSet.class);
+        var uuid = UUID.randomUUID();
+        when(rs.getObject("col", UUID.class)).thenReturn(uuid);
+
+        var info = (Some) TypeRegistry.info(UUID.class);
+        var result = info.getter().get(rs, "col");
+
+        assertThat(result).isEqualTo(uuid);
+    }
+
+    @Test
+    void shouldReadLocalDateViaGetter() throws Exception {
+        var rs   = mock(ResultSet.class);
+        var date = LocalDate.of(2024, 1, 1);
+        when(rs.getObject("col", LocalDate.class)).thenReturn(date);
+
+        var info = (Some) TypeRegistry.info(LocalDate.class);
+        var result = info.getter().get(rs, "col");
+
+        assertThat(result).isEqualTo(date);
+    }
+
+    @Test
+    void shouldReadLocalDateTimeViaGetter() throws Exception {
+        var rs = mock(ResultSet.class);
+        var dt = LocalDateTime.of(2024, 1, 1, 12, 0);
+        when(rs.getObject("col", LocalDateTime.class)).thenReturn(dt);
+
+        var info = (Some) TypeRegistry.info(LocalDateTime.class);
+        var result = info.getter().get(rs, "col");
+
+        assertThat(result).isEqualTo(dt);
+    }
+
+    @Test
+    void shouldReadInstantViaGetter_derivedFromOffsetDateTime() throws Exception {
+        var rs  = mock(ResultSet.class);
+        var odt = OffsetDateTime.of(2024, 1, 1, 12, 0, 0, 0, ZoneOffset.UTC);
+        when(rs.getObject("col", OffsetDateTime.class)).thenReturn(odt);
+
+        var info = (Some) TypeRegistry.info(Instant.class);
+        var result = info.getter().get(rs, "col");
+
+        assertThat(result).isEqualTo(odt.toInstant());
+    }
+
+    @Test
+    void shouldReadZonedDateTimeViaGetter_derivedFromOffsetDateTime() throws Exception {
+        var rs  = mock(ResultSet.class);
+        var odt = OffsetDateTime.of(2024, 1, 1, 12, 0, 0, 0, ZoneOffset.UTC);
+        when(rs.getObject("col", OffsetDateTime.class)).thenReturn(odt);
+
+        var info = (Some) TypeRegistry.info(ZonedDateTime.class);
+        var result = info.getter().get(rs, "col");
+
+        assertThat(result).isEqualTo(odt.toZonedDateTime());
+    }
+
+    @Test
+    void shouldReadYearViaGetter() throws Exception {
+        var rs = mock(ResultSet.class);
+        when(rs.getInt("col")).thenReturn(2024);
+
+        var info = (Some) TypeRegistry.info(Year.class);
+        var result = info.getter().get(rs, "col");
+
+        assertThat(result).isEqualTo(Year.of(2024));
+    }
+
+    @Test
+    void shouldReadYearMonthViaGetter() throws Exception {
+        var rs = mock(ResultSet.class);
+        when(rs.getString("col")).thenReturn("2024-06");
+
+        var info = (Some) TypeRegistry.info(YearMonth.class);
+        var result = info.getter().get(rs, "col");
+
+        assertThat(result).isEqualTo(YearMonth.of(2024, 6));
+    }
+
+    @Test
+    void shouldReadURIViaGetter() throws Exception {
+        var rs = mock(ResultSet.class);
+        when(rs.getString("col")).thenReturn("https://example.com");
+
+        var info = (Some) TypeRegistry.info(URI.class);
+        var result = info.getter().get(rs, "col");
+
+        assertThat(result).isEqualTo(URI.create("https://example.com"));
+    }
+
+    @Test
+    void shouldReadPathViaGetter() throws Exception {
+        var rs = mock(ResultSet.class);
+        when(rs.getString("col")).thenReturn("/tmp/test");
+
+        var info = (Some) TypeRegistry.info(Path.class);
+        var result = info.getter().get(rs, "col");
+
+        assertThat(result).isEqualTo(Path.of("/tmp/test"));
+    }
+
+    @Test
+    void shouldReadAtomicIntegerViaGetter() throws Exception {
+        var rs = mock(ResultSet.class);
+        when(rs.getInt("col")).thenReturn(7);
+
+        var info = (Some) TypeRegistry.info(AtomicInteger.class);
+        var result = (AtomicInteger) info.getter().get(rs, "col");
+
+        assertThat(result.get()).isEqualTo(7);
+    }
+
+    @Test
+    void shouldReadCharacterViaGetter() throws Exception {
+        var rs = mock(ResultSet.class);
+        when(rs.getString("col")).thenReturn("A");
+
+        var info = (Some) TypeRegistry.info(Character.class);
+        var result = info.getter().get(rs, "col");
+
+        assertThat(result).isEqualTo('A');
+    }
+
+    @Test
+    void shouldReadCharacterViaGetter_emptyString_returnsNull() throws Exception {
+        var rs = mock(ResultSet.class);
+        when(rs.getString("col")).thenReturn("");
+
+        var info = (Some) TypeRegistry.info(Character.class);
+        var result = info.getter().get(rs, "col");
+
+        assertThat(result).isNull();
+    }
+
+    @Test
+    void shouldReadVoidViaGetter_alwaysNull() throws Exception {
+        var rs   = mock(ResultSet.class);
+        var info = (Some) TypeRegistry.info(Void.class);
+
+        var result = info.getter().get(rs, "col");
+
+        assertThat(result).isNull();
+    }
+
+    @ParameterizedTest
     @MethodSource("sqlTypeMappings")
-    void shouldMapToCorrectSQLTypes(Class<?> type, io.github.hacihaciyev.types.SQLType... expected) {
+    void shouldMapToCorrectSQLTypes(Class<?> type, SQLType... expected) {
         var info = (Some) TypeRegistry.info(type);
         assertThat(info.sqlTypes()).contains(expected);
     }
@@ -143,15 +338,15 @@ class TypeRegistryTest {
 
     static Stream<Arguments> sqlTypeMappings() {
         return Stream.of(
-            mapping(int.class, io.github.hacihaciyev.types.SQLType.INT, io.github.hacihaciyev.types.SQLType.INTEGER, io.github.hacihaciyev.types.SQLType.BIGINT),
-            mapping(long.class, io.github.hacihaciyev.types.SQLType.BIGINT, io.github.hacihaciyev.types.SQLType.INT, io.github.hacihaciyev.types.SQLType.INTEGER),
-            mapping(String.class, io.github.hacihaciyev.types.SQLType.VARCHAR, io.github.hacihaciyev.types.SQLType.TEXT, io.github.hacihaciyev.types.SQLType.CHAR),
-            mapping(boolean.class, io.github.hacihaciyev.types.SQLType.BOOLEAN, io.github.hacihaciyev.types.SQLType.BIT),
-            mapping(UUID.class, io.github.hacihaciyev.types.SQLType.UUID, io.github.hacihaciyev.types.SQLType.UNIQUEIDENTIFIER),
-            mapping(LocalDate.class, io.github.hacihaciyev.types.SQLType.DATE),
-            mapping(LocalTime.class, io.github.hacihaciyev.types.SQLType.TIME),
-            mapping(byte[].class, io.github.hacihaciyev.types.SQLType.BINARY, io.github.hacihaciyev.types.SQLType.VARBINARY),
-            mapping(BigDecimal.class, io.github.hacihaciyev.types.SQLType.DECIMAL, io.github.hacihaciyev.types.SQLType.NUMERIC)
+            mapping(int.class, SQLType.INT, SQLType.INTEGER, SQLType.BIGINT),
+            mapping(long.class, SQLType.BIGINT, SQLType.INT, SQLType.INTEGER),
+            mapping(String.class, SQLType.VARCHAR, SQLType.TEXT, SQLType.CHAR),
+            mapping(boolean.class, SQLType.BOOLEAN, SQLType.BIT),
+            mapping(UUID.class, SQLType.UUID, SQLType.UNIQUEIDENTIFIER),
+            mapping(LocalDate.class, SQLType.DATE),
+            mapping(LocalTime.class, SQLType.TIME),
+            mapping(byte[].class, SQLType.BINARY, SQLType.VARBINARY),
+            mapping(BigDecimal.class, SQLType.DECIMAL, SQLType.NUMERIC)
         );
     }
 
@@ -161,10 +356,21 @@ class TypeRegistryTest {
     void shouldConvertEnumToName() throws Exception {
         var stmt = mock(PreparedStatement.class);
         var info = (Some) TypeRegistry.info(TestEnum.class);
-        
+
         info.setter().set(stmt, TestEnum.ACTIVE, 1);
-        
+
         verify(stmt).setString(1, "ACTIVE");
+    }
+
+    @Test
+    void shouldReadEnumNameAsStringViaGetter() throws Exception {
+        var rs = mock(ResultSet.class);
+        when(rs.getString("col")).thenReturn("ACTIVE");
+
+        var info = (Some) TypeRegistry.info(TestEnum.class);
+        var result = info.getter().get(rs, "col");
+
+        assertThat(result).isEqualTo("ACTIVE");
     }
 
     @Test
@@ -234,6 +440,17 @@ class TypeRegistryTest {
     }
 
     @Test
+    void shouldReadAsObjectViaGetter() throws Exception {
+        var rs = mock(ResultSet.class);
+        when(rs.getObject("col")).thenReturn(123);
+
+        var info = (Some) TypeRegistry.info(AsObject.class);
+        var result = info.getter().get(rs, "col");
+
+        assertThat(result).isEqualTo(123);
+    }
+
+    @Test
     void shouldHandleAsString() throws Exception {
         var stmt = mock(PreparedStatement.class);
         var asString = new AsString(42);
@@ -242,6 +459,17 @@ class TypeRegistryTest {
         info.setter().set(stmt, asString, 1);
 
         verify(stmt).setString(1, "42");
+    }
+
+    @Test
+    void shouldReadAsStringViaGetter() throws Exception {
+        var rs = mock(ResultSet.class);
+        when(rs.getString("col")).thenReturn("42");
+
+        var info = (Some) TypeRegistry.info(AsString.class);
+        var result = info.getter().get(rs, "col");
+
+        assertThat(result).isEqualTo("42");
     }
 
     public record UserId(UUID id) {}
@@ -253,24 +481,47 @@ class TypeRegistryTest {
         var stmt = mock(PreparedStatement.class);
         var uuid = UUID.randomUUID();
         var userId = new UserId(uuid);
-        
+
         var info = (TypeInfoOk) TypeRegistry.info(UserId.class);
         info.setter().set(stmt, userId, 1);
-        
+
         verify(stmt).setObject(1, uuid);
+    }
+
+    @Test
+    void shouldConstructSingleValueRecordViaGetter() throws Exception {
+        var rs   = mock(ResultSet.class);
+        var uuid = UUID.randomUUID();
+        when(rs.getObject("col", UUID.class)).thenReturn(uuid);
+
+        var info = (TypeInfoOk) TypeRegistry.info(UserId.class);
+        var result = info.getter().get(rs, "col");
+
+        assertThat(result).isEqualTo(new UserId(uuid));
+    }
+
+    @Test
+    void shouldConstructUserNameViaGetter() throws Exception {
+        var rs = mock(ResultSet.class);
+        when(rs.getString("col")).thenReturn("Alice");
+
+        var info = (TypeInfoOk) TypeRegistry.info(UserName.class);
+        var result = info.getter().get(rs, "col");
+
+        assertThat(result).isEqualTo(new UserName("Alice"));
     }
 
     @Test
     void shouldInheritSQLTypesFromComponent() {
         var recordInfo = (TypeInfoOk) TypeRegistry.info(UserId.class);
-        var uuidInfo = (TypeInfoOk) TypeRegistry.info(UUID.class);
-        
+        var uuidInfo   = (TypeInfoOk) TypeRegistry.info(UUID.class);
+
         assertThat(recordInfo.sqlTypes()).isEqualTo(uuidInfo.sqlTypes());
     }
 
     @Test
     void shouldSuccessfullyUseFactory() {
-        var userId = new UserId(UUID.randomUUID());
+        var userId     = new UserId(UUID.randomUUID());
         var userIdInfo = (WithFactory<UserId>) TypeRegistry.info(UserId.class);
 
         assertDoesNotThrow(() -> userIdInfo.factory().create(userIdInfo.objects(userId)));
@@ -286,10 +537,15 @@ class TypeRegistryTest {
         class NotARecord {}
         assertThat(TypeRegistry.info(NotARecord.class)).isInstanceOf(None.class);
     }
-    
+
     @FunctionalInterface
     interface SetterAssertion {
         void verify(PreparedStatement stmt) throws Exception;
+    }
+
+    @FunctionalInterface
+    interface GetterStub {
+        void stub(ResultSet rs) throws Exception;
     }
 
     static Arguments test(Object value, SetterAssertion assertion) {
@@ -298,5 +554,9 @@ class TypeRegistryTest {
 
     static Arguments mapping(Class<?> type, SQLType... sqlTypes) {
         return Arguments.of(type, sqlTypes);
+    }
+
+    static Arguments getterTest(Class<?> type, GetterStub stub, Object expected) {
+        return Arguments.of(type, stub, expected);
     }
 }
