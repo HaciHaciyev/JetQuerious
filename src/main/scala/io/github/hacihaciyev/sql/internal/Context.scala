@@ -33,6 +33,12 @@ sealed trait Context {
     validate()
 
     protected def validate(): Unit
+
+    def projectionColumns: List[ColumnRef] = {
+        val crefs = mutable.ListBuffer[ColumnRef]()
+        Context.effectiveProjectionNames(refs, sources, crefs)
+        crefs.toList
+    }
 }
 
 trait DQL
