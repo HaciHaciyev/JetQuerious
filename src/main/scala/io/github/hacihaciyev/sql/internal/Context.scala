@@ -34,10 +34,10 @@ sealed trait Context {
 
     protected def validate(): Unit
 
-    def projectionColumns: List[ColumnRef] = {
+    def projectionColumns: java.util.List[ColumnRef] = {
         val crefs = mutable.ListBuffer[ColumnRef]()
         Context.effectiveProjectionNames(refs, sources, crefs)
-        crefs.toList
+        crefs.toList.asJava
     }
 }
 
