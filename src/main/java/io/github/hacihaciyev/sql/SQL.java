@@ -20,16 +20,32 @@ public final class SQL {
         return new ColumnRef.Base(name);
     }
 
+    public static ColumnRef.Base col(String name, Class<?> type) {
+        return new ColumnRef.Base(name, new ColumnRef.Type.Some(type));
+    }
+
     public static ColumnRef.VariableBase col(String table, String name) {
         return new ColumnRef.VariableBase(table, name);
+    }
+
+    public static ColumnRef.VariableBase col(String table, String name, Class<?> type) {
+        return new ColumnRef.VariableBase(table, name, new ColumnRef.Type.Some(type));
     }
 
     public static ColumnRef.Alias colAs(String name, String alias) {
         return new ColumnRef.Alias(name, alias);
     }
 
+    public static ColumnRef.Alias colAs(String name, String alias, Class<?> type) {
+        return new ColumnRef.Alias(name, alias, new ColumnRef.Type.Some(type));
+    }
+
     public static ColumnRef.VariableAlias colAs(String table, String name, String alias) {
         return new ColumnRef.VariableAlias(table, name, alias);
+    }
+
+    public static ColumnRef.VariableAlias colAs(String table, String name, String alias, Class<?> type) {
+        return new ColumnRef.VariableAlias(table, name, alias, new ColumnRef.Type.Some(type));
     }
     
     public static Literal.PlaceholderLiteral param(Class<?> type) {
