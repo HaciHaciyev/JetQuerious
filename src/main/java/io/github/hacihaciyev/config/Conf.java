@@ -12,6 +12,7 @@ import static java.util.Objects.requireNonNull;
 public final class Conf {
     private final String outputDir;
     private final String[] packages;
+    private final String[] repositories;
     private final UUIDStrategy.Type uuidStrategy;
     private final Duration schemaTTLInSeconds;
     private final int schemaCacheSize;
@@ -22,6 +23,7 @@ public final class Conf {
     private Conf() {
         this.outputDir = defOutputDir();
         this.packages = defPackages();
+        this.repositories = defRepositories();
         this.uuidStrategy = defUUIDStrategy();
         this.schemaTTLInSeconds = defSchemaCacheTTL();
         this.schemaCacheSize = defSchemaCacheSize();
@@ -29,6 +31,10 @@ public final class Conf {
 
     public String[] packages() {
         return packages.clone();
+    }
+
+    public String[] repositories() {
+        return repositories.clone();
     }
 
     public UUIDStrategy.Type uuidStrategy() {
@@ -73,6 +79,12 @@ public final class Conf {
     private static String[] defPackages() {
         var pkgs = System.getProperty("jetquerious.packages");
         if (pkgs != null && !pkgs.isBlank()) return pkgs.split(";");
+        return new String[0];
+    }
+
+    private static String[] defRepositories() {
+        var repos = System.getProperty("jetquerious.repositories");
+        if (repos != null && !repos.isBlank()) return repos.split(";");
         return new String[0];
     }
 
