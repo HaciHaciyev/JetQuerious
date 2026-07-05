@@ -1,5 +1,7 @@
 package io.github.hacihaciyev.sql.internal;
 
+import io.github.hacihaciyev.sql.JQ;
+import io.github.hacihaciyev.sql.internal.ContextFactory;
 import io.github.hacihaciyev.sql.expressions.*;
 import io.github.hacihaciyev.sql.expressions.CaseExpr.WhenThen;
 import io.github.hacihaciyev.types.SQLType;
@@ -8,6 +10,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -18,8 +21,17 @@ class ExprTraversalTest {
     private static final ColumnRef.Base COL_C = new ColumnRef.Base("c");
     private static final Literal.IntLiteral ONE = new Literal.IntLiteral(1);
 
+    private static final JQ.Read SELECT_ONE = new JQ.Read(
+        "SELECT 1",
+        ContextFactory.selectContext(
+            List.of(), List.of(), List.of(), Optional.empty(),
+            List.of(), Optional.empty(), List.of(),
+            Optional.empty(), Optional.empty()
+        )
+    );
+
     private static Subquery.Table tableSubquery() {
-        return new Subquery.Table(TestFixtures.stubJqRead());
+        return new Subquery.Table(SELECT_ONE);
     }
 
     @Test
@@ -34,7 +46,7 @@ class ExprTraversalTest {
 
     @Test
     void scalarSubquery_returnsEmpty() {
-        var sub = new Subquery.Scalar(TestFixtures.stubJqRead());
+        var sub = new Subquery.Scalar(SELECT_ONE);
         assertTrue(ExprTraversal.collectCrefs(sub).isEmpty());
     }
 
@@ -418,7 +430,7 @@ class ExprTraversalTest {
 
         @Test
         void scalarSubquery_returnsEmpty() {
-            assertTrue(collect(new Subquery.Scalar(TestFixtures.stubJqRead())).isEmpty());
+            assertTrue(collect(new Subquery.Scalar(SELECT_ONE)).isEmpty());
         }
 
         @Test

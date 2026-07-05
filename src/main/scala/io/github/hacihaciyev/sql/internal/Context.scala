@@ -41,9 +41,9 @@ sealed trait Context {
     }
 }
 
-trait DQL
+sealed trait DQL
 
-trait DML
+sealed trait DML
 
 object Context {
 
