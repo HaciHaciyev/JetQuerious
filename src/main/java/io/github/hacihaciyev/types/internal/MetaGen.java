@@ -2,6 +2,7 @@ package io.github.hacihaciyev.types.internal;
 
 import io.github.hacihaciyev.build_errors.MetaGenException;
 import io.github.hacihaciyev.config.Conf;
+import io.github.hacihaciyev.sql.internal.value_objects.ParamType;
 
 import java.io.IOException;
 import java.lang.classfile.ClassBuilder;
@@ -11,6 +12,7 @@ import java.lang.classfile.ClassModel;
 import java.lang.classfile.ClassTransform;
 import java.lang.classfile.CodeBuilder;
 import java.lang.classfile.CodeModel;
+import java.lang.classfile.FieldModel;
 import java.lang.classfile.MethodModel;
 import java.lang.classfile.attribute.RecordAttribute;
 import java.lang.classfile.attribute.RecordComponentInfo;
@@ -41,6 +43,23 @@ public final class MetaGen {
     static final String FAILED_RESET = "JetQuerious. Failed to reset MetaRegistry. You need to manually clean the bytecode";
 
     static final String INVALID_PACKAGE_DEF = "JetQuerious. Property: jetquerious.packages. Invalid package definition";
+
+    static final String FAILED_TO_INITIALIZE = "JetQuerious. Failed to initialize %s";
+    
+    static final String NO_VARARGS_ARRAY = "no varargs array found at call site";
+    
+    static final String PARAM_COUNT_MISMATCH = "expected %d parameters but call site provides %d";
+    
+    static final String PARAM_TYPE_MISMATCH = "parameter %d expected %s but got %s";
+    
+    static final String INCONSISTENT_STATIC_INIT = """
+            JetQuerious. Class %s constructs %d tracked query object(s) during static initialization, \
+            but only %d are assigned directly to a tracked static field. Every JQ/JQ.Read/JQ.Write built \
+            during class initialization must be assigned directly to a tracked static field, otherwise \
+            build-time parameter verification cannot reliably match query metadata to fields.
+            """;
+
+    static final String PARAM_VERIFICATION_FAILED = "JetQuerious. Parameter verification failed in %s.%s() using field %s.%s: %s";
 
     static final Path META_REGISTRY_BACKUP = Path.of(Conf.INSTANCE.outputDir() + "/io/github/hacihaciyev/types/internal/MetaRegistry.class.backup");
 
@@ -80,6 +99,21 @@ public final class MetaGen {
             )
     );
 
+    static final ClassDesc JQ_DESC = ClassDesc.of("io.github.hacihaciyev.sql.JQ");
+
+    static final ClassDesc JQ_READ_DESC = ClassDesc.of("io.github.hacihaciyev.sql.JQ$Read");
+
+    static final ClassDesc JQ_WRITE_DESC = ClassDesc.of("io.github.hacihaciyev.sql.JQ$Write");
+
+    static final ClassDesc RESULT_SET_EXTRACTOR_DESC = ClassDesc.of("io.github.hacihaciyev.jdbc.ResultSetExtractor");
+
+    static final List<ClassDesc> TARGET_OWNERS = List.of(
+            ClassDesc.of("io.github.hacihaciyev.jdbc.JetQuerious"), ClassDesc.of("io.github.hacihaciyev.jdbc.ReadOperations"),
+            ClassDesc.of("io.github.hacihaciyev.jdbc.WriteOperations"), ClassDesc.of("io.github.hacihaciyev.jdbc.Transactions")
+    );
+
+    record TrackedField(ClassDesc owner, String name, ClassDesc type, List<ParamType> paramTypes) {}
+
     private MetaGen() {}
 
     private record MethodPair(MethodModel metaMethod, MethodModel factoryMethod) {}
@@ -92,6 +126,8 @@ public final class MetaGen {
             var classes = PkgScan.read(pkg);
             for (var type : classes) metaGen(type);
         }
+
+        ParamVerifier.verify(Conf.INSTANCE.repositories());
     }
 
     private static void metaGen(byte[] type) {
@@ -487,6 +523,195 @@ public final class MetaGen {
 
         static MetaGenException invalid(String msg, Exception e) {
             return new MetaGenException(INVALID_PACKAGE_DEF + ": " + msg, e);
+        }
+    }
+
+    private static class ParamVerifier {
+    
+        private ParamVerifier() {}
+
+        static void verify(String[] repositories) {
+            var classModels = new ArrayList<ClassModel>();
+            for (var pkg : repositories) {
+                for (var bytes : PkgScan.read(pkg)) classModels.add(ClassFile.of().parse(bytes));
+            }
+    
+            var tracked = collectTrackedFields(classModels);
+            for (var model : classModels) verifyUsagesInClass(model, tracked);
+        }
+    
+        static List<TrackedField> collectTrackedFields(List<ClassModel> classModels) {
+            var tracked = new ArrayList<TrackedField>();
+    
+            try (var registry = BuildTimeRegistry.open()) {
+                traceModels(registry, classModels, tracked);
+            }
+    
+            return tracked;
+        }
+        
+        static void traceModels(BuildTimeRegistry registry, List<ClassModel> classModels, List<TrackedField> tracked) {
+            var scanLoader = new ScanClassLoader(Thread.currentThread().getContextClassLoader());
+
+            for (var model : classModels) {
+                if (isInaccessible(model)) continue;
+                
+                var owner = model.thisClass().asSymbol();
+        
+                var shouldInit = model.fields().stream().anyMatch(field -> isStatic(field) && isTrackedType(ClassDesc.ofDescriptor(field.fieldType().stringValue())));
+                if (!shouldInit) continue;
+        
+                var fieldWrites = trackedFieldWritesInClinit(model, owner);
+                var sizeBefore = registry.size();
+        
+                initClass(scanLoader, owner, model);
+        
+                var constructed = registry.size() - sizeBefore;
+                if (constructed != fieldWrites.size()) {
+                    throw new MetaGenException(INCONSISTENT_STATIC_INIT.formatted(owner.displayName(), constructed, fieldWrites.size()));
+                }
+        
+                for (var write : fieldWrites) tracked.add(new TrackedField(owner, write.fieldName(), write.fieldType(), registry.next().paramTypes()));
+            }
+        }
+
+        private static final class ScanClassLoader extends ClassLoader {
+            ScanClassLoader(ClassLoader parent) {
+                super(parent);
+            }
+
+            void defineIfAbsent(String binaryName, byte[] bytes) {
+                synchronized (getClassLoadingLock(binaryName)) {
+                    if (findLoadedClass(binaryName) == null) {
+                        defineClass(binaryName, bytes, 0, bytes.length);
+                    }
+                }
+            }
+        }
+    
+        static boolean isStatic(FieldModel field) {
+            return (field.flags().flagsMask() & ClassFile.ACC_STATIC) != 0;
+        }
+    
+        static boolean isTrackedType(ClassDesc fieldType) {
+            return fieldType.equals(JQ_DESC)||fieldType.equals(JQ_READ_DESC)||fieldType.equals(JQ_WRITE_DESC);
+        }
+
+        static List<BytecodeTypeInterpreter.Event.FieldWrite> trackedFieldWritesInClinit(ClassModel model, ClassDesc owner) {
+            var clinit = model.methods().stream()
+                .filter(m -> m.methodName().stringValue().equals("<clinit>"))
+                .findFirst();
+            if (clinit.isEmpty()) return List.of();
+        
+            var code = clinit.get().code();
+            if (code.isEmpty()) return List.of();
+        
+            var events = new BytecodeTypeInterpreter().run(code.get().elementList());
+            var writes = new ArrayList<BytecodeTypeInterpreter.Event.FieldWrite>();
+            
+            for (var event : events) {
+                if (event instanceof BytecodeTypeInterpreter.Event.FieldWrite fw && fw.owner().equals(owner) && isTrackedType(fw.fieldType())) writes.add(fw);
+            }
+            return writes;
+        }
+        
+        static void initClass(ScanClassLoader scanLoader, ClassDesc owner, ClassModel model) {
+            var binaryName = owner.descriptorString()
+                .substring(1, owner.descriptorString().length() - 1)
+                .replace('/', '.');
+            try {
+                var bytes = ClassFile.of().transformClass(model, ClassTransform.ACCEPT_ALL);
+                scanLoader.defineIfAbsent(binaryName, bytes);
+                Class.forName(binaryName, true, scanLoader);
+            } catch (ClassNotFoundException | LinkageError e) {
+                throw new MetaGenException(FAILED_TO_INITIALIZE.formatted(owner.displayName()), e);
+            }
+        }
+    
+        static void verifyUsagesInClass(ClassModel model, List<TrackedField> tracked) {
+            for (var method : model.methods()) {
+                var code = method.code();
+    
+                if (code.isEmpty()) continue;
+    
+                var interpreter = new BytecodeTypeInterpreter();
+                var events = interpreter.run(code.get().elementList());
+    
+                for (var event : events) {
+                    if (event instanceof BytecodeTypeInterpreter.Event.MethodCall call) verifyCall(call, tracked, model, method);
+                }
+            }
+        }
+        
+        static void verifyCall(BytecodeTypeInterpreter.Event.MethodCall call, List<TrackedField> tracked, ClassModel callerClass, MethodModel callerMethod) {
+            if (!isTargetOwner(call.owner())) return;
+            if (call.arguments().isEmpty()) return;
+        
+            var field = trackedFieldOf(call.arguments().get(0), tracked);
+            if (field == null) return;
+            
+            if (field.type().equals(RESULT_SET_EXTRACTOR_DESC)) return;
+        
+            var varargs = lastArrayArgument(call.arguments());
+            if (varargs == null) {
+                reportMismatch(callerClass, callerMethod, field, NO_VARARGS_ARRAY);
+                return;
+            }
+        
+            verifyArgsAgainstParamTypes(callerClass, callerMethod, field, varargs);
+        }
+    
+        static boolean isTargetOwner(ClassDesc owner) {
+            return TARGET_OWNERS.stream().anyMatch(owner::equals);
+        }
+    
+        static TrackedField trackedFieldOf(SymbolicType arg, List<TrackedField> tracked) {
+            if (!(arg instanceof SymbolicType.FromField(var owner, var name, var _))) return null;
+    
+            for (var field : tracked) {
+                if (field.owner().equals(owner) && field.name().equals(name)) return field;
+            }
+    
+            return null;
+        }
+    
+        static SymbolicType.ArrayBuild lastArrayArgument(List<SymbolicType> arguments) {
+            for (int i = arguments.size() - 1; i >= 0; i--) {
+                if (arguments.get(i) instanceof SymbolicType.ArrayBuild build) return build;
+            }
+    
+            return null;
+        }
+    
+        static void verifyArgsAgainstParamTypes(ClassModel callerClass, MethodModel callerMethod, TrackedField field, SymbolicType.ArrayBuild varargs) {
+            var expected = field.paramTypes();
+            var actual = varargs.elements();
+        
+            if (actual.length != expected.size()) {
+                reportMismatch(callerClass, callerMethod, field, PARAM_COUNT_MISMATCH.formatted(expected.size(), actual.length));
+                return;
+            }
+        
+            for (int i = 0; i < expected.size(); i++) verifySingleArg(callerClass, callerMethod, field, expected.get(i), actual[i], i);
+        }
+        
+        static void verifySingleArg(ClassModel callerClass, MethodModel callerMethod, TrackedField field, ParamType expected, SymbolicType actual, int index) {
+            if (actual instanceof SymbolicType.Unknown) return;
+        
+            var expectedDesc = ClassDesc.of(expected._type().getName());
+            if (!actual.type().equals(expectedDesc)) {
+                reportMismatch(callerClass, callerMethod, field, PARAM_TYPE_MISMATCH.formatted(index, expected._type().getName(), actual.type().displayName()));
+            }
+        }
+        
+        static void reportMismatch(ClassModel callerClass, MethodModel callerMethod, TrackedField field, String reason) {
+            throw new MetaGenException(PARAM_VERIFICATION_FAILED.formatted(
+                callerClass.thisClass().asSymbol().displayName(),
+                callerMethod.methodName().stringValue(),
+                field.owner().displayName(),
+                field.name(),
+                reason
+            ));
         }
     }
 }
