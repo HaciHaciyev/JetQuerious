@@ -171,6 +171,16 @@ class ParamVerifierTest {
                 assertEquals(0, registry.size());
             }
         }
+
+        @Test
+        void differentThread_doesNotSeeOpenRegistry() throws Exception {
+            try (var registry = BuildTimeRegistry.open()) {
+                var thread = new Thread(() -> select(col("id")).from("users").build());
+                thread.start();
+                thread.join();
+                assertTrue(registry.isEmpty());
+            }
+        }
     }
 
     @Nested
@@ -377,6 +387,42 @@ class ParamVerifierTest {
             List<?> result   = invoke(PARAM_VERIFIER, "collectTrackedFields", List.of(correctModel, innerModel));
             assertEquals(3, result.size());
         }
+
+        @Test
+        void classAlreadyInitializedElsewhere_stillTracksCorrectly() throws Exception {
+            var alreadyInitialized = CorrectRepo.INSERT;
+            var model  = parseClass(CorrectRepo.class);
+            List<?> result = invoke(PARAM_VERIFIER, "collectTrackedFields", List.of(model));
+            assertEquals(3, result.size());
+        }
+
+        @Test
+        void aliasedField_throwsInconsistentStaticInit() throws Exception {
+            var model = parseClass(AliasedFieldsRepo.class);
+            assertThrows(MetaGenException.class,
+                () -> invoke(PARAM_VERIFIER, "collectTrackedFields", List.of(model)));
+        }
+
+        @Test
+        void arrayOfTrackedType_notRecognized_returnsEmpty() throws Exception {
+            var model = parseClass(ArrayOfQueriesRepo.class);
+            List<?> result = invoke(PARAM_VERIFIER, "collectTrackedFields", List.of(model));
+            assertTrue(result.isEmpty());
+        }
+
+        @Test
+        void conditionalBranchAssignment_stillTracksSingleField() throws Exception {
+            var model = parseClass(ConditionalFieldRepo.class);
+            List<?> result = invoke(PARAM_VERIFIER, "collectTrackedFields", List.of(model));
+            assertEquals(1, result.size());
+        }
+
+        @Test
+        void discardedConstruction_throwsInconsistentStaticInit() throws Exception {
+            var model = parseClass(UnassignedConstructionRepo.class);
+            assertThrows(MetaGenException.class,
+                () -> invoke(PARAM_VERIFIER, "collectTrackedFields", List.of(model)));
+        }
     }
 
     @Nested
@@ -441,6 +487,30 @@ class ParamVerifierTest {
         void emptyTrackedList_anyCallerPasses() throws Exception {
             var model = parseClass(WrongParamCountCaller.class);
             assertDoesNotThrow(() -> invoke(PARAM_VERIFIER, "verifyUsagesInClass", model, List.of()));
+        }
+
+        @Test
+        void callerWithTooManyParams_throws() throws Exception {
+            var tracked = trackedFieldsFor(CorrectRepo.class);
+            var model   = parseClass(TooManyParamsCaller.class);
+            var ex = assertThrows(MetaGenException.class,
+                () -> invoke(PARAM_VERIFIER, "verifyUsagesInClass", model, tracked));
+            assertTrue(ex.getMessage().contains("DELETE"));
+        }
+
+        @Test
+        void nullParam_throwsTypeMismatch() throws Exception {
+            var tracked = trackedFieldsFor(CorrectRepo.class);
+            var model   = parseClass(NullParamCaller.class);
+            assertThrows(MetaGenException.class,
+                () -> invoke(PARAM_VERIFIER, "verifyUsagesInClass", model, tracked));
+        }
+
+        @Test
+        void indirectFieldAccess_silentlyPasses_knownLimitation() throws Exception {
+            var tracked = trackedFieldsFor(CorrectRepo.class);
+            var model   = parseClass(IndirectFieldAccessCaller.class);
+            assertDoesNotThrow(() -> invoke(PARAM_VERIFIER, "verifyUsagesInClass", model, tracked));
         }
     }
 
