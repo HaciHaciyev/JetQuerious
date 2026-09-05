@@ -49,6 +49,10 @@ public final class Conf {
         return schemaCacheSize;
     }
 
+    public String[] metaGenIgnore() {
+        return defMetaGenIgnore();
+    }
+
     public Optional<DataSource> dataSource() {
         return Optional.ofNullable(dataSourceRef.get());
     }
@@ -106,5 +110,11 @@ public final class Conf {
         } catch (Exception _) {
             return 128;
         }
+    }
+
+    private static String[] defMetaGenIgnore() {
+        var ignores = System.getProperty("jetquerious.metagen.ignore");
+        if (ignores != null && !ignores.isBlank()) return ignores.split(";");
+        return new String[0];
     }
 }

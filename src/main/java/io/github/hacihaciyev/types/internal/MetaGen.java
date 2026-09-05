@@ -59,6 +59,13 @@ public final class MetaGen {
             build-time parameter verification cannot reliably match query metadata to fields.
             """;
 
+    static final String UNSAFE_STATIC_INIT = """
+            JetQuerious. Class %s is not safe for MetaGen initialization. Static initialization must not alias \
+            tracked query fields and must not build tracked queries outside direct tracked static field assignment.
+            """;
+
+    static final String IGNORED_FIELD_USAGE = "JetQuerious. Parameter verification failed in %s.%s() using field %s.%s: field comes from a MetaGen-ignored class and cannot be verified";
+
     static final String PARAM_VERIFICATION_FAILED = "JetQuerious. Parameter verification failed in %s.%s() using field %s.%s: %s";
 
     static final Path META_REGISTRY_BACKUP = Path.of(Conf.INSTANCE.outputDir() + "/io/github/hacihaciyev/types/internal/MetaRegistry.class.backup");
@@ -537,7 +544,8 @@ public final class MetaGen {
             }
     
             var tracked = collectTrackedFields(classModels);
-            for (var model : classModels) verifyUsagesInClass(model, tracked);
+            var ignoredOwners = ignoredTrackedOwners(classModels);
+            for (var model : classModels) verifyUsagesInClass(model, tracked, ignoredOwners);
         }
     
         static List<TrackedField> collectTrackedFields(List<ClassModel> classModels) {
@@ -560,6 +568,8 @@ public final class MetaGen {
         
                 var shouldInit = model.fields().stream().anyMatch(field -> isStatic(field) && isTrackedType(ClassDesc.ofDescriptor(field.fieldType().stringValue())));
                 if (!shouldInit) continue;
+                if (isIgnored(owner)) continue;
+                if (!isSafeForInitialization(model, owner)) throw new MetaGenException(UNSAFE_STATIC_INIT.formatted(owner.displayName()));
         
                 var fieldWrites = trackedFieldWritesInClinit(model, owner);
                 var sizeBefore = registry.size();
@@ -614,7 +624,52 @@ public final class MetaGen {
             }
             return writes;
         }
-        
+
+        static boolean isSafeForInitialization(ClassModel model, ClassDesc owner) {
+            var clinit = model.methods().stream()
+                .filter(m -> m.methodName().stringValue().equals("<clinit>"))
+                .findFirst();
+            if (clinit.isEmpty()) return true;
+
+            var code = clinit.get().code();
+            if (code.isEmpty()) return true;
+
+            var events = new BytecodeTypeInterpreter().run(code.get().elementList());
+
+            for (var event : events) {
+                if (event instanceof BytecodeTypeInterpreter.Event.FieldRead fr
+                    && fr.owner().equals(owner)
+                    && isTrackedType(fr.fieldType())) {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        static boolean isIgnored(ClassDesc owner) {
+            var binaryName = owner.descriptorString()
+                .substring(1, owner.descriptorString().length() - 1)
+                .replace('/', '.');
+            var simpleName = owner.displayName();
+            for (var entry : Conf.INSTANCE.metaGenIgnore()) {
+                var candidate = entry.trim();
+                if (!candidate.isEmpty() && (candidate.equals(binaryName) || candidate.equals(simpleName))) return true;
+            }
+            return false;
+        }
+
+        static java.util.Set<ClassDesc> ignoredTrackedOwners(List<ClassModel> classModels) {
+            var ignored = new java.util.HashSet<ClassDesc>();
+            for (var model : classModels) {
+                var owner = model.thisClass().asSymbol();
+                if (!isIgnored(owner)) continue;
+                var hasTrackedFields = model.fields().stream().anyMatch(field -> isStatic(field) && isTrackedType(ClassDesc.ofDescriptor(field.fieldType().stringValue())));
+                if (hasTrackedFields) ignored.add(owner);
+            }
+            return ignored;
+        }
+
         static void initClass(ScanClassLoader scanLoader, ClassDesc owner, ClassModel model) {
             var binaryName = owner.descriptorString()
                 .substring(1, owner.descriptorString().length() - 1)
@@ -629,6 +684,10 @@ public final class MetaGen {
         }
     
         static void verifyUsagesInClass(ClassModel model, List<TrackedField> tracked) {
+            verifyUsagesInClass(model, tracked, java.util.Set.of());
+        }
+
+        static void verifyUsagesInClass(ClassModel model, List<TrackedField> tracked, java.util.Set<ClassDesc> ignoredOwners) {
             for (var method : model.methods()) {
                 var code = method.code();
     
@@ -638,15 +697,25 @@ public final class MetaGen {
                 var events = interpreter.run(code.get().elementList());
     
                 for (var event : events) {
-                    if (event instanceof BytecodeTypeInterpreter.Event.MethodCall call) verifyCall(call, tracked, model, method);
+                    if (event instanceof BytecodeTypeInterpreter.Event.MethodCall call) verifyCall(call, tracked, ignoredOwners, model, method);
                 }
             }
         }
         
-        static void verifyCall(BytecodeTypeInterpreter.Event.MethodCall call, List<TrackedField> tracked, ClassModel callerClass, MethodModel callerMethod) {
+        static void verifyCall(BytecodeTypeInterpreter.Event.MethodCall call, List<TrackedField> tracked, java.util.Set<ClassDesc> ignoredOwners, ClassModel callerClass, MethodModel callerMethod) {
             if (!isTargetOwner(call.owner())) return;
             if (call.arguments().isEmpty()) return;
         
+            var sourceField = sourceFieldOf(call.arguments().get(0));
+            if (sourceField != null && ignoredOwners.contains(sourceField.owner())) {
+                throw new MetaGenException(IGNORED_FIELD_USAGE.formatted(
+                    callerClass.thisClass().asSymbol().displayName(),
+                    callerMethod.methodName().stringValue(),
+                    sourceField.owner().displayName(),
+                    sourceField.fieldName()
+                ));
+            }
+
             var field = trackedFieldOf(call.arguments().get(0), tracked);
             if (field == null) return;
             
@@ -675,6 +744,13 @@ public final class MetaGen {
             return null;
         }
     
+        static BytecodeTypeInterpreter.Event.FieldRead sourceFieldOf(SymbolicType arg) {
+            if (arg instanceof SymbolicType.FromField(var owner, var name, var type)) {
+                return new BytecodeTypeInterpreter.Event.FieldRead(owner, name, type);
+            }
+            return null;
+        }
+
         static SymbolicType.ArrayBuild lastArrayArgument(List<SymbolicType> arguments) {
             for (int i = arguments.size() - 1; i >= 0; i--) {
                 if (arguments.get(i) instanceof SymbolicType.ArrayBuild build) return build;
