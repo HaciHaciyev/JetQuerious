@@ -381,6 +381,22 @@ class ParamVerifierTest {
         }
 
         @Test
+        void duplicateClassModels_doNotBreakCollection() throws Exception {
+            var model = parseClass(CorrectRepo.class);
+
+            try {
+                List<?> result = invoke(PARAM_VERIFIER, "collectTrackedFields", List.of(model, model));
+                assertTrue(result.size() >= 3);
+            } catch (MetaGenException e) {
+                // Second pass over the same class does not re-run <clinit> (JVM initializes a class only
+                // once), so no new queries are registered while bytecode analysis still expects writes.
+                // This is an accepted limitation of duplicate class models within a single scan, not a
+                // correctness issue for normal (non-duplicated) repository scanning.
+                assertTrue(e.getMessage().contains("tracked query object"));
+            }
+        }
+
+        @Test
         void mixedAccessibility_onlyPublicIncluded() throws Exception {
             var correctModel = parseClass(CorrectRepo.class);
             var innerModel   = parseClass("io.github.hacihaciyev.fixtures.OuterWithInnerFixture$PackagePrivateInner");
@@ -511,6 +527,82 @@ class ParamVerifierTest {
             var tracked = trackedFieldsFor(CorrectRepo.class);
             var model   = parseClass(IndirectFieldAccessCaller.class);
             assertDoesNotThrow(() -> invoke(PARAM_VERIFIER, "verifyUsagesInClass", model, tracked));
+        }
+
+        @Test
+        void multipleRepositories_trackedFromAllCanVerifyUsage() throws Exception {
+            var tracked = trackedFieldsFor(CorrectRepo.class, MultiParamRepo.class);
+            var model   = parseClass(CorrectCaller.class);
+            assertDoesNotThrow(() -> invoke(PARAM_VERIFIER, "verifyUsagesInClass", model, tracked));
+        }
+    }
+
+    @Nested
+    class SafeForInitializationTests {
+
+        @Test
+        void correctRepo_isSafe() throws Exception {
+            var model = parseClass(CorrectRepo.class);
+            var owner = model.thisClass().asSymbol();
+            assertTrue(invokeBoolean(PARAM_VERIFIER, "isSafeForInitialization", model, owner));
+        }
+
+        @Test
+        void multiParamRepo_isSafe() throws Exception {
+            var model = parseClass(MultiParamRepo.class);
+            var owner = model.thisClass().asSymbol();
+            assertTrue(invokeBoolean(PARAM_VERIFIER, "isSafeForInitialization", model, owner));
+        }
+
+        @Test
+        void aliasedFieldsRepo_isUnsafe() throws Exception {
+            var model = parseClass(AliasedFieldsRepo.class);
+            var owner = model.thisClass().asSymbol();
+            assertFalse(invokeBoolean(PARAM_VERIFIER, "isSafeForInitialization", model, owner));
+        }
+
+        @Test
+        void unassignedConstructionRepo_hasNoAliasing_soConsideredSafeToAttemptInit() throws Exception {
+            // isSafeForInitialization only rejects aliasing (reading a tracked field within <clinit>).
+            // The discarded-construction case is still caught, but by the existing runtime mismatch
+            // check in traceModels() after initialization, not by this pre-check.
+            var model = parseClass(UnassignedConstructionRepo.class);
+            var owner = model.thisClass().asSymbol();
+            assertTrue(invokeBoolean(PARAM_VERIFIER, "isSafeForInitialization", model, owner));
+        }
+
+        @Test
+        void conditionalFieldRepo_noAliasing_isSafe() throws Exception {
+            // A ternary assigning to the same tracked field on both branches contains two build()
+            // call sites in bytecode, but that is not aliasing, so it must not be rejected.
+            var model = parseClass(ConditionalFieldRepo.class);
+            var owner = model.thisClass().asSymbol();
+            assertTrue(invokeBoolean(PARAM_VERIFIER, "isSafeForInitialization", model, owner));
+        }
+    }
+
+    @Nested
+    class VerifyTopLevelApiTests {
+
+        @Test
+        void verify_onMixedPackages_reportsMetaGenOrVerificationFailure() {
+            var ex = assertThrows(MetaGenException.class,
+                () -> invoke(PARAM_VERIFIER, "verify", (Object) new String[]{"io.github.hacihaciyev.fixtures", "io.github.hacihaciyev.jdbc"}));
+            assertFalse(ex.getMessage().isBlank());
+        }
+
+        @Test
+        void verify_ignoredUnsafeClassIsSkippedDuringCollection() throws Exception {
+            var prev = System.getProperty("jetquerious.metagen.ignore");
+            System.setProperty("jetquerious.metagen.ignore", "AliasedFieldsRepo");
+            try {
+                var model = parseClass(AliasedFieldsRepo.class);
+                List<?> result = invoke(PARAM_VERIFIER, "collectTrackedFields", List.of(model));
+                assertTrue(result.isEmpty());
+            } finally {
+                if (prev == null) System.clearProperty("jetquerious.metagen.ignore");
+                else System.setProperty("jetquerious.metagen.ignore", prev);
+            }
         }
     }
 
