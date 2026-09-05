@@ -10,10 +10,8 @@ import io.github.hacihaciyev.util.Result;
 
 import javax.sql.DataSource;
 import java.sql.Connection;
-import java.sql.Savepoint;
 import java.sql.SQLException;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 
 import static java.util.Objects.requireNonNull;
@@ -50,25 +48,33 @@ public final class BoundTransaction {
             return new Err<>(new IllegalArgumentException("Expected " + needed + " bind() calls but got " + bindings.size()));
         }
 
-        Connection conn           = null;
-        boolean    prevAutoCommit = true;
-        
+        Connection conn            = null;
+        boolean    prevAutoCommit  = true;
+        int        prevIsolation   = Connection.TRANSACTION_NONE;
+        boolean    isolationChanged = false;
+
         try {
             conn           = ds.getConnection();
             prevAutoCommit = conn.getAutoCommit();
+            prevIsolation  = conn.getTransactionIsolation();
             conn.setAutoCommit(false);
 
-            if (tx.isolationLevel() != Transaction.IsolationLevel.DEFAULT) conn.setTransactionIsolation(isolationLevel(tx.isolationLevel()));
+            if (tx.isolationLevel() != Transaction.IsolationLevel.DEFAULT) {
+                conn.setTransactionIsolation(isolationLevel(tx.isolationLevel()));
+                isolationChanged = true;
+            }
 
             var results = run(conn, ops);
             conn.commit();
-            conn.setAutoCommit(prevAutoCommit);
+            restoreConnectionState(conn, prevAutoCommit, prevIsolation, isolationChanged);
             return new Ok<>(results);
         } catch (SQLException e) {
-            rollback(conn, prevAutoCommit);
+            rollback(conn);
+            restoreConnectionState(conn, prevAutoCommit, prevIsolation, isolationChanged);
             return SQLErrorTranslation.handleSQLException(e);
         } catch (IllegalArgumentException e) {
-            rollback(conn, prevAutoCommit);
+            rollback(conn);
+            restoreConnectionState(conn, prevAutoCommit, prevIsolation, isolationChanged);
             return new Err<>(e);
         } finally {
             closeQuietly(conn);
@@ -76,15 +82,12 @@ public final class BoundTransaction {
     }
 
     private int[] run(Connection conn, JQ[] ops) throws SQLException {
-        var results    = new int[ops.length];
-        var savepts    = tx.savepoints();
-        var bindIdx    = 0;
-        var jdbcSpts   = new HashMap<String, Savepoint>();
+        var results = new int[ops.length];
+        var savepts = tx.savepoints();
+        var bindIdx = 0;
 
         for (int i = 0; i < ops.length; i++) {
-            for (var sp : savepts) {
-                if (sp.position() == i) jdbcSpts.put(sp.name(), conn.setSavepoint(sp.name()));
-            }
+            createSavepointsAt(conn, savepts, i);
 
             var op    = ops[i];
             var types = StatementBinder.paramTypes(op);
@@ -93,10 +96,7 @@ public final class BoundTransaction {
             results[i] = executeOp(conn, op, args);
         }
 
-        for (var sp : savepts) {
-            if (sp.position() == ops.length) jdbcSpts.put(sp.name(), conn.setSavepoint(sp.name()));
-        }
-
+        createSavepointsAt(conn, savepts, ops.length);
         return results;
     }
 
@@ -124,13 +124,29 @@ public final class BoundTransaction {
         return count;
     }
 
-    private static void rollback(Connection conn, boolean prevAutoCommit) {
+    private static void createSavepointsAt(Connection conn, Transaction.Savepoint[] savepoints, int position) throws SQLException {
+        for (var sp : savepoints) {
+            if (sp.position() == position) conn.setSavepoint(sp.name());
+        }
+    }
+
+    private static void rollback(Connection conn) {
         if (conn == null) return;
 
-        try { 
+        try {
             conn.rollback();
         } catch (SQLException _) {}
-       
+    }
+
+    private static void restoreConnectionState(Connection conn, boolean prevAutoCommit, int prevIsolation, boolean isolationChanged) {
+        if (conn == null) return;
+
+        if (isolationChanged) {
+            try {
+                conn.setTransactionIsolation(prevIsolation);
+            } catch (SQLException _) {}
+        }
+
         try {
             conn.setAutoCommit(prevAutoCommit);
         } catch (SQLException _) {}
