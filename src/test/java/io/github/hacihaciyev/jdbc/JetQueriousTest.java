@@ -15,6 +15,16 @@ import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicLong;
 
+import io.github.hacihaciyev.sql.builders.CTEBuilder;
+import io.github.hacihaciyev.sql.builders.DeleteBuilder;
+import io.github.hacihaciyev.sql.builders.SelectBuilder;
+import io.github.hacihaciyev.sql.builders.UnionBuilder;
+import io.github.hacihaciyev.sql.expressions.InExpr;
+import io.github.hacihaciyev.sql.expressions.Subquery;
+import io.github.hacihaciyev.sql.internal.Context;
+import io.github.hacihaciyev.sql.value_objects.TableRef;
+import io.github.hacihaciyev.sql.value_objects.UnionType;
+
 import static io.github.hacihaciyev.sql.SQL.*;
 import static io.github.hacihaciyev.sql.QueryForge.*;
 import static org.junit.jupiter.api.Assertions.*;
@@ -130,15 +140,23 @@ class JetQueriousTest {
 
     record UserRow(long id, String name, String email, boolean active) {}
     record UserPartial(long id, String name, String email) {}
+    record IdName(long id, String name) {}
 
     private static ResultSetExtractor<Long>        longId()      { return rs -> rs.getLong("id"); }
     private static ResultSetExtractor<BigDecimal>  decimal()     { return rs -> rs.getBigDecimal("total"); }
     private static ResultSetExtractor<UserRow>     userRow()     { return rs -> new UserRow(rs.getLong("id"), rs.getString("name"), rs.getString("email"), rs.getBoolean("active")); }
     private static ResultSetExtractor<UserPartial> userPartial() { return rs -> new UserPartial(rs.getLong("id"), rs.getString("name"), rs.getString("email")); }
+    private static ResultSetExtractor<IdName>      idName()      { return rs -> new IdName(rs.getLong("id"), rs.getString("name")); }
 
     private long insertTestUser(String name, String email) {
         var id = nextId();
         jq.write(insertUser(), id, name, email, true);
+        return id;
+    }
+
+    private long insertTestUser(String name, String email, boolean active) {
+        var id = nextId();
+        jq.write(insertUser(), id, name, email, active);
         return id;
     }
 
@@ -788,6 +806,533 @@ class JetQueriousTest {
             assertInstanceOf(Ok.class, result);
             assertTrue(result.isOk());
             assertTrue(result instanceof Ok(var value) && value.isEmpty());
+        }
+    }
+
+    @Nested
+    class UnionQueries {
+
+        private static JQ.Read activeUsers() {
+            return select(col("id"), col("name"))
+                .from("users")
+                .where(eq(col("active"), param(Boolean.class)))
+                .build();
+        }
+
+        private static JQ.Read usersByEmail() {
+            return select(col("id"), col("name"))
+                .from("users")
+                .where(eq(col("email"), param(String.class)))
+                .build();
+        }
+
+        @Test
+        void twoParameterizedQueries_bindInAddedOrder() {
+            insertTestUser("Priya", "priya@example.com", true);
+            insertTestUser("Omar", "omar@example.com", false);
+
+            var union = new UnionBuilder(UnionType.UNION, activeUsers(), usersByEmail()).build();
+
+            var result = jq.many(union, idName(), true, "omar@example.com");
+
+            assertInstanceOf(Ok.class, result);
+            var rows = result.or(List.of());
+            assertEquals(2, rows.size());
+            assertTrue(rows.stream().anyMatch(r -> r.name().equals("Priya")));
+            assertTrue(rows.stream().anyMatch(r -> r.name().equals("Omar")));
+        }
+
+        @Test
+        void wrongParamOrder_returnsErrOrEmpty() {
+            insertTestUser("Sana", "sana@example.com", true);
+
+            var union = new UnionBuilder(UnionType.UNION, activeUsers(), usersByEmail()).build();
+
+            var result = jq.many(union, rs -> "success", "sana@example.com", true);
+
+            assertTrue(result instanceof Err<?, ?> || result.or(List.of()).isEmpty());
+        }
+
+        @Test
+        void threeQueries_allParamsBindSequentially() {
+            var userId = insertTestUser("Leo", "leo@example.com", true);
+            insertTestOrder(userId, new BigDecimal("500.00"));
+
+            var union = new UnionBuilder(UnionType.UNION, activeUsers(), usersByEmail())
+                .add(select(col("id"), col("status")).from("orders")
+                    .where(eq(col("status"), param(String.class)))
+                    .build())
+                .build();
+
+            var result = jq.many(union, longId(), true, "nobody@example.com", "pending");
+
+            assertInstanceOf(Ok.class, result);
+            assertFalse(result.or(List.of()).isEmpty());
+        }
+
+        @Test
+        void unionAll_withDuplicateParamsAcrossQueries_bothBind() {
+            insertTestUser("Won", "won@example.com", true);
+
+            var union = new UnionBuilder(UnionType.UNION_ALL, activeUsers(), activeUsers()).build();
+
+            var result = jq.many(union, idName(), true, true);
+
+            assertInstanceOf(Ok.class, result);
+            assertEquals(2, result.or(List.of()).size());
+        }
+
+        @Test
+        void missingOneParam_returnsErr() {
+            var union = new UnionBuilder(UnionType.UNION, activeUsers(), usersByEmail()).build();
+
+            var result = jq.many(union, idName(), true);
+
+            assertInstanceOf(Err.class, result);
+        }
+
+        @Test
+        void extraParam_returnsErr() {
+            insertTestUser("Tao", "tao@example.com", true);
+
+            var union = new UnionBuilder(UnionType.UNION, activeUsers(), usersByEmail()).build();
+
+            var result = jq.many(union, idName(), true, "tao@example.com", "extra");
+
+            assertInstanceOf(Err.class, result);
+        }
+
+        @Test
+        void unionInsideTransaction_bindsCorrectly() {
+            insertTestUser("Rene", "rene@example.com", true);
+
+            var union = new UnionBuilder(UnionType.UNION, activeUsers(), usersByEmail()).build();
+
+            var tx = transaction().add(union).build();
+
+            var result = jq.transaction(tx)
+                .bind(true, "nobody@example.com")
+                .execute();
+
+            assertInstanceOf(Ok.class, result);
+        }
+    }
+
+    @Nested
+    class CTEQueries {
+
+        private static JQ.Read allUsers() {
+            return select(col("id"), col("name")).from("users").build();
+        }
+
+        private static JQ.Read activeUsersOnly() {
+            return select(col("id"), col("name"))
+                .from("users")
+                .where(eq(col("active"), param(Boolean.class)))
+                .build();
+        }
+
+        private static JQ.Read usersByEmailOnly() {
+            return select(col("id"), col("name"))
+                .from("users")
+                .where(eq(col("email"), param(String.class)))
+                .build();
+        }
+
+        private static JQ.Read finalSelectById() {
+            return select(col("id"), col("name"))
+                .from("users")
+                .where(eq(col("id"), param(Long.class)))
+                .build();
+        }
+
+        @Test
+        void parameterFreeCte_finalQueryParamsBindCorrectly() {
+            var id = insertTestUser("Petra", "petra@example.com");
+
+            var cte = new CTEBuilder("all_users", allUsers())
+                .build(finalSelectById());
+
+            var result = jq.many(cte, idName(), id);
+
+            assertInstanceOf(Ok.class, result);
+            assertEquals(1, result.or(List.of()).size());
+        }
+
+        @Test
+        void parameterizedWithQuery_bothParamsBindInOrder() {
+            insertTestUser("Ravi", "ravi@example.com", true);
+            var targetId = insertTestUser("Suki", "suki@example.com", true);
+
+            var cte = new CTEBuilder("active_only", activeUsersOnly())
+                .build(finalSelectById());
+
+            var result = jq.many(cte, idName(), true, targetId);
+
+            assertInstanceOf(Ok.class, result);
+            assertEquals(1, result.or(List.of()).size());
+            assertEquals("Suki", result.or(List.of()).get(0).name());
+        }
+
+        @Test
+        void parameterizedWithQuery_wrongParamCount_returnsErr() {
+            insertTestUser("Ito", "ito@example.com", true);
+
+            var cte = new CTEBuilder("active_only", activeUsersOnly())
+                .build(finalSelectById());
+
+            var result = jq.many(cte, idName(), true);
+
+            assertInstanceOf(Err.class, result);
+        }
+
+        @Test
+        void parameterizedWithQuery_paramsInWrongOrder_returnsErrOrEmpty() {
+            var id = insertTestUser("Nadia", "nadia@example.com", true);
+
+            var cte = new CTEBuilder("active_only", activeUsersOnly())
+                .build(finalSelectById());
+
+            var result = jq.many(cte, idName(), id, true);
+
+            assertTrue(result instanceof Err<?, ?> || result.or(List.of()).isEmpty());
+        }
+
+        @Test
+        void multipleParameterizedWithEntries_allParamsBindInDeclarationOrder() {
+            var id = insertTestUser("Omar", "omar@example.com", true);
+
+            var cte = new CTEBuilder("active_only", activeUsersOnly())
+                .with("by_email", usersByEmailOnly())
+                .build(finalSelectById());
+
+            var result = jq.many(cte, idName(), true, "nobody@example.com", id);
+
+            assertInstanceOf(Ok.class, result);
+        }
+
+        @Test
+        void recursiveCte_finalQueryParamsBind() {
+            var id = insertTestUser("Noor", "noor@example.com");
+
+            var cte = new CTEBuilder("tree", allUsers())
+                .withRecursive("subtree", allUsers(), allUsers())
+                .build(finalSelectById());
+
+            var result = jq.many(cte, idName(), id);
+
+            assertInstanceOf(Ok.class, result);
+        }
+
+        @Test
+        void recursiveCte_baseAndRecursiveParamsBindBeforeFinal() {
+            var id = insertTestUser("Kofi", "kofi@example.com", true);
+
+            var cte = new CTEBuilder("seed", allUsers())
+                .withRecursive("tree", activeUsersOnly(), usersByEmailOnly())
+                .build(finalSelectById());
+
+            var result = jq.many(cte, idName(), true, "nobody@example.com", id);
+
+            assertInstanceOf(Ok.class, result);
+        }
+
+        @Test
+        void writeFinalQuery_withQueryParams_precedeFinalParams() {
+            var id = insertTestUser("Zara", "zara@example.com", true);
+
+            var finalDelete = new DeleteBuilder("users")
+                .where(eq(col("id"), param(Long.class)))
+                .build();
+
+            var cte = new CTEBuilder("active_only", activeUsersOnly())
+                .build(finalDelete);
+
+            var result = jq.write(cte, true, id);
+
+            assertInstanceOf(Ok.class, result);
+            assertEquals(1, result.or(0));
+        }
+
+        @Test
+        void crossReferencingCteEntries_throwsSchemaVerification() {
+            assertThrows(Exception.class, () ->
+                new CTEBuilder("a", allUsers())
+                    .with("b", select(col("id")).from("a").build())
+            );
+        }
+
+        @Test
+        void withQueryBuiltWithOuter_doesNotThrowAtBuildTime() {
+            var outer = allUsers();
+
+            var withQuery = select(col("id"), col("name"))
+                .from("orders")
+                .where(eq(col("user_id"), param(Long.class)))
+                .build(outer);
+
+            assertDoesNotThrow(() ->
+                new CTEBuilder("orders_cte", withQuery).build(finalSelectById())
+            );
+        }
+
+        @Test
+        void withQueryBuiltWithOuter_paramTypesStillIncludesItsOwnParams() {
+            var outer = allUsers();
+
+            var withQuery = select(col("id"), col("name"))
+                .from("orders")
+                .where(eq(col("user_id"), param(Long.class)))
+                .build(outer);
+
+            var cte = new CTEBuilder("orders_cte", withQuery).build(finalSelectById());
+
+            var paramCount = ((Context) cte.context()).paramTypes().size();
+
+            assertEquals(2, paramCount);
+        }
+
+        @Test
+        void cteWithUnionAsWithQuery_paramsBindInOrder() {
+            var id = insertTestUser("Hugo", "hugo@example.com", true);
+
+            var union = new UnionBuilder(UnionType.UNION, activeUsersOnly(), usersByEmailOnly()).build();
+
+            var cte = new CTEBuilder("combined", union)
+                .build(finalSelectById());
+
+            var result = jq.many(cte, idName(), true, "nobody@example.com", id);
+            assertInstanceOf(Ok.class, result);
+        }
+
+        @Test
+        void cteInsideTransaction_bindsCorrectly() {
+            var id = insertTestUser("Ines", "ines@example.com", true);
+
+            var cte = new CTEBuilder("active_only", activeUsersOnly())
+                .build(finalSelectById());
+
+            var tx = transaction().add(cte).build();
+
+            var result = jq.transaction(tx).bind(true, id).execute();
+
+            assertInstanceOf(Ok.class, result);
+        }
+    }
+
+    @Nested
+    class ParameterizedSubqueryExecution {
+
+        @Test
+        void inSubqueryWithParam_nowBindsAndExecutesCorrectly() {
+            var userId = insertTestUser("Diego", "diego@example.com", true);
+            insertTestOrder(userId, new BigDecimal("500.00"));
+
+            var sub = select(col("user_id"))
+                .from("orders")
+                .where(eq(col("status"), param(String.class)))
+                .build();
+
+            var q = select(col("id"), col("name"))
+                .from("users")
+                .where(new InExpr.In(col("id"), new InExpr.SubquerySource(new Subquery.Table(sub))))
+                .build();
+
+            var declaredParams = ((Context) q.context()).paramTypes().size();
+            assertEquals(1, declaredParams);
+
+            var result = jq.many(q, idName(), "pending");
+
+            assertInstanceOf(Ok.class, result);
+        }
+
+        @Test
+        void fromSubqueryWithParam_failsWithClearParamCountMessage() {
+            insertTestUser("Fatima", "fatima@example.com", true);
+
+            var sub = select(col("id"), col("name"))
+                .from("users")
+                .where(eq(col("active"), param(Boolean.class)))
+                .build();
+
+            var q = select(col("id"))
+                .from(new Subquery.Table(sub), "active_users")
+                .build();
+
+            var result = jq.many(q, longId(), true);
+
+            assertInstanceOf(Err.class, result);
+            var message = result.errOptional().orElseThrow().getMessage();
+            assertTrue(message.contains("Parameter count mismatch"));
+        }
+
+        @Test
+        void inSubqueryWithParam_noArgsAtAll_stillErrs() {
+            var sub = select(col("user_id"))
+                .from("orders")
+                .where(eq(col("status"), param(String.class)))
+                .build();
+
+            var q = select(col("id"), col("name"))
+                .from("users")
+                .where(new InExpr.In(col("id"), new InExpr.SubquerySource(new Subquery.Table(sub))))
+                .build();
+
+            var result = jq.many(q, idName());
+
+            assertInstanceOf(Err.class, result);
+        }
+
+        @Test
+        void outerParamPlusSubqueryParam_onlyOuterExpected_stillErrsOnExecution() {
+            var userId = insertTestUser("Lars", "lars@example.com", true);
+            insertTestOrder(userId, new BigDecimal("500.00"));
+
+            var sub = select(col("user_id"))
+                .from("orders")
+                .where(eq(col("status"), param(String.class)))
+                .build();
+
+            var q = select(col("id"), col("name"))
+                .from("users")
+                .where(and(
+                    eq(col("id"), param(Long.class)),
+                    new InExpr.In(col("id"), new InExpr.SubquerySource(new Subquery.Table(sub)))
+                ))
+                .build();
+
+            var result = jq.many(q, idName(), userId);
+
+            assertInstanceOf(Err.class, result);
+        }
+
+        @Test
+        void existsSubqueryWithParam_nowBindsAndExecutesCorrectly() {
+            var userId = insertTestUser("Mina", "mina@example.com", true);
+            insertTestOrder(userId, new BigDecimal("500.00"));
+
+            var sub = select(col("id"))
+                .from("orders")
+                .where(eq(col("status"), param(String.class)))
+                .build();
+
+            var q = select(col("id"), col("name"))
+                .from("users")
+                .where(exists(table(sub)))
+                .build();
+
+            var declaredParams = ((Context) q.context()).paramTypes().size();
+            assertEquals(1, declaredParams);
+
+            var result = jq.many(q, idName(), "pending");
+
+            assertInstanceOf(Ok.class, result);
+        }
+
+        @Test
+        void ordinaryParameterizedQuery_noFalsePositive() {
+            var id = insertTestUser("Owen", "owen@example.com", true);
+
+            var result = jq.one(selectUserById(), userRow(), id);
+
+            assertInstanceOf(Ok.class, result);
+        }
+
+        @Test
+        void unionQuery_noFalsePositive() {
+            insertTestUser("Priya2", "priya2@example.com", true);
+
+            var union = new UnionBuilder(UnionType.UNION,
+                select(col("id"), col("name")).from("users")
+                    .where(eq(col("active"), param(Boolean.class))).build(),
+                select(col("id"), col("name")).from("users")
+                    .where(eq(col("email"), param(String.class))).build()
+            ).build();
+
+            var result = jq.many(union, idName(), true, "nobody@example.com");
+
+            assertInstanceOf(Ok.class, result);
+        }
+
+        @Test
+        void cteQuery_noFalsePositive() {
+            var id = insertTestUser("Quang", "quang@example.com", true);
+
+            var cte = new CTEBuilder("active_only",
+                select(col("id"), col("name")).from("users")
+                    .where(eq(col("active"), param(Boolean.class))).build())
+                .build(select(col("id"), col("name")).from("users")
+                    .where(eq(col("id"), param(Long.class))).build());
+
+            var result = jq.many(cte, idName(), true, id);
+
+            assertInstanceOf(Ok.class, result);
+        }
+
+        @Test
+        void cteWithOuterBuiltWithQueryAndSubqueryInFinal_allCombined() {
+            var userId = insertTestUser("Sami", "sami@example.com", true);
+            insertTestOrder(userId, new BigDecimal("500.00"));
+
+            var outer = select(col("id"), col("name")).from("users").build();
+
+            var withQuery = select(col("id"), col("name"))
+                .from("orders")
+                .where(eq(col("user_id"), param(Long.class)))
+                .build(outer);
+
+            var sub = select(col("user_id"))
+                .from("orders")
+                .where(eq(col("status"), param(String.class)))
+                .build();
+
+            var finalQuery = select(col("id"), col("name"))
+                .from("users")
+                .where(new InExpr.In(col("id"), new InExpr.SubquerySource(new Subquery.Table(sub))))
+                .build();
+
+            var cte = new CTEBuilder("orders_cte", withQuery).build(finalQuery);
+
+            // withQuery's own Long.class param + finalQuery's embedded subquery String.class param are both counted now.
+            var declaredParams = ((Context) cte.context()).paramTypes().size();
+            assertEquals(2, declaredParams);
+
+            var result = jq.many(cte, idName(), userId);
+
+            assertInstanceOf(Err.class, result);
+            var message = result.errOptional().orElseThrow().getMessage();
+            assertTrue(message.contains("Parameter count mismatch"));
+        }
+
+        @Test
+        void cteWithOuterBuiltWithQueryAndSubqueryInFinal_correctArgCount_executesSuccessfully() {
+            var userId = insertTestUser("Nadia", "nadia@example.com", true);
+            insertTestOrder(userId, new BigDecimal("500.00"));
+
+            var outer = select(col("id"), col("name")).from("users").build();
+
+            var withQuery = select(col("id"))
+                .from("orders")
+                .where(eq(col("user_id"), param(Long.class)))
+                .build(outer);
+
+            var sub = select(col("user_id"))
+                .from("orders")
+                .where(eq(col("status"), param(String.class)))
+                .build();
+
+            var finalQuery = select(col("id"), col("name"))
+                .from("users")
+                .where(new InExpr.In(col("id"), new InExpr.SubquerySource(new Subquery.Table(sub))))
+                .build();
+
+            var cte = new CTEBuilder("orders_cte", withQuery).build(finalQuery);
+
+            assertEquals(2, ((Context) cte.context()).paramTypes().size());
+
+            var result = jq.many(cte, idName(), userId, "pending");
+
+            assertInstanceOf(Ok.class, result);
         }
     }
 }

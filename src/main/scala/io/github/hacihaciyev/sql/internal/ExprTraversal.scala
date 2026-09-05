@@ -1,6 +1,7 @@
 package io.github.hacihaciyev.sql.internal
 
 import io.github.hacihaciyev.sql.expressions.*
+import io.github.hacihaciyev.sql.JQ
 import io.github.hacihaciyev.sql.value_objects.Projection
 import io.github.hacihaciyev.sql.internal.value_objects.Ref
 
@@ -62,10 +63,10 @@ object ExprTraversal {
         case e: CaseExpr.CaseElse          => collectPlaceholdersBranches(e.branches().asScala.toList) ++ collectPlaceholders(e.elseBranch())
         case e: CaseExpr.SimpleCase        => collectPlaceholders(e.operand()) ++ collectPlaceholdersBranches(e.branches().asScala.toList)
         case e: CaseExpr.SimpleCaseElse    => collectPlaceholders(e.operand()) ++ collectPlaceholdersBranches(e.branches().asScala.toList) ++ collectPlaceholders(e.elseBranch())
-        case e: QuantifiedExpr.All         => collectPlaceholders(e.operand())
-        case e: QuantifiedExpr.Any         => collectPlaceholders(e.operand())
-        case _: Exists                     => List()
-        case _: Subquery.Scalar            => List()
+        case e: QuantifiedExpr.All         => collectPlaceholders(e.operand()) ++ collectSubqueryPlaceholders(e.subquery())
+        case e: QuantifiedExpr.Any         => collectPlaceholders(e.operand()) ++ collectSubqueryPlaceholders(e.subquery())
+        case e: Exists                     => collectSubqueryPlaceholders(e.subquery())
+        case e: Subquery.Scalar            => collectReadPlaceholders(e.jq())
         case f: Func                       => collectPlaceholdersFunc(f)
     }
 
@@ -78,9 +79,15 @@ object ExprTraversal {
     }
 
     private def collectPlaceholdersInSource(src: InExpr.InSource): List[Class[?]] = src match {
-        case vl: InExpr.ValueList     => vl.values().asScala.toList.flatMap(collectPlaceholders)
-        case _: InExpr.SubquerySource => List()
+        case vl: InExpr.ValueList      => vl.values().asScala.toList.flatMap(collectPlaceholders)
+        case sq: InExpr.SubquerySource => collectSubqueryPlaceholders(sq.subquery())
     }
+
+    private def collectSubqueryPlaceholders(sub: Subquery.Table): List[Class[?]] =
+        collectReadPlaceholders(sub.jq())
+
+    private def collectReadPlaceholders(jq: JQ.Read): List[Class[?]] =
+        jq.context().asInstanceOf[Context].paramTypes.map(_._type)
 
     private def collectBranches(branches: List[CaseExpr.WhenThen]): List[ColumnRef] =
         branches.flatMap(b => collectCrefs(b.condition()) ++ collectCrefs(b.result()))

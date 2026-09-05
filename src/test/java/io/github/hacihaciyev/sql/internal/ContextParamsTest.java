@@ -2,7 +2,9 @@ package io.github.hacihaciyev.sql.internal;
 
 import io.github.hacihaciyev.sql.JQ;
 import io.github.hacihaciyev.sql.builders.*;
+import io.github.hacihaciyev.sql.expressions.*;
 import io.github.hacihaciyev.sql.internal.value_objects.ParamType;
+import io.github.hacihaciyev.sql.value_objects.TableRef;
 import io.github.hacihaciyev.sql.value_objects.UnionType;
 import io.github.hacihaciyev.util.DBTestContainer;
 import org.junit.jupiter.api.Nested;
@@ -720,6 +722,374 @@ class ContextParamsTest {
                 Amount.class, Amount.class, UserId.class,
                 ProductId.class, ProductId.class, Quantity.class, Quantity.class
             );
+        }
+    }
+
+    @Nested
+    class SubqueryPlaceholders {
+
+        private JQ.Read allUsers() {
+            return SelectBuilder.select(col("id"), col("name"))
+                .from("users")
+                .build();
+        }
+
+        private JQ.Read finalById() {
+            return SelectBuilder.select(col("id"))
+                .from("users")
+                .where(eq(col("id"), param(UserId.class)))
+                .build();
+        }
+
+        @Test
+        void fromSubquery_ownParam_notCountedByOuter() {
+            var sub = SelectBuilder.select(col("id"), col("name"))
+                .from("users")
+                .where(eq(col("active"), param(Boolean.class)))
+                .build();
+
+            var jq = SelectBuilder.select(col("id"))
+                .from(new Subquery.Table(sub), "active_users")
+                .build();
+
+            assertTypes(paramTypes(jq));
+        }
+
+        @Test
+        void inSubquery_ownParam_nowCounted() {
+            var sub = SelectBuilder.select(col("user_id"))
+                .from("orders")
+                .where(gt(col("total"), param(Amount.class)))
+                .build();
+
+            var jq = SelectBuilder.select(col("id"))
+                .from("users")
+                .where(new InExpr.In(col("id"), new InExpr.SubquerySource(new Subquery.Table(sub))))
+                .build();
+
+            assertTypes(paramTypes(jq), Amount.class);
+        }
+
+        @Test
+        void existsSubquery_ownParam_nowCounted_outerCorrelationStillIgnored() {
+            var outer = SelectBuilder.select(col("u", "id"))
+                .from(new TableRef.AliasedBase("users", "u"))
+                .build();
+
+            var sub = SelectBuilder.select(col("o", "id"))
+                .from(new TableRef.AliasedBase("orders", "o"))
+                .where(and(
+                    eq(col("o", "user_id"), col("u", "id")),
+                    gt(col("o", "total"), param(Amount.class))
+                ))
+                .build(outer);
+
+            var jq = SelectBuilder.select(col("u", "id"))
+                .from(new TableRef.AliasedBase("users", "u"))
+                .where(new Exists(new Subquery.Table(sub)))
+                .build();
+
+            assertTypes(paramTypes(jq), Amount.class);
+        }
+
+        @Test
+        void scalarSubquery_ownParam_nowCounted() {
+            var sub = SelectBuilder.select(countAll())
+                .from("orders")
+                .where(gt(col("total"), param(Amount.class)))
+                .build();
+
+            var jq = SelectBuilder.select(col("name"), new Subquery.Scalar(sub))
+                .from("users")
+                .build();
+
+            assertTypes(paramTypes(jq), Amount.class);
+        }
+
+        @Test
+        void outerHasOwnParam_subqueryParamNowCounted_bothPresentInOrder() {
+            var sub = SelectBuilder.select(col("user_id"))
+                .from("orders")
+                .where(gt(col("total"), param(Amount.class)))
+                .build();
+
+            var jq = SelectBuilder.select(col("id"))
+                .from("users")
+                .where(and(
+                    eq(col("id"), param(UserId.class)),
+                    new InExpr.In(col("id"), new InExpr.SubquerySource(new Subquery.Table(sub)))
+                ))
+                .build();
+
+            assertTypes(paramTypes(jq), UserId.class, Amount.class);
+        }
+
+        @Test
+        void quantifiedAll_subqueryParam_nowCounted() {
+            var sub = SelectBuilder.select(col("total"))
+                .from("orders")
+                .where(gt(col("total"), param(Amount.class)))
+                .build();
+
+            var jq = SelectBuilder.select(col("id"))
+                .from("orders")
+                .where(new QuantifiedExpr.All(
+                    QuantifiedExpr.ComparisonOperator.GT, col("total"), new Subquery.Table(sub)))
+                .build();
+
+            assertTypes(paramTypes(jq), Amount.class);
+        }
+
+        @Test
+        void nestedInsideCte_subqueryParamNowCounted() {
+            var sub = SelectBuilder.select(col("user_id"))
+                .from("orders")
+                .where(gt(col("total"), param(Amount.class)))
+                .build();
+
+            var withQuery = SelectBuilder.select(col("id"))
+                .from("users")
+                .where(new InExpr.In(col("id"), new InExpr.SubquerySource(new Subquery.Table(sub))))
+                .build();
+
+            var jq = new CTEBuilder("filtered", withQuery)
+                .build(SelectBuilder.select(col("id")).from("users").build());
+
+            assertTypes(paramTypes(jq), Amount.class);
+        }
+
+        @Test
+        void nestedSubqueryInsideSubquery_bothLevelsCounted_innerFirst() {
+            // WHERE id IN (SELECT user_id FROM orders WHERE total > ? AND status IN (SELECT product FROM order_items WHERE product = ?))
+            var innermost = SelectBuilder.select(col("product"))
+                .from("order_items")
+                .where(eq(col("product"), param(Username.class)))
+                .build();
+
+            var middle = SelectBuilder.select(col("user_id"))
+                .from("orders")
+                .where(and(
+                    gt(col("total"), param(Amount.class)),
+                    new InExpr.In(col("status"), new InExpr.SubquerySource(new Subquery.Table(innermost)))
+                ))
+                .build();
+
+            var jq = SelectBuilder.select(col("id"))
+                .from("users")
+                .where(new InExpr.In(col("id"), new InExpr.SubquerySource(new Subquery.Table(middle))))
+                .build();
+
+            // Rendering order inside `middle`'s own WHERE: `total > ?` (Amount) before the nested IN's `?` (Username)
+            assertTypes(paramTypes(jq), Amount.class, Username.class);
+        }
+
+        @Test
+        void sameSubqueryInstanceUsedTwice_paramsCountedOncePerOccurrence() {
+            var sub = SelectBuilder.select(col("user_id"))
+                .from("orders")
+                .where(gt(col("total"), param(Amount.class)))
+                .build();
+
+            var jq = SelectBuilder.select(col("id"))
+                .from("users")
+                .where(or(
+                    new InExpr.In(col("id"), new InExpr.SubquerySource(new Subquery.Table(sub))),
+                    new Exists(new Subquery.Table(sub))
+                ))
+                .build();
+
+            assertTypes(paramTypes(jq), Amount.class, Amount.class);
+        }
+
+        @Test
+        void unionQuery_oneSideHasEmbeddedSubqueryParam_countedWithinThatSide() {
+            var sub = SelectBuilder.select(col("total"))
+                .from("orders")
+                .where(gt(col("total"), param(Amount.class)))
+                .build();
+
+            var first = SelectBuilder.select(col("id"), col("name"))
+                .from("users")
+                .where(new Exists(new Subquery.Table(sub)))
+                .build();
+
+            var second = SelectBuilder.select(col("id"), col("name"))
+                .from("users")
+                .where(eq(col("email"), param(Email.class)))
+                .build();
+
+            var jq = new UnionBuilder(UnionType.UNION, first, second).build();
+
+            assertTypes(paramTypes(jq), Amount.class, Email.class);
+        }
+
+        @Test
+        void nestedCteInsideCte_outerCteParamsPrecedeInnerFinal() {
+            var innerWith = SelectBuilder.select(col("id"), col("name"))
+                .from("users")
+                .where(eq(col("email"), param(Email.class)))
+                .build();
+
+            var innerFinal = SelectBuilder.select(col("id"))
+                .from("users")
+                .build();
+
+            var innerCte = new CTEBuilder("inner_cte", innerWith).build(innerFinal);
+
+            var outerCte = new CTEBuilder("outer_cte", innerCte)
+                .build(finalById());
+
+            assertTypes(paramTypes(outerCte), Email.class, UserId.class);
+        }
+
+        @Test
+        void sameWithQueryInstanceUsedTwice_paramsCountedOncePerEntry() {
+            var withQuery = SelectBuilder.select(col("id"), col("name"))
+                .from("users")
+                .where(eq(col("email"), param(Email.class)))
+                .build();
+
+            var jq = new CTEBuilder("a", withQuery)
+                .with("b", withQuery)
+                .build(finalById());
+
+            assertTypes(paramTypes(jq), Email.class, Email.class, UserId.class);
+        }
+
+        @Test
+        void recursiveCte_unionTypeDoesNotAffectParamAggregation() {
+            var base = SelectBuilder.select(col("id"), col("name"))
+                .from("users")
+                .where(eq(col("active"), param(Boolean.class)))
+                .build();
+
+            var recursive = SelectBuilder.select(col("id"), col("name"))
+                .from("users")
+                .where(eq(col("email"), param(Department.class)))
+                .build();
+
+            var jq = new CTEBuilder("seed", allUsers())
+                .withRecursive("tree", base, recursive, UnionType.INTERSECT)
+                .build(finalById());
+
+            assertTypes(paramTypes(jq), Boolean.class, Department.class, UserId.class);
+        }
+
+        @Test
+        void multipleRecursiveEntries_bothContributeInDeclarationOrder() {
+            var base1 = SelectBuilder.select(col("id"), col("name"))
+                .from("users")
+                .where(eq(col("email"), param(Email.class)))
+                .build();
+
+            var rec1 = SelectBuilder.select(col("id"), col("name"))
+                .from("users")
+                .where(eq(col("active"), param(Boolean.class)))
+                .build();
+
+            var base2 = SelectBuilder.select(col("id"), col("status"))
+                .from("orders")
+                .where(eq(col("status"), param(Username.class)))
+                .build();
+
+            var rec2 = SelectBuilder.select(col("id"), col("status"))
+                .from("orders")
+                .where(eq(col("id"), param(UserId.class)))
+                .build();
+
+            var jq = new CTEBuilder("x", allUsers())
+                .withRecursive("a", base1, rec1)
+                .withRecursive("b", base2, rec2)
+                .build(finalById());
+
+            assertTypes(paramTypes(jq),
+                Email.class, Boolean.class, Username.class, UserId.class, UserId.class);
+        }
+    }
+
+    @Nested
+    class OuterAndParamTypes {
+
+        private JQ.Read ordersOuter() {
+            return SelectBuilder.select(col("id"), col("status"))
+                .from("orders")
+                .build();
+        }
+
+        @Test
+        void insertWithOuter_paramTypesOnlyOwnColumns() {
+            var outer = ordersOuter();
+
+            var jq = new InsertBuilder("users")
+                .columns("name", Username.class, "email", Email.class)
+                .build(outer);
+
+            assertTypes(paramTypes(jq), Username.class, Email.class);
+        }
+
+        @Test
+        void updateWithOuter_paramTypesOnlyOwnSetAndWhere() {
+            var outer = ordersOuter();
+
+            var jq = new UpdateBuilder("users")
+                .set("name", Username.class)
+                .where(eq(col("id"), param(UserId.class)))
+                .build(outer);
+
+            assertTypes(paramTypes(jq), Username.class, UserId.class);
+        }
+
+        @Test
+        void deleteWithOuter_paramTypesOnlyOwnWhere() {
+            var outer = ordersOuter();
+
+            var jq = new DeleteBuilder("users")
+                .where(eq(col("id"), param(UserId.class)))
+                .build(outer);
+
+            assertTypes(paramTypes(jq), UserId.class);
+        }
+
+        @Test
+        void selectWithOuter_paramTypesOnlyOwnWhere() {
+            var outer = ordersOuter();
+
+            var jq = SelectBuilder.select(col("id"), col("name"))
+                .from("users")
+                .where(eq(col("id"), param(UserId.class)))
+                .build(outer);
+
+            assertTypes(paramTypes(jq), UserId.class);
+        }
+
+        @Test
+        void twoLevelsOuter_paramTypesStillOnlyInnermostOwnParams() {
+            var level2 = ordersOuter();
+
+            var level1 = SelectBuilder.select(col("id"))
+                .from("order_items")
+                .where(eq(col("order_id"), param(UserId.class)))
+                .build(level2);
+
+            var jq = new InsertBuilder("users")
+                .columns("name", Username.class)
+                .build(level1);
+
+            assertTypes(paramTypes(jq), Username.class);
+        }
+
+        @Test
+        void outerItselfHasParams_notCountedInDependent() {
+            var outer = SelectBuilder.select(col("id"))
+                .from("orders")
+                .where(eq(col("status"), param(Username.class)))
+                .build();
+
+            var jq = new DeleteBuilder("users")
+                .where(eq(col("id"), param(UserId.class)))
+                .build(outer);
+
+            assertTypes(paramTypes(jq), UserId.class);
         }
     }
 }

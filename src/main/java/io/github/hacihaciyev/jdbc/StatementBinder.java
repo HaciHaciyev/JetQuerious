@@ -19,10 +19,23 @@ final class StatementBinder {
 
     static void bind(PreparedStatement stmt, Context ctx, Object[] args) throws SQLException {
         var types = asJava(ctx.paramTypes());
-        if (types.isEmpty()) return;
+
+        if (types.isEmpty()) {
+            if (args.length != 0) {
+                var actualCount = actualPlaceholderCount(stmt, 0);
+                throw new IllegalArgumentException(
+                    "Parameter count mismatch: statement has " + actualCount + " placeholder(s), "
+                        + "0 declared parameter type(s), and " + args.length + " argument(s) were provided."
+                );
+            }
+            return;
+        }
 
         if (args.length != types.size()) {
-            throw new IllegalArgumentException("Expected " + types.size() + " parameters but got " + args.length);
+            throw new IllegalArgumentException(
+                "Parameter count mismatch: " + types.size() + " declared parameter type(s) "
+                    + "but " + args.length + " argument(s) were provided."
+            );
         }
 
         for (int i = 0; i < types.size(); i++) {
@@ -39,6 +52,14 @@ final class StatementBinder {
             } catch (TypeInlineException e) {
                 throw new SQLException("Failed to bind parameter at position " + (i + 1) + ": " + e.getMessage(), e);
             }
+        }
+    }
+
+    private static int actualPlaceholderCount(PreparedStatement stmt, int fallback) {
+        try {
+            return stmt.getParameterMetaData().getParameterCount();
+        } catch (SQLException e) {
+            return fallback;
         }
     }
 

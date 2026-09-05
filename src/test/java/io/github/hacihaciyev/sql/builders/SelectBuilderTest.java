@@ -1286,4 +1286,90 @@ class SelectBuilderTest {
             );
         }
     }
+
+    @Nested
+    class ParameterizedSubqueries {
+
+        @Test
+        void fromSubquery_withParam_sqlContainsPlaceholder() {
+            var sub = SelectBuilder.select(col("id"), col("name"))
+                .from("users")
+                .where(eq(col("active"), SQL.param(Boolean.class)))
+                .build();
+
+            var q = SelectBuilder.select(col("id"))
+                .from(new Subquery.Table(sub), "active_users")
+                .build();
+
+            assertTrue(q.sql().contains("?"));
+        }
+
+        @Test
+        void inSubquery_withParam_sqlContainsPlaceholder() {
+            var sub = SelectBuilder.select(col("user_id"))
+                .from("orders")
+                .where(gt(col("amount"), SQL.param(Integer.class)))
+                .build();
+
+            var q = SelectBuilder.select(col("id"))
+                .from("users")
+                .where(new InExpr.In(col("id"), new InExpr.SubquerySource(new Subquery.Table(sub))))
+                .build();
+
+            assertTrue(q.sql().contains("?"));
+        }
+
+        @Test
+        void existsSubquery_withParam_sqlContainsPlaceholder() {
+            var outer = SelectBuilder.select(col("u", "id"))
+                .from(new TableRef.AliasedBase("users", "u"))
+                .build();
+
+            var sub = SelectBuilder.select(col("o", "id"))
+                .from(new TableRef.AliasedBase("orders", "o"))
+                .where(and(
+                    eq(col("o", "user_id"), col("u", "id")),
+                    gt(col("o", "amount"), SQL.param(Integer.class))
+                ))
+                .build(outer);
+
+            var q = SelectBuilder.select(col("u", "id"))
+                .from(new TableRef.AliasedBase("users", "u"))
+                .where(new Exists(new Subquery.Table(sub)))
+                .build();
+
+            assertTrue(q.sql().contains("?"));
+        }
+
+        @Test
+        void scalarSubquery_withParam_sqlContainsPlaceholder() {
+            var sub = SelectBuilder.select(new Func.CountAll())
+                .from("orders")
+                .where(gt(col("amount"), SQL.param(Integer.class)))
+                .build();
+
+            var q = SelectBuilder.select(col("name"), new Subquery.Scalar(sub))
+                .from("users")
+                .build();
+
+            assertTrue(q.sql().contains("?"));
+        }
+
+        @Test
+        void fromSubquery_withParam_placeholderCountExceedsContextParamCount() {
+            var sub = SelectBuilder.select(col("id"), col("name"))
+                .from("users")
+                .where(eq(col("active"), SQL.param(Boolean.class)))
+                .build();
+
+            var q = SelectBuilder.select(col("id"))
+                .from(new Subquery.Table(sub), "active_users")
+                .build();
+
+            var placeholdersInSql = q.sql().chars().filter(c -> c == '?').count();
+
+            assertEquals(1, placeholdersInSql);
+            assertEquals(0, ((io.github.hacihaciyev.sql.internal.Context) q.context()).paramTypes().size());
+        }
+    }
 }

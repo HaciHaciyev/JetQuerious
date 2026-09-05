@@ -260,6 +260,44 @@ object Context {
             case _ => List()
         }
 
+    case class CTE(
+                       entries: List[Context],
+                       inner:   Context & DQL
+                   ) extends Context, DQL {
+
+        req(entries, inner)
+
+        override def sources: List[TableSource] = inner.sources
+        override def refs: List[Ref]            = inner.refs
+        override def outer: Option[Context]     = inner.outer
+
+        def paramTypes: List[ParamType] = withPositions(
+            entries.flatMap(_.paramTypes.map(_._type)) ++
+            inner.paramTypes.map(_._type)
+        )
+
+        protected def validate(): Unit = ()
+    }
+
+    case class CTEWrite(
+                            entries: List[Context],
+                            inner:   Context & DML
+                        ) extends Context, DML {
+
+        req(entries, inner)
+
+        override def sources: List[TableSource] = inner.sources
+        override def refs: List[Ref]            = inner.refs
+        override def outer: Option[Context]     = inner.outer
+
+        def paramTypes: List[ParamType] = withPositions(
+            entries.flatMap(_.paramTypes.map(_._type)) ++
+            inner.paramTypes.map(_._type)
+        )
+
+        protected def validate(): Unit = ()
+    }
+
     private def withPositions(types: List[Class[?]]): List[ParamType] = types.zipWithIndex.map((t, i) => ParamType(i + 1, t))
 
     private def resolve(sources: List[TableSource]): (Map[TableRef, Table], Map[String, List[String]]) = {
@@ -582,5 +620,21 @@ object ContextFactory {
         unionType,
         orderBy.asScala.toList,
         if outer.isPresent then Some(outer.get) else None
+    )
+
+    def cteReadContext(
+                           entries: java.util.List[Context],
+                           inner:   Context
+                       ): Context.CTE = Context.CTE(
+        entries.asScala.toList,
+        inner.asInstanceOf[Context & DQL]
+    )
+
+    def cteWriteContext(
+                            entries: java.util.List[Context],
+                            inner:   Context
+                        ): Context.CTEWrite = Context.CTEWrite(
+        entries.asScala.toList,
+        inner.asInstanceOf[Context & DML]
     )
 }

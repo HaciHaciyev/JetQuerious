@@ -258,19 +258,25 @@ class CTEBuilderTest {
     class ContextPassthrough {
 
         @Test
-        void read_contextIsFromFinalQuery() {
+        void read_paramTypesMatchFinalQuery_whenWithQueryHasNoParams() {
             var final_ = finalQuery();
             var jq     = new CTEBuilder("cte", usersQuery()).build(final_);
 
-            assertSame(final_.context(), jq.context());
+            var finalTypes = ((io.github.hacihaciyev.sql.internal.Context) final_.context()).paramTypes();
+            var cteTypes   = ((io.github.hacihaciyev.sql.internal.Context) jq.context()).paramTypes();
+
+            assertEquals(finalTypes, cteTypes);
         }
 
         @Test
-        void write_contextIsFromFinalQuery() {
+        void write_paramTypesMatchFinalQuery_whenWithQueryHasNoParams() {
             var final_ = deleteQuery();
             var jq     = new CTEBuilder("cte", usersQuery()).build(final_);
 
-            assertSame(final_.context(), jq.context());
+            var finalTypes = ((io.github.hacihaciyev.sql.internal.Context) final_.context()).paramTypes();
+            var cteTypes   = ((io.github.hacihaciyev.sql.internal.Context) jq.context()).paramTypes();
+
+            assertEquals(finalTypes, cteTypes);
         }
     }
 
