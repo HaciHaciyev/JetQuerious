@@ -19,6 +19,7 @@ import io.github.hacihaciyev.fixtures.*;
 import static io.github.hacihaciyev.sql.SQL.*;
 import static io.github.hacihaciyev.sql.QueryForge.*;
 import static org.junit.jupiter.api.Assertions.*;
+import static scala.jdk.javaapi.CollectionConverters.asJava;
 
 @ExtendWith(DBTestContainer.class)
 class ParamVerifierTest {
@@ -46,6 +47,13 @@ class ParamVerifierTest {
         var resource = binaryName.replace('.', '/') + ".class";
         var bytes    = ParamVerifierTest.class.getClassLoader().getResourceAsStream(resource).readAllBytes();
         return ClassFile.of().parse(bytes);
+    }
+
+    @SuppressWarnings("unchecked")
+    private static List<MetaGen.TrackedField> trackedFieldsFor(Class<?>... classes) throws Exception {
+        var models = new java.util.ArrayList<ClassModel>();
+        for (var cls : classes) models.add(parseClass(cls));
+        return (List<MetaGen.TrackedField>) invoke(PARAM_VERIFIER, "collectTrackedFields", models);
     }
 
     private static Method getMethod(Class<?> cls, String name, int paramCount) throws Exception {
@@ -444,13 +452,6 @@ class ParamVerifierTest {
     @Nested
     class VerifyUsagesTests {
 
-        @SuppressWarnings("unchecked")
-        private List<MetaGen.TrackedField> trackedFieldsFor(Class<?>... classes) throws Exception {
-            var models = new java.util.ArrayList<ClassModel>();
-            for (var cls : classes) models.add(parseClass(cls));
-            return (List<MetaGen.TrackedField>) invoke(PARAM_VERIFIER, "collectTrackedFields", models);
-        }
-
         @Test
         void correctCaller_passes() throws Exception {
             var tracked = trackedFieldsFor(CorrectRepo.class);
@@ -534,6 +535,28 @@ class ParamVerifierTest {
             var tracked = trackedFieldsFor(CorrectRepo.class, MultiParamRepo.class);
             var model   = parseClass(CorrectCaller.class);
             assertDoesNotThrow(() -> invoke(PARAM_VERIFIER, "verifyUsagesInClass", model, tracked));
+        }
+
+        @Test
+        void deconstruction_correctInlineUsage_passes() throws Exception {
+            var tracked = trackedFieldsFor(DeconstructionRepo.class);
+            var model   = parseClass(DeconstructionCaller.class);
+            assertDoesNotThrow(() -> invoke(PARAM_VERIFIER, "verifyUsagesInClass", model, tracked));
+        }
+        
+        @Test
+        void deconstruction_localVariableAssignment_passes() throws Exception {
+            var tracked = trackedFieldsFor(DeconstructionRepo.class);
+            var model   = parseClass(DeconstructionWithLocalVarCaller.class);
+            assertDoesNotThrow(() -> invoke(PARAM_VERIFIER, "verifyUsagesInClass", model, tracked));
+        }
+        
+        @Test
+        void deconstruction_wrongTrailingArgType_throws() throws Exception {
+            var tracked = trackedFieldsFor(DeconstructionRepo.class);
+            var model   = parseClass(DeconstructionWrongTrailingArgCaller.class);
+            assertThrows(MetaGenException.class,
+                () -> invoke(PARAM_VERIFIER, "verifyUsagesInClass", model, tracked));
         }
     }
 
@@ -623,6 +646,178 @@ class ParamVerifierTest {
             var owner  = model.thisClass().asSymbol();
             List<?> writes = invoke(PARAM_VERIFIER, "trackedFieldWritesInClinit", model, owner);
             assertEquals(2, writes.size());
+        }
+    }
+
+    @Nested
+    class DeconstructionArchitecturalGapTests {
+    
+        @Test
+        void verifyArgsAgainstParamTypes_rejectsCorrectDeconstructionUsage_evenWithoutInterpreterBug() throws Exception {
+            var model  = parseClass(CorrectCaller.class);
+            var method = model.methods().stream()
+                .filter(m -> m.methodName().stringValue().equals("insert"))
+                .findFirst().orElseThrow();
+    
+            var expectedParams = asJava(
+                ((Context) DeconstructionRepo.UPDATE_NAME_EMAIL.context()).paramTypes()
+            );
+    
+            var field = new MetaGen.TrackedField(
+                ClassDesc.of("io.github.hacihaciyev.fixtures.DeconstructionRepo"),
+                "UPDATE_NAME_EMAIL",
+                ClassDesc.of("io.github.hacihaciyev.sql.JQ$Write"),
+                expectedParams
+            );
+    
+            var elements = new SymbolicType[] {
+                new SymbolicType.Known(ClassDesc.of("io.github.hacihaciyev.jdbc.Deconstruction")),
+                new SymbolicType.Known(ClassDesc.of("java.lang.Long"))
+            };
+            var varargs = new SymbolicType.ArrayBuild(ClassDesc.of("java.lang.Object"), elements);
+    
+            var ex = assertThrows(MetaGenException.class, () ->
+                invoke(PARAM_VERIFIER, "verifyArgsAgainstParamTypes", model, method, field, varargs));
+    
+            assertTrue(ex.getMessage().contains("expected 3"));
+            assertTrue(ex.getMessage().contains("provides 2"));
+        }
+    }
+
+    @Nested
+    class DeconstructionInterpreterTests {
+
+        @Test
+        void decCall_capturesDeconstructedRecordType_notLostToStackCorruption() throws Exception {
+            var model  = parseClass(DeconstructionCaller.class);
+            var method = model.methods().stream()
+                .filter(m -> m.methodName().stringValue().equals("updateViaDeconstruction"))
+                .findFirst().orElseThrow();
+
+            var events = new BytecodeTypeInterpreter().run(method.code().orElseThrow().elementList());
+
+            var decCall = events.stream()
+                .filter(e -> e instanceof BytecodeTypeInterpreter.Event.MethodCall mc && mc.methodName().equals("dec"))
+                .map(e -> (BytecodeTypeInterpreter.Event.MethodCall) e)
+                .findFirst().orElseThrow();
+
+            assertEquals(1, decCall.arguments().size());
+            assertInstanceOf(SymbolicType.Known.class, decCall.arguments().get(0));
+            assertEquals(ClassDesc.of("io.github.hacihaciyev.fixtures.NameEmail"), decCall.arguments().get(0).type());
+        }
+
+        @Test
+        void writeCall_correctlyIdentifiesTrackedFieldArgument_notTheReceiverField() throws Exception {
+            var model  = parseClass(DeconstructionCaller.class);
+            var method = model.methods().stream()
+                .filter(m -> m.methodName().stringValue().equals("updateViaDeconstruction"))
+                .findFirst().orElseThrow();
+
+            var events = new BytecodeTypeInterpreter().run(method.code().orElseThrow().elementList());
+
+            var writeCall = events.stream()
+                .filter(e -> e instanceof BytecodeTypeInterpreter.Event.MethodCall mc && mc.methodName().equals("write"))
+                .map(e -> (BytecodeTypeInterpreter.Event.MethodCall) e)
+                .findFirst().orElseThrow();
+
+            assertInstanceOf(SymbolicType.FromField.class, writeCall.arguments().get(0));
+            var sourceField = (SymbolicType.FromField) writeCall.arguments().get(0);
+            assertEquals("UPDATE_NAME_EMAIL", sourceField.fieldName());
+        }
+
+        @Test
+        void decCall_wrappedInLocalVariable_stillCapturesRecordType() throws Exception {
+            var model  = parseClass(DeconstructionWithLocalVarCaller.class);
+            var method = model.methods().stream()
+                .filter(m -> m.methodName().stringValue().equals("updateViaDeconstruction_localVariableFirst"))
+                .findFirst().orElseThrow();
+
+            var events = new BytecodeTypeInterpreter().run(method.code().orElseThrow().elementList());
+
+            var decCall = events.stream()
+                .filter(e -> e instanceof BytecodeTypeInterpreter.Event.MethodCall mc && mc.methodName().equals("dec"))
+                .map(e -> (BytecodeTypeInterpreter.Event.MethodCall) e)
+                .findFirst().orElseThrow();
+
+            assertEquals(ClassDesc.of("io.github.hacihaciyev.fixtures.NameEmail"), decCall.arguments().get(0).type());
+        }
+    }
+
+    @Nested
+    class DeconstructionParamVerificationTests {
+
+        private static MetaGen.TrackedField updateNameEmailField() {
+            var expectedParams = asJava(
+                ((Context) DeconstructionRepo.UPDATE_NAME_EMAIL.context()).paramTypes()
+            );
+            return new MetaGen.TrackedField(
+                ClassDesc.of("io.github.hacihaciyev.fixtures.DeconstructionRepo"),
+                "UPDATE_NAME_EMAIL",
+                ClassDesc.of("io.github.hacihaciyev.sql.JQ$Write"),
+                expectedParams
+            );
+        }
+
+        @Test
+        void wellFormedDeconstructedElement_countsAsItsFieldNumber_andPasses() throws Exception {
+            var model  = parseClass(CorrectCaller.class);
+            var method = model.methods().stream()
+                .filter(m -> m.methodName().stringValue().equals("insert"))
+                .findFirst().orElseThrow();
+
+            var field = updateNameEmailField();
+
+            var elements = new SymbolicType[] {
+                new SymbolicType.Deconstructed(ClassDesc.of("io.github.hacihaciyev.fixtures.NameEmail"), java.util.OptionalInt.empty()),
+                new SymbolicType.Known(ClassDesc.of("java.lang.Long"))
+            };
+            var varargs = new SymbolicType.ArrayBuild(ClassDesc.of("java.lang.Object"), elements);
+
+            assertDoesNotThrow(() ->
+                invoke(PARAM_VERIFIER, "verifyArgsAgainstParamTypes", model, method, field, varargs));
+        }
+
+        @Test
+        void limitedDeconstructedElement_consumesOnlyLimitedFieldCount() throws Exception {
+            var model  = parseClass(CorrectCaller.class);
+            var method = model.methods().stream()
+                .filter(m -> m.methodName().stringValue().equals("insert"))
+                .findFirst().orElseThrow();
+
+            var field = updateNameEmailField();
+            
+            var elements = new SymbolicType[] {
+                new SymbolicType.Deconstructed(ClassDesc.of("io.github.hacihaciyev.fixtures.NameEmail"), java.util.OptionalInt.of(1)),
+                new SymbolicType.Known(ClassDesc.of("java.lang.Long"))
+            };
+            var varargs = new SymbolicType.ArrayBuild(ClassDesc.of("java.lang.Object"), elements);
+
+            var ex = assertThrows(MetaGenException.class, () ->
+                invoke(PARAM_VERIFIER, "verifyArgsAgainstParamTypes", model, method, field, varargs));
+
+            assertTrue(ex.getMessage().contains("expected 3"));
+            assertTrue(ex.getMessage().contains("provides 2"));
+        }
+
+        @Test
+        void trailingArgAfterWellFormedDeconstruction_stillTypeChecked() throws Exception {
+            var model  = parseClass(CorrectCaller.class);
+            var method = model.methods().stream()
+                .filter(m -> m.methodName().stringValue().equals("insert"))
+                .findFirst().orElseThrow();
+
+            var field = updateNameEmailField();
+
+            var elements = new SymbolicType[] {
+                new SymbolicType.Deconstructed(ClassDesc.of("io.github.hacihaciyev.fixtures.NameEmail"), java.util.OptionalInt.empty()),
+                new SymbolicType.Known(ClassDesc.of("java.lang.String"))
+            };
+            var varargs = new SymbolicType.ArrayBuild(ClassDesc.of("java.lang.Object"), elements);
+
+            var ex = assertThrows(MetaGenException.class, () ->
+                invoke(PARAM_VERIFIER, "verifyArgsAgainstParamTypes", model, method, field, varargs));
+
+            assertTrue(ex.getMessage().contains("parameter 2"));
         }
     }
 }
