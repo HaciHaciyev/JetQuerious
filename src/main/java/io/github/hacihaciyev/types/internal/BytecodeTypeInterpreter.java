@@ -12,8 +12,11 @@ import java.util.Deque;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.OptionalInt;
 
 public final class BytecodeTypeInterpreter {
+
+    private static final ClassDesc DECONSTRUCTION_DESC = ClassDesc.of("io.github.hacihaciyev.jdbc.Deconstruction");
 
     public sealed interface Event {
         record FieldRead(ClassDesc owner, String fieldName, ClassDesc fieldType) implements Event {}
@@ -47,6 +50,7 @@ public final class BytecodeTypeInterpreter {
             case ArrayStoreInstruction asi        -> handleArrayStore();
             case TypeCheckInstruction tci         -> handleCheckcast(tci);
             case InvokeInstruction ii             -> handleInvoke(ii);
+            case StackInstruction si              -> handleStack(si);
             case ArrayLoadInstruction i           -> {}
             case BranchInstruction i              -> {}
             case ConvertInstruction i             -> {}
@@ -60,7 +64,6 @@ public final class BytecodeTypeInterpreter {
             case NopInstruction i                 -> {}
             case OperatorInstruction i            -> {}
             case ReturnInstruction i              -> {}
-            case StackInstruction i               -> {}
             case TableSwitchInstruction i         -> {}
             case ThrowInstruction i               -> {}
         }
@@ -113,22 +116,79 @@ public final class BytecodeTypeInterpreter {
         var index    = pop();
         var arrayRef = pop();
 
-        if (!(arrayRef instanceof SymbolicType.ArrayBuild build)) {
-            push(arrayRef);
-            return;
-        }
-
-        if (!(index instanceof SymbolicType.KnownInt(var _, var idx)) || !isValidSlot(idx, build)) {
-            push(build);
-            return;
-        }
+        if (!(arrayRef instanceof SymbolicType.ArrayBuild build)) return;
+        if (!(index instanceof SymbolicType.KnownInt(var _, var idx)) || !isValidSlot(idx, build)) return;
 
         build.elements()[idx] = value;
-        push(build);
     }
 
     private static boolean isValidSlot(int idx, SymbolicType.ArrayBuild build) {
         return idx >= 0 && idx < build.elements().length;
+    }
+
+    private void handleStack(StackInstruction si) {
+        switch (si.opcode()) {
+            case DUP -> {
+                var v = pop();
+                push(v);
+                push(v);
+            }
+            case DUP_X1 -> {
+                var v1 = pop();
+                var v2 = pop();
+                push(v1);
+                push(v2);
+                push(v1);
+            }
+            case DUP_X2 -> {
+                var v1 = pop();
+                var v2 = pop();
+                var v3 = pop();
+                push(v1);
+                push(v3);
+                push(v2);
+                push(v1);
+            }
+            case DUP2 -> {
+                var v1 = pop();
+                var v2 = pop();
+                push(v2);
+                push(v1);
+                push(v2);
+                push(v1);
+            }
+            case DUP2_X1 -> {
+                var v1 = pop();
+                var v2 = pop();
+                var v3 = pop();
+                push(v2);
+                push(v1);
+                push(v3);
+                push(v2);
+                push(v1);
+            }
+            case DUP2_X2 -> {
+                var v1 = pop();
+                var v2 = pop();
+                var v3 = pop();
+                var v4 = pop();
+                push(v2);
+                push(v1);
+                push(v4);
+                push(v3);
+                push(v2);
+                push(v1);
+            }
+            case POP  -> pop();
+            case POP2 -> { pop(); pop(); }
+            case SWAP -> {
+                var v1 = pop();
+                var v2 = pop();
+                push(v1);
+                push(v2);
+            }
+            default -> {}
+        }
     }
 
     private void handleCheckcast(TypeCheckInstruction tci) {
@@ -146,7 +206,29 @@ public final class BytecodeTypeInterpreter {
         if (ii.opcode() != Opcode.INVOKESTATIC) pop();
 
         events.add(new Event.MethodCall(ii.owner().asSymbol(), ii.name().stringValue(), desc, args));
+
+        if (isDeconstructionFactory(ii)) {
+            push(deconstructedType(args));
+            return;
+        }
+
         if (!desc.returnType().descriptorString().equals("V")) push(new SymbolicType.Known(desc.returnType()));
+    }
+
+    private static boolean isDeconstructionFactory(InvokeInstruction ii) {
+        return ii.opcode() == Opcode.INVOKESTATIC
+            && ii.owner().asSymbol().equals(DECONSTRUCTION_DESC)
+            && ii.name().stringValue().equals("dec");
+    }
+
+    private static SymbolicType deconstructedType(List<SymbolicType> args) {
+        var recordType = args.get(0).type();
+
+        var limit = (args.size() > 1 && args.get(1) instanceof SymbolicType.KnownInt(var _, var n))
+            ? OptionalInt.of(n)
+            : OptionalInt.empty();
+
+        return new SymbolicType.Deconstructed(recordType, limit);
     }
 
     private void push(SymbolicType t) {

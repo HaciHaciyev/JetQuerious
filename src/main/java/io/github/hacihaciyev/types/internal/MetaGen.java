@@ -762,15 +762,75 @@ public final class MetaGen {
         static void verifyArgsAgainstParamTypes(ClassModel callerClass, MethodModel callerMethod, TrackedField field, SymbolicType.ArrayBuild varargs) {
             var expected = field.paramTypes();
             var actual = varargs.elements();
-        
-            if (actual.length != expected.size()) {
-                reportMismatch(callerClass, callerMethod, field, PARAM_COUNT_MISMATCH.formatted(expected.size(), actual.length));
+
+            var totalConsumed = 0;
+            for (var element : actual) totalConsumed += slotsFor(element);
+
+            if (totalConsumed != expected.size()) {
+                reportMismatch(callerClass, callerMethod, field, PARAM_COUNT_MISMATCH.formatted(expected.size(), totalConsumed));
                 return;
             }
-        
-            for (int i = 0; i < expected.size(); i++) verifySingleArg(callerClass, callerMethod, field, expected.get(i), actual[i], i);
+
+            var idx = 0;
+            for (var element : actual) {
+                if (element instanceof SymbolicType.Deconstructed dec) {
+                    idx = verifyDeconstructedArg(callerClass, callerMethod, field, dec, expected, idx);
+                } else {
+                    verifySingleArg(callerClass, callerMethod, field, expected.get(idx), element, idx);
+                    idx++;
+                }
+            }
         }
-        
+
+        static int slotsFor(SymbolicType element) {
+            return element instanceof SymbolicType.Deconstructed dec ? componentCountOf(dec) : 1;
+        }
+
+        static int componentCountOf(SymbolicType.Deconstructed dec) {
+            var components = recordComponentsOf(dec.recordType());
+            return dec.limit().isPresent() ? Math.min(dec.limit().getAsInt(), components.size()) : components.size();
+        }
+
+        static int verifyDeconstructedArg(ClassModel callerClass, MethodModel callerMethod, TrackedField field,
+                                          SymbolicType.Deconstructed dec, List<ParamType> expected, int startIdx) {
+                                              
+            var components = recordComponentsOf(dec.recordType());
+            var count      = dec.limit().isPresent() ? Math.min(dec.limit().getAsInt(), components.size()) : components.size();
+
+            for (int i = 0; i < count; i++) {
+                var fieldDesc = ClassDesc.ofDescriptor(components.get(i).descriptor().stringValue());
+                verifySingleArg(callerClass, callerMethod, field, expected.get(startIdx + i), new SymbolicType.Known(fieldDesc), startIdx + i);
+            }
+
+            return startIdx + count;
+        }
+
+        static List<RecordComponentInfo> recordComponentsOf(ClassDesc recordType) {
+            var model = classModelFor(recordType);
+            var ra    = recordAttribute(model);
+            if (ra.isEmpty()) {
+                throw new MetaGenException("JetQuerious. Deconstruction target " + recordType.displayName() + " is not a recognized record type");
+            }
+            return ra.get().components();
+        }
+
+        static ClassModel classModelFor(ClassDesc desc) {
+            var binaryName = binaryNameOf(desc);
+            var resource   = binaryName.replace('.', '/') + ".class";
+
+            try (var in = Thread.currentThread().getContextClassLoader().getResourceAsStream(resource)) {
+                if (in == null) throw new MetaGenException("JetQuerious. Could not locate class file for " + binaryName);
+                return ClassFile.of().parse(in.readAllBytes());
+            } catch (IOException e) {
+                throw new MetaGenException("JetQuerious. Failed to read class file for " + binaryName, e);
+            }
+        }
+
+        static String binaryNameOf(ClassDesc desc) {
+            var descriptor = desc.descriptorString();
+            return descriptor.substring(1, descriptor.length() - 1).replace('/', '.');
+        }
+
         static void verifySingleArg(ClassModel callerClass, MethodModel callerMethod, TrackedField field, ParamType expected, SymbolicType actual, int index) {
             if (actual instanceof SymbolicType.Unknown) return;
         

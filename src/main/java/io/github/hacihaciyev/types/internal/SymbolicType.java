@@ -1,6 +1,7 @@
 package io.github.hacihaciyev.types.internal;
 
 import java.lang.constant.ClassDesc;
+import java.util.OptionalInt;
 
 public sealed interface SymbolicType {
     Unknown UNKNOWN = new Unknown();
@@ -18,6 +19,14 @@ public sealed interface SymbolicType {
         @Override
         public ClassDesc type() {
             return elementType.arrayType();
+        }
+    }
+
+    record Deconstructed(ClassDesc recordType, OptionalInt limit) implements SymbolicType {
+
+        @Override
+        public ClassDesc type() {
+            return ClassDesc.of("io.github.hacihaciyev.jdbc.Deconstruction");
         }
     }
 
