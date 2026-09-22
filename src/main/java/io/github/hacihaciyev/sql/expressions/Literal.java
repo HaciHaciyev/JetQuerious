@@ -44,4 +44,10 @@ public sealed interface Literal extends ValueExpr {
             requireNonNull(type);
         }
     }
+
+    record OptionalPlaceholderLiteral(Class<?> type) implements Literal {
+        public OptionalPlaceholderLiteral {
+            requireNonNull(type);
+        }
+    }
 }

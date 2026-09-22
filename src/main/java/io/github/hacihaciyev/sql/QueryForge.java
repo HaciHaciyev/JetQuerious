@@ -1,14 +1,17 @@
 package io.github.hacihaciyev.sql;
 
 import io.github.hacihaciyev.sql.builders.CTEBuilder;
+import io.github.hacihaciyev.sql.builders.CriteriaBuilder;
 import io.github.hacihaciyev.sql.builders.DeleteBuilder;
 import io.github.hacihaciyev.sql.builders.InsertBuilder;
 import io.github.hacihaciyev.sql.builders.SelectBuilder;
+import io.github.hacihaciyev.sql.builders.SelectStages;
 import io.github.hacihaciyev.sql.builders.TransactionBuilder;
 import io.github.hacihaciyev.sql.builders.UnionBuilder;
 import io.github.hacihaciyev.sql.builders.UpdateBuilder;
 import io.github.hacihaciyev.sql.expressions.ColumnRef;
 import io.github.hacihaciyev.sql.expressions.Expr;
+import io.github.hacihaciyev.sql.value_objects.Projection;
 import io.github.hacihaciyev.sql.value_objects.TableRef;
 import io.github.hacihaciyev.sql.value_objects.UnionType;
 
@@ -35,7 +38,31 @@ public class QueryForge {
     public static SelectBuilder selectDistinct(String... columns) {
         return SelectBuilder.selectDistinct(toExprs(columns));
     }
-    
+
+    public static SelectStages.SelectStage<Criteria> criteria(Expr... exprs) {
+        return CriteriaBuilder.select(exprs);
+    }
+
+    public static SelectStages.SelectStage<Criteria> criteriaDistinct(Expr... exprs) {
+        return CriteriaBuilder.selectDistinct(exprs);
+    }
+
+    public static SelectStages.SelectStage<Criteria> criteria(Projection... projections) {
+        return CriteriaBuilder.select(projections);
+    }
+
+    public static SelectStages.SelectStage<Criteria> criteriaDistinct(Projection... projections) {
+        return CriteriaBuilder.selectDistinct(projections);
+    }
+
+    public static SelectStages.SelectStage<Criteria> criteriaAll() {
+        return CriteriaBuilder.selectAll();
+    }
+
+    public static SelectStages.SelectStage<Criteria> criteriaAllDistinct() {
+        return CriteriaBuilder.selectAllDistinct();
+    }
+
     public static InsertBuilder insertInto(TableRef tableRef) {
         return new InsertBuilder(tableRef);
     }

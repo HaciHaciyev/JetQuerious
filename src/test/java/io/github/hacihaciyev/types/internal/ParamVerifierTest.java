@@ -213,6 +213,12 @@ class ParamVerifierTest {
         }
 
         @Test
+        void criteriaDesc_isTracked() throws Exception {
+            assertTrue(invokeBoolean(PARAM_VERIFIER, "isTrackedType",
+                ClassDesc.of("io.github.hacihaciyev.sql.Criteria")));
+        }
+
+        @Test
         void string_notTracked() throws Exception {
             assertFalse(invokeBoolean(PARAM_VERIFIER, "isTrackedType",
                 ClassDesc.of("java.lang.String")));
@@ -446,6 +452,52 @@ class ParamVerifierTest {
             var model = parseClass(UnassignedConstructionRepo.class);
             assertThrows(MetaGenException.class,
                 () -> invoke(PARAM_VERIFIER, "collectTrackedFields", List.of(model)));
+        }
+    }
+
+    @Nested
+    class CriteriaVerificationTests {
+
+        @Test
+        void correctCriteriaCaller_passes() throws Exception {
+            var tracked = trackedFieldsFor(io.github.hacihaciyev.fixtures.CriteriaRepo.class);
+            var model   = parseClass(io.github.hacihaciyev.fixtures.CriteriaCorrectCaller.class);
+            assertDoesNotThrow(() -> invoke(PARAM_VERIFIER, "verifyUsagesInClass", model, tracked));
+        }
+
+        @Test
+        void nullForAnyDeclaredSlot_neverFails() throws Exception {
+            // CriteriaCorrectCaller exercises null for optional String/Integer WHERE slots and
+            // for a GROUP BY slot embedded via coalesce(...) — all must pass, since null is a
+            // legitimate runtime pruning signal, never a compile-time type error for Criteria.
+            var tracked = trackedFieldsFor(io.github.hacihaciyev.fixtures.CriteriaRepo.class);
+            var model   = parseClass(io.github.hacihaciyev.fixtures.CriteriaCorrectCaller.class);
+            assertDoesNotThrow(() -> invoke(PARAM_VERIFIER, "verifyUsagesInClass", model, tracked));
+        }
+
+        @Test
+        void wrongArgCount_throws() throws Exception {
+            var tracked = trackedFieldsFor(io.github.hacihaciyev.fixtures.CriteriaRepo.class);
+            var model   = parseClass(io.github.hacihaciyev.fixtures.CriteriaWrongArgCountCaller.class);
+            var ex = assertThrows(MetaGenException.class,
+                () -> invoke(PARAM_VERIFIER, "verifyUsagesInClass", model, tracked));
+            assertTrue(ex.getMessage().contains("expected") && ex.getMessage().contains("parameters"));
+        }
+
+        @Test
+        void wrongNonNullArgType_throws() throws Exception {
+            var tracked = trackedFieldsFor(io.github.hacihaciyev.fixtures.CriteriaRepo.class);
+            var model   = parseClass(io.github.hacihaciyev.fixtures.CriteriaWrongTypeCaller.class);
+            var ex = assertThrows(MetaGenException.class,
+                () -> invoke(PARAM_VERIFIER, "verifyUsagesInClass", model, tracked));
+            assertTrue(ex.getMessage().contains("parameter"));
+        }
+
+        @Test
+        void criteriaFieldsAreCollectedAsTrackedFields() throws Exception {
+            var model = parseClass(io.github.hacihaciyev.fixtures.CriteriaRepo.class);
+            List<?> tracked = invoke(PARAM_VERIFIER, "collectTrackedFields", List.of(model));
+            assertFalse(tracked.isEmpty());
         }
     }
 

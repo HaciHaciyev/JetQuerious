@@ -112,6 +112,8 @@ public final class MetaGen {
 
     static final ClassDesc JQ_WRITE_DESC = ClassDesc.of("io.github.hacihaciyev.sql.JQ$Write");
 
+    static final ClassDesc CRITERIA_DESC = ClassDesc.of("io.github.hacihaciyev.sql.Criteria");
+
     static final ClassDesc RESULT_SET_EXTRACTOR_DESC = ClassDesc.of("io.github.hacihaciyev.jdbc.ResultSetExtractor");
 
     static final List<ClassDesc> TARGET_OWNERS = List.of(
@@ -604,7 +606,7 @@ public final class MetaGen {
         }
     
         static boolean isTrackedType(ClassDesc fieldType) {
-            return fieldType.equals(JQ_DESC)||fieldType.equals(JQ_READ_DESC)||fieldType.equals(JQ_WRITE_DESC);
+            return fieldType.equals(JQ_DESC)||fieldType.equals(JQ_READ_DESC)||fieldType.equals(JQ_WRITE_DESC)||fieldType.equals(CRITERIA_DESC);
         }
 
         static List<BytecodeTypeInterpreter.Event.FieldWrite> trackedFieldWritesInClinit(ClassModel model, ClassDesc owner) {
@@ -698,6 +700,7 @@ public final class MetaGen {
     
                 for (var event : events) {
                     if (event instanceof BytecodeTypeInterpreter.Event.MethodCall call) verifyCall(call, tracked, ignoredOwners, model, method);
+                    if (event instanceof BytecodeTypeInterpreter.Event.CriteriaCall call) verifyCriteriaCall(call, tracked, ignoredOwners, model, method);
                 }
             }
         }
@@ -720,6 +723,7 @@ public final class MetaGen {
             if (field == null) return;
             
             if (field.type().equals(RESULT_SET_EXTRACTOR_DESC)) return;
+            if (field.type().equals(CRITERIA_DESC)) return;
         
             var varargs = lastArrayArgument(call.arguments());
             if (varargs == null) {
@@ -728,6 +732,47 @@ public final class MetaGen {
             }
         
             verifyArgsAgainstParamTypes(callerClass, callerMethod, field, varargs);
+        }
+
+        static void verifyCriteriaCall(BytecodeTypeInterpreter.Event.CriteriaCall call, List<TrackedField> tracked, java.util.Set<ClassDesc> ignoredOwners, ClassModel callerClass, MethodModel callerMethod) {
+            var sourceField = sourceFieldOf(call.queryRef());
+            if (sourceField != null && ignoredOwners.contains(sourceField.owner())) {
+                throw new MetaGenException(IGNORED_FIELD_USAGE.formatted(
+                    callerClass.thisClass().asSymbol().displayName(),
+                    callerMethod.methodName().stringValue(),
+                    sourceField.owner().displayName(),
+                    sourceField.fieldName()
+                ));
+            }
+
+            var field = trackedFieldOf(call.queryRef(), tracked);
+            if (field == null) return;
+
+            verifyCriteriaArgsAgainstParamTypes(callerClass, callerMethod, field, call.argsArray());
+        }
+
+        static void verifyCriteriaArgsAgainstParamTypes(ClassModel callerClass, MethodModel callerMethod, TrackedField field, SymbolicType.ArrayBuild varargs) {
+            var expected = field.paramTypes();
+            var actual   = varargs.elements();
+
+            if (actual.length != expected.size()) {
+                reportMismatch(callerClass, callerMethod, field, PARAM_COUNT_MISMATCH.formatted(expected.size(), actual.length));
+                return;
+            }
+
+            for (int i = 0; i < actual.length; i++) {
+                verifyCriteriaSingleArg(callerClass, callerMethod, field, expected.get(i), actual[i], i);
+            }
+        }
+
+        static void verifyCriteriaSingleArg(ClassModel callerClass, MethodModel callerMethod, TrackedField field, ParamType expected, SymbolicType actual, int index) {
+            if (actual instanceof SymbolicType.Unknown) return;
+            if (actual.type().equals(CD_Object)) return;
+
+            var expectedDesc = ClassDesc.of(expected._type().getName());
+            if (!actual.type().equals(expectedDesc)) {
+                reportMismatch(callerClass, callerMethod, field, PARAM_TYPE_MISMATCH.formatted(index, expected._type().getName(), actual.type().displayName()));
+            }
         }
     
         static boolean isTargetOwner(ClassDesc owner) {

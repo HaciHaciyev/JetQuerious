@@ -15,7 +15,7 @@ public sealed interface SymbolicType {
     record FromField(ClassDesc owner, String fieldName, ClassDesc type) implements SymbolicType {}
 
     record ArrayBuild(ClassDesc elementType, SymbolicType[] elements) implements SymbolicType {
-        
+
         @Override
         public ClassDesc type() {
             return elementType.arrayType();
@@ -30,8 +30,16 @@ public sealed interface SymbolicType {
         }
     }
 
+    record CriteriaChain(SymbolicType queryRef, SymbolicType argsArray) implements SymbolicType {
+
+        @Override
+        public ClassDesc type() {
+            return ClassDesc.of("io.github.hacihaciyev.jdbc.CriteriaExecution");
+        }
+    }
+
     record Unknown() implements SymbolicType {
-        
+
         @Override
         public ClassDesc type() {
             return ClassDesc.of("java.lang.Object");

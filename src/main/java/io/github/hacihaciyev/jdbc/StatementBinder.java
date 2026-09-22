@@ -21,7 +21,10 @@ final class StatementBinder {
     private StatementBinder() {}
 
     static void bind(PreparedStatement stmt, Context ctx, Object[] args) throws SQLException {
-        var types    = asJava(ctx.paramTypes());
+        bind(stmt, asJava(ctx.paramTypes()), args);
+    }
+
+    static void bind(PreparedStatement stmt, List<ParamType> types, Object[] args) throws SQLException {
         var expanded = expand(args, types);
 
         if (types.isEmpty()) {

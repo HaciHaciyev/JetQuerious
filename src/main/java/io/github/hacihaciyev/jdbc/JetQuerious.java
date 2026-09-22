@@ -2,6 +2,7 @@ package io.github.hacihaciyev.jdbc;
 
 import io.github.hacihaciyev.config.Conf;
 import io.github.hacihaciyev.sql.JQ;
+import io.github.hacihaciyev.sql.Criteria;
 import io.github.hacihaciyev.sql.Transaction;
 import io.github.hacihaciyev.sql.internal.Context;
 import io.github.hacihaciyev.sql_error_translation.SQLErrorTranslation;
@@ -64,7 +65,7 @@ public class JetQuerious implements ReadOperations, WriteOperations, Transaction
         return withConnection(conn -> {
             try (var stmt = prepareWrite(conn, jq, params);
                  var rs   = stmt.executeQuery()) {
-                     
+
                 if (!rs.next()) return new Ok<>(Optional.empty());
                 return new Ok<>(Optional.ofNullable(rst.extractData(rs)));
             }
@@ -115,10 +116,10 @@ public class JetQuerious implements ReadOperations, WriteOperations, Transaction
                  var rs   = stmt.executeQuery()) {
 
                 if (!rs.next()) throw new SQLException("one: no rows returned");
-                
+
                 var result = extractor.extractData(rs);
                 if (result == null) throw new SQLException("one: extractor returned null");
-                
+
                 return new Ok<>(result);
             }
         });
@@ -134,7 +135,7 @@ public class JetQuerious implements ReadOperations, WriteOperations, Transaction
         return withConnection(conn -> {
             try (var stmt = prepareRead(conn, jq, rsType, params);
                  var rs   = stmt.executeQuery()) {
-                     
+
                 if (!rs.next()) return new Ok<>(Optional.empty());
                 return new Ok<>(Optional.ofNullable(extractor.extractData(rs)));
             }
@@ -152,7 +153,7 @@ public class JetQuerious implements ReadOperations, WriteOperations, Transaction
             try (var stmt = prepareRead(conn, jq, rsType, params);
                 var rs   = stmt.executeQuery()) {
                 var list = new ArrayList<T>();
-                
+
                 while (rs.next()) {
                     var row = extractor.extractData(rs);
                     if (row != null) list.add(row);
@@ -160,6 +161,58 @@ public class JetQuerious implements ReadOperations, WriteOperations, Transaction
                 return new Ok<>(List.copyOf(list));
             }
         });
+    }
+
+    public <T> CriteriaExecution<T> criteria(Criteria query, ResultSetExtractor<T> extractor) {
+        return new CriteriaExecution<>(this, query, extractor);
+    }
+
+    <T> Result<T, Exception> executeCriteriaOne(Criteria query, ResultSetExtractor<T> extractor, ResultSetType rsType, Object[] args) {
+        return withConnection(conn -> {
+            try (var stmt = prepareCriteria(conn, query, rsType, args);
+                 var rs   = stmt.executeQuery()) {
+
+                if (!rs.next()) throw new SQLException("criteria one: no rows returned");
+
+                var result = extractor.extractData(rs);
+                if (result == null) throw new SQLException("criteria one: extractor returned null");
+
+                return new Ok<>(result);
+            }
+        });
+    }
+
+    <T> Result<Optional<T>, Exception> executeCriteriaOption(Criteria query, ResultSetExtractor<T> extractor, ResultSetType rsType, Object[] args) {
+        return withConnection(conn -> {
+            try (var stmt = prepareCriteria(conn, query, rsType, args);
+                 var rs   = stmt.executeQuery()) {
+
+                if (!rs.next()) return new Ok<>(Optional.empty());
+                return new Ok<>(Optional.ofNullable(extractor.extractData(rs)));
+            }
+        });
+    }
+
+    <T> Result<List<T>, Exception> executeCriteriaMany(Criteria query, ResultSetExtractor<T> extractor, ResultSetType rsType, Object[] args) {
+        return withConnection(conn -> {
+            try (var stmt = prepareCriteria(conn, query, rsType, args);
+                 var rs   = stmt.executeQuery()) {
+
+                var list = new ArrayList<T>();
+                while (rs.next()) {
+                    var row = extractor.extractData(rs);
+                    if (row != null) list.add(row);
+                }
+                return new Ok<>(List.copyOf(list));
+            }
+        });
+    }
+
+    private PreparedStatement prepareCriteria(Connection conn, Criteria query, ResultSetType rsType, Object[] args) throws SQLException {
+        var prepared = query.context().prepare(args);
+        var stmt     = conn.prepareStatement(prepared.sql(), rsType.type(), rsType.concurrency());
+        StatementBinder.bind(stmt, prepared.paramTypes(), prepared.args());
+        return stmt;
     }
 
     private PreparedStatement prepareWrite(Connection conn, JQ.Write jq, Object[] args) throws SQLException {

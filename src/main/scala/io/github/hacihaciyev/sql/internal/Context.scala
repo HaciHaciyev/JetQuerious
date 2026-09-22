@@ -3,10 +3,12 @@ package io.github.hacihaciyev.sql.internal
 import io.github.hacihaciyev.build_errors.SchemaVerificationException
 import io.github.hacihaciyev.config.Conf
 import io.github.hacihaciyev.sql.value_objects.{Projection, TableRef}
-import io.github.hacihaciyev.sql.expressions.{ColumnRef, Expr, ValueExpr}
+import io.github.hacihaciyev.sql.expressions.{BinaryOp, ColumnRef, Expr, ValueExpr}
 import io.github.hacihaciyev.sql.expressions.ColumnRef.*
 import io.github.hacihaciyev.sql.internal.schema.{Column, SchemaResolver, Table}
-import io.github.hacihaciyev.sql.internal.value_objects.{Ref, TableSource, OnConflict, ParamType, ForUpdate}
+import io.github.hacihaciyev.sql.internal.value_objects.{Ref, TableSource, OnConflict, ParamType, ForUpdate, FromSource, JoinEntry, JoinedOn}
+import io.github.hacihaciyev.sql.internal.builders.SelectSQL
+import io.github.hacihaciyev.sql.value_objects.{Limit, Offset}
 import io.github.hacihaciyev.types.SQLType
 import io.github.hacihaciyev.util.{Err, Ok}
 import io.github.hacihaciyev.types.internal.{TypeInfo, TypeInfoOk, TypeRegistry}
@@ -44,6 +46,20 @@ sealed trait Context {
 sealed trait DQL
 
 sealed trait DML
+
+case class CriteriaUnit(kind: ClauseKind, expr: Expr, optional: Boolean) {
+    require(kind != null, "Clause kind cannot be null")
+    require(expr != null, "Unit expression cannot be null")
+
+    val paramTypes: List[Class[?]] = ExprTraversal.collectPlaceholders(expr)
+
+    require(
+        !optional || paramTypes.size == 1,
+        s"SQL.opt(...) must be the sole placeholder within its ${kind} unit, found ${paramTypes.size}"
+    )
+}
+
+case class Prepared(sql: String, paramTypes: java.util.List[ParamType], args: Array[AnyRef])
 
 object Context {
 
@@ -249,6 +265,111 @@ object Context {
             throwIfErrors(errs)
         }
     }
+
+    case class Criteria(
+                           projections: List[Projection],
+                           distinct:    Boolean,
+                           source:      FromSource,
+                           joinEntries: List[JoinEntry],
+                           units:       List[CriteriaUnit],
+                           limit:       Option[Limit]     = None,
+                           offset:      Option[Offset]    = None,
+                           forUpdate:   Option[ForUpdate] = None,
+                           outer:       Option[Context]   = None
+                       ) extends Context, DQL {
+
+        req(projections, source, joinEntries, units, limit, offset, forUpdate, outer)
+        require(projections.nonEmpty, "At least one projection is required")
+
+        override def sources: List[TableSource] =
+            source.toTableSource :: joinEntries.map(_.source.toTableSource)
+
+        override def refs: List[Ref] = projections.map(Ref.Named.apply)
+
+        def joins: List[Expr] = joinEntries.collect { case j: JoinedOn => j.on }
+
+        def where: Option[Expr]  = foldAnd(exprsOf(units, ClauseKind.WHERE))
+        def groupBy: List[Expr]  = exprsOf(units, ClauseKind.GROUP_BY)
+        def having: Option[Expr] = foldAnd(exprsOf(units, ClauseKind.HAVING))
+        def orderBy: List[Expr]  = exprsOf(units, ClauseKind.ORDER_BY)
+
+        def fixedTypes: List[Class[?]] =
+            ExprTraversal.collectAllPlaceholders(ExprTraversal.refsToExprsExcludingWildcards(refs) ++ joins)
+
+        def paramTypes: List[ParamType] = withPositions(fixedTypes ++ units.flatMap(_.paramTypes))
+
+        def unitsJava: java.util.List[CriteriaUnit] = units.asJava
+
+        def paramTypesJava: java.util.List[ParamType] = paramTypes.asJava
+
+        def unitsOf(kind: ClauseKind): java.util.List[CriteriaUnit] = units.filter(_.kind == kind).asJava
+
+        def prepare(args: Array[AnyRef]): Prepared = {
+            val supplied = if args == null then 0 else args.length
+            val declared = paramTypes.size
+            if (supplied != declared)
+                throw new IllegalArgumentException(s"Criteria query expects $declared argument(s) but $supplied were provided")
+
+            val fixed    = fixedTypes
+            val keptArgs = mutable.ListBuffer[AnyRef]()
+            val kept     = mutable.ListBuffer[CriteriaUnit]()
+
+            keptArgs ++= args.take(fixed.size)
+            var i = fixed.size
+
+            units.foreach { unit =>
+                val slice = args.slice(i, i + unit.paramTypes.size)
+                i += unit.paramTypes.size
+
+                if (!(unit.optional && slice(0) == null)) {
+                    kept     += unit
+                    keptArgs ++= slice
+                }
+            }
+
+            val active = kept.toList
+
+            val sql = SelectSQL.build(
+                projections.asJava,
+                distinct,
+                source,
+                joinEntries.asJava,
+                toOptional(foldAnd(exprsOf(active, ClauseKind.WHERE))),
+                exprsOf(active, ClauseKind.GROUP_BY).asJava,
+                toOptional(foldAnd(exprsOf(active, ClauseKind.HAVING))),
+                exprsOf(active, ClauseKind.ORDER_BY).asJava,
+                toOptional(limit),
+                toOptional(offset),
+                toOptional(forUpdate)
+            )
+
+            Prepared(sql, withPositions(fixed ++ active.flatMap(_.paramTypes)).asJava, keptArgs.toArray)
+        }
+
+        protected def validate(): Unit = {
+            val errs = mutable.ListBuffer[String]()
+
+            for (expr <- ExprTraversal.refsToExprsExcludingWildcards(refs) ++ joins)
+                if CriteriaSupport.containsOptional(expr) then
+                    errs.addOne("SQL.opt(...) is only allowed in WHERE, GROUP BY, HAVING or ORDER BY, not in SELECT or JOIN ON")
+
+            throwIfErrors(errs)
+
+            val _ = Context.Select(
+                sources, refs, joins, where, groupBy, having, orderBy,
+                forUpdate.map(_.tables).getOrElse(List.empty), outer
+            )
+        }
+    }
+
+    private def exprsOf(units: List[CriteriaUnit], kind: ClauseKind): List[Expr] =
+        units.filter(_.kind == kind).map(_.expr)
+
+    private def foldAnd(exprs: List[Expr]): Option[Expr] =
+        exprs.reduceOption((l, r) => BinaryOp(BinaryOp.BinaryOperator.AND, l, r))
+
+    private def toOptional[A](value: Option[A]): java.util.Optional[A] =
+        value.fold(java.util.Optional.empty[A]())(java.util.Optional.of)
 
     private def collectRefTypes(refs: List[Ref]): List[Class[?]] =
         refs.flatMap {
@@ -621,6 +742,45 @@ object ContextFactory {
         orderBy.asScala.toList,
         if outer.isPresent then Some(outer.get) else None
     )
+
+    def criteriaContext(
+                           projections: java.util.List[Projection],
+                           distinct:    Boolean,
+                           from:        FromSource,
+                           joins:       java.util.List[JoinEntry],
+                           where:       java.util.Optional[Expr],
+                           groupBy:     java.util.List[Expr],
+                           having:      java.util.Optional[Expr],
+                           orderBy:     java.util.List[Expr],
+                           limit:       java.util.Optional[Limit],
+                           offset:      java.util.Optional[Offset],
+                           forUpdate:   java.util.Optional[ForUpdate],
+                           outer:       java.util.Optional[Context]
+                       ): Context.Criteria = Context.Criteria(
+
+        projections.asScala.toList,
+        distinct,
+        from,
+        joins.asScala.toList,
+        conjunctUnits(where, ClauseKind.WHERE)     ++
+        itemUnits(groupBy, ClauseKind.GROUP_BY)     ++
+        conjunctUnits(having, ClauseKind.HAVING)   ++
+        itemUnits(orderBy, ClauseKind.ORDER_BY),
+        asScalaOption(limit),
+        asScalaOption(offset),
+        asScalaOption(forUpdate),
+        asScalaOption(outer)
+    )
+
+    private def conjunctUnits(expr: java.util.Optional[Expr], kind: ClauseKind): List[CriteriaUnit] =
+        if !expr.isPresent then List.empty
+        else CriteriaSupport.flattenAnd(expr.get).map(c => CriteriaUnit(kind, c, CriteriaSupport.containsOptional(c)))
+
+    private def itemUnits(items: java.util.List[Expr], kind: ClauseKind): List[CriteriaUnit] =
+        items.asScala.toList.map(item => CriteriaUnit(kind, item, CriteriaSupport.containsOptional(item)))
+
+    private def asScalaOption[A](value: java.util.Optional[A]): Option[A] =
+        if value.isPresent then Some(value.get) else None
 
     def cteReadContext(
                            entries: java.util.List[Context],

@@ -52,6 +52,10 @@ public final class SQL {
         return new Literal.PlaceholderLiteral(type);
     }
 
+    public static Literal.OptionalPlaceholderLiteral opt(Class<?> type) {
+        return new Literal.OptionalPlaceholderLiteral(type);
+    }
+
     public static Literal.StringLiteral lit(String value) {
         return new Literal.StringLiteral(value);
     }

@@ -18,18 +18,24 @@ public final class BytecodeTypeInterpreter {
 
     private static final ClassDesc DECONSTRUCTION_DESC = ClassDesc.of("io.github.hacihaciyev.jdbc.Deconstruction");
 
+    private static final ClassDesc JET_QUERIOUS_DESC = ClassDesc.of("io.github.hacihaciyev.jdbc.JetQuerious");
+
+    private static final ClassDesc CRITERIA_EXECUTION_DESC = ClassDesc.of("io.github.hacihaciyev.jdbc.CriteriaExecution");
+
     public sealed interface Event {
         record FieldRead(ClassDesc owner, String fieldName, ClassDesc fieldType) implements Event {}
-    
+
         record FieldWrite(ClassDesc owner, String fieldName, ClassDesc fieldType) implements Event {}
-    
+
         record MethodCall(ClassDesc owner, String methodName, MethodTypeDesc descriptor, List<SymbolicType> arguments) implements Event {}
+
+        record CriteriaCall(SymbolicType queryRef, SymbolicType.ArrayBuild argsArray) implements Event {}
     }
 
     private final Deque<SymbolicType> stack = new ArrayDeque<>();
-    
+
     private final Map<Integer, SymbolicType> locals = new HashMap<>();
-    
+
     private final List<Event> events = new ArrayList<>();
 
     public List<Event> run(List<CodeElement> code) {
@@ -51,12 +57,12 @@ public final class BytecodeTypeInterpreter {
             case TypeCheckInstruction tci         -> handleCheckcast(tci);
             case InvokeInstruction ii             -> handleInvoke(ii);
             case StackInstruction si              -> handleStack(si);
+            case InvokeDynamicInstruction idi     -> push(new SymbolicType.Known(idi.typeSymbol().returnType()));
             case ArrayLoadInstruction i           -> {}
             case BranchInstruction i              -> {}
             case ConvertInstruction i             -> {}
             case DiscontinuedInstruction i        -> {}
             case IncrementInstruction i           -> {}
-            case InvokeDynamicInstruction i       -> {}
             case LookupSwitchInstruction i        -> {}
             case MonitorInstruction i             -> {}
             case NewMultiArrayInstruction i       -> {}
@@ -97,9 +103,9 @@ public final class BytecodeTypeInterpreter {
                 events.add(new Event.FieldWrite(fi.owner().asSymbol(), fi.name().stringValue(), fieldType));
                 pop();
             }
-            case PUTFIELD  -> { 
+            case PUTFIELD  -> {
                 pop();
-                pop(); 
+                pop();
             }
             default        -> {}
         }
@@ -203,13 +209,43 @@ public final class BytecodeTypeInterpreter {
 
         for (int i = 0; i < argCount; i++) args.add(SymbolicType.UNKNOWN);
         for (int i = argCount - 1; i >= 0; i--) args.set(i, pop());
-        if (ii.opcode() != Opcode.INVOKESTATIC) pop();
+
+        SymbolicType receiver = null;
+        if (ii.opcode() != Opcode.INVOKESTATIC) receiver = pop();
 
         events.add(new Event.MethodCall(ii.owner().asSymbol(), ii.name().stringValue(), desc, args));
 
         if (isDeconstructionFactory(ii)) {
             push(deconstructedType(args));
             return;
+        }
+
+        if (isCriteriaFactory(ii)) {
+            push(new SymbolicType.CriteriaChain(args.isEmpty() ? SymbolicType.UNKNOWN : args.get(0), null));
+            return;
+        }
+
+        if (receiver instanceof SymbolicType.CriteriaChain chain && ii.owner().asSymbol().equals(CRITERIA_EXECUTION_DESC)) {
+            switch (ii.name().stringValue()) {
+                case "resultSetType" -> {
+                    push(chain);
+                    return;
+                }
+                case "args" -> {
+                    var suppliedArgs = args.isEmpty() ? SymbolicType.UNKNOWN : args.get(0);
+                    push(new SymbolicType.CriteriaChain(chain.queryRef(), suppliedArgs));
+                    return;
+                }
+                case "one", "option", "many" -> {
+                    var argsArray = chain.argsArray() instanceof SymbolicType.ArrayBuild build ? build
+                        : new SymbolicType.ArrayBuild(ClassDesc.of("java.lang.Object"), new SymbolicType[0]);
+
+                    events.add(new Event.CriteriaCall(chain.queryRef(), argsArray));
+                    if (!desc.returnType().descriptorString().equals("V")) push(new SymbolicType.Known(desc.returnType()));
+                    return;
+                }
+                default -> {}
+            }
         }
 
         if (!desc.returnType().descriptorString().equals("V")) push(new SymbolicType.Known(desc.returnType()));
@@ -219,6 +255,12 @@ public final class BytecodeTypeInterpreter {
         return ii.opcode() == Opcode.INVOKESTATIC
             && ii.owner().asSymbol().equals(DECONSTRUCTION_DESC)
             && ii.name().stringValue().equals("dec");
+    }
+
+    private static boolean isCriteriaFactory(InvokeInstruction ii) {
+        return ii.opcode() != Opcode.INVOKESTATIC
+            && ii.owner().asSymbol().equals(JET_QUERIOUS_DESC)
+            && ii.name().stringValue().equals("criteria");
     }
 
     private static SymbolicType deconstructedType(List<SymbolicType> args) {
