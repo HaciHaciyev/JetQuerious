@@ -872,4 +872,43 @@ class ParamVerifierTest {
             assertTrue(ex.getMessage().contains("parameter 2"));
         }
     }
+
+    @Nested
+        class WrapperTypeVerificationTests {
+    
+            @Test
+            void correctCaller_allWrapperUsages_pass() throws Exception {
+                var tracked = trackedFieldsFor(WrapperTypeRepo.class);
+                var model   = parseClass(WrapperTypeCorrectCaller.class);
+                assertDoesNotThrow(() -> invoke(PARAM_VERIFIER, "verifyUsagesInClass", model, tracked));
+            }
+    
+            @Test
+            void wrongUuidVariant_throws() throws Exception {
+                var tracked = trackedFieldsFor(WrapperTypeRepo.class);
+                var model   = parseClass(WrapperTypeWrongVariantCaller.class);
+                var ex = assertThrows(MetaGenException.class, () -> invoke(PARAM_VERIFIER, "verifyUsagesInClass", model, tracked));
+                
+                assertTrue(ex.getMessage().contains("UUIDStrategy"));
+                assertTrue(ex.getMessage().contains("parameter"));
+            }
+    
+            @Test
+            void wrongWrapperType_asObjectForAsString_throws() throws Exception {
+                var tracked = trackedFieldsFor(WrapperTypeRepo.class);
+                var model   = parseClass(WrapperTypeWrongWrapperCaller.class);
+                var ex = assertThrows(MetaGenException.class, () -> invoke(PARAM_VERIFIER, "verifyUsagesInClass", model, tracked));
+                
+                assertTrue(ex.getMessage().contains("parameter"));
+            }
+    
+            @Test
+            void typeFactoryUsage_knownLimitation_reportsMismatchDespiteBeingValidAtRuntime() throws Exception {
+                var tracked = trackedFieldsFor(WrapperTypeRepo.class);
+                var model   = parseClass(WrapperTypeFactoryMethodCaller.class);
+                var ex = assertThrows(MetaGenException.class, () -> invoke(PARAM_VERIFIER, "verifyUsagesInClass", model, tracked));
+                
+                assertTrue(ex.getMessage().contains("UUIDStrategy$Native"));
+            }
+        }
 }
