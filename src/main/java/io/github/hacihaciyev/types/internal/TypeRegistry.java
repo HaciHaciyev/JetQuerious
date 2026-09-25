@@ -52,13 +52,17 @@ public final class TypeRegistry {
         if (type == AsObject.class)
             return info(
                     (stmt, p, idx) -> stmt.setObject(idx, ((AsObject) p).value()),
-                    (rs, col) -> rs.getObject(col)
+                    (rs, col) -> rs.getObject(col),
+                    SQLType.values()
             );
 
         if (type == AsString.class)
             return info(
                     (stmt, p, idx) -> stmt.setString(idx, String.valueOf(((AsString) p).value())),
-                    (rs, col) -> rs.getString(col)
+                    (rs, col) -> rs.getString(col),
+                    SQLType.VARCHAR, SQLType.CHARACTER_VARYING, SQLType.CHAR, SQLType.CHARACTER,
+                    SQLType.NVARCHAR, SQLType.NCHAR, SQLType.NATIONAL_CHAR, SQLType.NATIONAL_CHAR_VARYING,
+                    SQLType.TEXT, SQLType.CLOB
             );
 
         if (UUIDStrategy.class.isAssignableFrom(type))
